@@ -11,14 +11,16 @@ WORKDIR /app
 
 # Runtime dependencies (Git needed by GitPython)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends git && \
+    apt-get install -y --no-install-recommends git tree && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Copy packaging metadata first (better layer caching)
-COPY pyproject.toml .
-
 # Copy source code
-COPY src/ ./src/
+COPY services/deploy-manager/pyproject.toml .
+COPY services/deploy-manager/src/ ./src/
+COPY services/task-service/ ./task-service/
+COPY common/include/ task-service/include/
+COPY common/src/ task-service/src/
+
 
 # Install deploy-manager and its dependencies
 RUN pip install --no-cache-dir .

@@ -39,7 +39,7 @@ class ManifestParser:
         for t in tasks_data:
             try:
                 task = Task(
-                    id=t["id"],
+                    name=t["name"],
                     policy=t["policy"].lower(),
                     priority=int(t["priority"]),
                     depends_on=t.get("depends_on", []),

@@ -7,14 +7,15 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -O2")
 
 # Include directories
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${CMAKE_SOURCE_DIR}/../common/include)
 
 # Add executable
-add_executable(task-service
+add_executable(execution-manager
     src/main.c
-    src/logger.c  # directly add logger.c to build
-    src/task_ipc.c
+    ../common/src/logger.c  # directly add logger.c to build
+    ../common/src/task_ipc.c
 )
 
 # Threads
 find_package(Threads REQUIRED)
-target_link_libraries(task-service PRIVATE Threads::Threads)
+target_link_libraries(execution-manager PRIVATE Threads::Threads)

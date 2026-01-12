@@ -11,14 +11,23 @@ RealTime-Microservices/
         CMakeLists.txt
         include/
             task.h
+            task_ipc.h
             logger.h
         src/
+            task_ipc.c
             logger.c
     services/
+        execution-manager/
+            CMakeLists.txt
+            Dockerfile
+            include/
+            src/
+                main.c
         task-service/
             CMakeLists.txt
             Dockerfile
             include/
+                task_service.h
                 task_entry.h
             src/
                 main.c
@@ -30,10 +39,20 @@ RealTime-Microservices/
                 logger.py
                 exceptions.py
                 main.py
+                docker/
+                    builder.py
+                deploy/
+                    container_runner.py
+                    image_builder.py
+                    __init__.py
+                    task_materializer.py
                 manifest/
                     manifest_fetcher.py
                     __init__.py
                     parser.py
+                artifact/
+                    __init__.py
+                    materializer.py
                 domain/
                     task.py
                     __init__.py
@@ -51,8 +70,8 @@ RealTime-Microservices/
 services:
   deploy-manager:
     build:
-      context: ./services/deploy-manager 
-      dockerfile: Dockerfile
+      context: . 
+      dockerfile: ./services/deploy-manager/Dockerfile
     container_name: deploy-manager
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -73,7 +92,7 @@ target_include_directories(common PUBLIC
 )
 
 # Add source files if you have .c in common/src
-target_sources(common PRIVATE src/logger.c)
+target_sources(common PRIVATE src/logger.c src/task_ipc.c)
 
 # If you only have headers, the library can be empty
 --- END FILE: common/CMakeLists.txt ---
@@ -91,16 +110,12 @@ target_sources(common PRIVATE src/logger.c)
 #define TASK_PRIORITY_MIN 1
 #define TASK_PRIORITY_MAX 99
 
-
-
-
 /* Scheduling Policies */
 typedef enum {
     SCHED_POLICY_OTHER = 0,
-    SCHED_POLICY_FIFO = 1,
-    SCHED_POLICY_RR   = 2
+    SCHED_POLICY_FIFO  = 1,
+    SCHED_POLICY_RR    = 2
 } sched_policy_t;
-
 
 /* Task struct */
 typedef struct {
@@ -111,10 +126,66 @@ typedef struct {
     char output[TASK_JSON_OUT_MAX];
 } task_t;
 
-
 #endif /* TASK_H */
 
 --- END FILE: common/include/task.h ---
+
+--- START FILE: common/include/task_ipc.h ---
+#ifndef TASK_IPC_H
+#define TASK_IPC_H
+
+#include <stdint.h>
+#include <mqueue.h>
+#include "task.h"
+
+/* Queue names */
+#define QUEUE_NAME_TASK "/task_queue"
+#define QUEUE_NAME_EM   "/execution_manager_queue"
+
+/* Message types */
+typedef enum {
+    MSG_TASK_REQUEST = 1,
+    MSG_TASK_ACK,
+    MSG_GET_STATUS,
+    MSG_TASK_STATUS,
+    MSG_GET_RESULTS,
+    MSG_TASK_RESULT
+} msg_type_t;
+
+/* ACK status */
+typedef enum {
+    ACK_OK = 0,
+    ACK_ERROR = 1
+} ack_status_t;
+
+/* Task-service states */
+typedef enum {
+    TS_IDLE = 0,
+    TS_RUNNING,
+    TS_COMPLETED
+} task_service_state_t;
+
+/* IPC message */
+typedef struct {
+    msg_type_t type;
+    uint32_t   task_id;
+
+    union {
+        task_t task;                  /* For TASK_REQUEST */
+        ack_status_t ack;              /* For TASK_ACK */
+        task_service_state_t status;   /* For STATUS */
+        char result[TASK_JSON_OUT_MAX];/* For TASK_RESULT */
+    } data;
+} ipc_msg_t;
+
+/* POSIX MQ helpers */
+mqd_t create_queue(const char *name, int flags);
+int send_message(mqd_t qd, const ipc_msg_t *msg);
+int receive_message(mqd_t qd, ipc_msg_t *msg);
+
+#endif /* TASK_IPC_H */
+
+--- END FILE: common/include/task_ipc.h ---
 
 --- START FILE: common/include/logger.h ---
 #ifndef LOGGER_H
@@ -134,6 +205,54 @@ void log_message(log_level_t level, const char *source, const char *fmt, ...);
 #endif /* LOGGER_H */
 
 --- END FILE: common/include/logger.h ---
+
+--- START FILE: common/src/task_ipc.c ---
+#include "task_ipc.h"
+#include <fcntl.h>
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+#include <stdlib.h>
+
+/* Create/open queue with flags (O_RDONLY, O_WRONLY, O_NONBLOCK) */
+mqd_t create_queue(const char *name, int flags)
+{
+    struct mq_attr attr = {
+        .mq_flags   = (flags & O_NONBLOCK) ? O_NONBLOCK : 0,
+        .mq_maxmsg  = 10,
+        .mq_msgsize = sizeof(ipc_msg_t),
+        .mq_curmsgs = 0
+    };
+
+    mqd_t qd = mq_open(name, flags | O_CREAT, 0666, &attr);
+    if (qd == (mqd_t)-1) {
+        perror("mq_open");
+        exit(EXIT_FAILURE);
+    }
+    return qd;
+}
+
+/* Send a message */
+int send_message(mqd_t qd, const ipc_msg_t *msg)
+{
+    return mq_send(qd, (const char *)msg, sizeof(*msg), 0);
+}
+
+/* Receive a message (blocking or non-blocking depending on queue flags) */
+int receive_message(mqd_t qd, ipc_msg_t *msg)
+{
+    ssize_t ret = mq_receive(qd, (char *)msg, sizeof(*msg), NULL);
+    if (ret == -1) {
+        if (errno == EAGAIN) {
+            return 0; /* no message available for non-blocking */
+        }
+        perror("mq_receive");
+        return -1;
+    }
+    return 1; /* message received */
+}
+
+--- END FILE: common/src/task_ipc.c ---
 
 --- START FILE: common/src/logger.c ---
 #include "logger.h"
@@ -182,44 +301,33 @@ void log_message(log_level_t level, const char *source, const char *fmt, ...) {
 
 --- END FILE: common/src/logger.c ---
 
---- START FILE: services/task-service/CMakeLists.txt ---
+--- START FILE: services/execution-manager/CMakeLists.txt ---
 cmake_minimum_required(VERSION 3.20)
 project(task_service C)
 
-# C standard and compiler flags
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -O2")
 
-
 # Include directories
-# Task-service local headers
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-
-# Common headers (shared with execution manager)
-include_directories(${CMAKE_SOURCE_DIR}/common/include)
-
+include_directories(${CMAKE_SOURCE_DIR}/../common/include)
 
 # Add executable
-add_executable(task-service
+add_executable(execution-manager
     src/main.c
-)
-
-# Include shared headers
-target_include_directories(task-service PRIVATE
-    ${CMAKE_SOURCE_DIR}/../common/include
+    ../common/src/logger.c  # directly add logger.c to build
+    ../common/src/task_ipc.c
 )
 
 # Threads
 find_package(Threads REQUIRED)
-target_link_libraries(task-service PRIVATE Threads::Threads)
+target_link_libraries(execution-manager PRIVATE Threads::Threads)
 
+--- END FILE: services/execution-manager/CMakeLists.txt ---
 
-
---- END FILE: services/task-service/CMakeLists.txt ---
-
---- START FILE: services/task-service/Dockerfile ---
-FROM ubuntu:22.04
+--- START FILE: services/execution-manager/Dockerfile ---
+FROM ubuntu:24.04
 
 # Install build tools
 RUN apt-get update && \
@@ -235,8 +343,137 @@ WORKDIR /app
 # Copy common headers
 COPY common/ ./common/
 
+# Copy execution-manager source
+COPY services/execution-manager/ ./execution-manager/
+
+WORKDIR /app/execution-manager
+
+# Configure and build
+RUN cmake -S . -B build
+RUN cmake --build build
+
+ENTRYPOINT ["./build/execution-manager"]
+
+--- END FILE: services/execution-manager/Dockerfile ---
+
+--- START FILE: services/execution-manager/src/main.c ---
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "task_ipc.h"
+
+mqd_t em_queue, task_queue;
+
+void send_task_request(uint32_t task_id, task_t *task) {
+    ipc_msg_t msg;
+    memset(&msg, 0, sizeof(msg));
+
+    msg.type    = MSG_TASK_REQUEST;
+    msg.task_id = task_id;
+    msg.status  = ACK_OK;
+
+    memcpy(msg.payload, task, sizeof(task_t));
+    send_message(task_queue, &msg);
+}
+
+void get_status(uint32_t task_id) {
+    ipc_msg_t msg = {0};
+    msg.type    = MSG_GET_STATUS;
+    msg.task_id = task_id;
+    send_message(task_queue, &msg);
+}
+
+void get_results(uint32_t task_id) {
+    ipc_msg_t msg = {0};
+    msg.type    = MSG_GET_RESULTS;
+    msg.task_id = task_id;
+    send_message(task_queue, &msg);
+}
+
+int main() {
+    em_queue   = create_queue(QUEUE_NAME_EM);
+    task_queue = create_queue(QUEUE_NAME_TASK);
+
+    // Example: send a task
+    task_t task;
+    strncpy(task.task_name, "compute_sum", TASK_NAME_MAX);
+    task.policy   = SCHED_POLICY_FIFO;
+    task.priority = 50;
+    snprintf(task.input, TASK_JSON_IN_MAX, "{\"a\": 3, \"b\": 4}");
+    snprintf(task.output, TASK_JSON_OUT_MAX, "{}");
+
+    printf("[Execution Manager] Sending task request...\n");
+    send_task_request(1, &task);
+
+    while (1) {
+        ipc_msg_t msg;
+        receive_message(em_queue, &msg);
+
+        switch (msg.type) {
+            case MSG_TASK_ACK:
+                printf("[Execution Manager] ACK: %s\n", msg.payload);
+                break;
+            case MSG_TASK_STATUS:
+                printf("[Execution Manager] STATUS: %s\n", msg.payload);
+                break;
+            case MSG_TASK_RESULT:
+                printf("[Execution Manager] RESULT: %s\n", msg.payload);
+                break;
+            default:
+                printf("[Execution Manager] Unknown message type %d\n", msg.type);
+        }
+    }
+
+    close_queue(em_queue, QUEUE_NAME_EM);
+    close_queue(task_queue, QUEUE_NAME_TASK);
+    return 0;
+}
+
+--- END FILE: services/execution-manager/src/main.c ---
+
+--- START FILE: services/task-service/CMakeLists.txt ---
+cmake_minimum_required(VERSION 3.20)
+project(task_service C)
+
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -O2")
+
+# Include directories
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+# Add executable
+add_executable(task-service
+    src/main.c
+    src/logger.c  # directly add logger.c to build
+    src/task_ipc.c
+)
+
+# Threads
+find_package(Threads REQUIRED)
+target_link_libraries(task-service PRIVATE Threads::Threads)
+
+--- END FILE: services/task-service/CMakeLists.txt ---
+
+--- START FILE: services/task-service/Dockerfile ---
+FROM ubuntu:24.04
+
+# Set noninteractive mode
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install build tools
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        pkg-config && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
 # Copy task-service source
-COPY services/task-service/ ./task-service/
+COPY . ./task-service/ 
+# task-service/ ./task-service/
 
 WORKDIR /app/task-service
 
@@ -248,11 +485,127 @@ ENTRYPOINT ["./build/task-service"]
 
 --- END FILE: services/task-service/Dockerfile ---
 
+--- START FILE: services/task-service/include/task_service.h ---
+#ifndef TASK_SERVICE_H
+#define TASK_SERVICE_H
+
+#include <stdint.h>
+#include <pthread.h>
+
+/* Possible states */
+typedef enum { IDLE, RUNNING, COMPLETED, FAULT } task_state_t;
+
+/* Task descriptor */
+typedef struct {
+    pthread_t thread;
+    pthread_attr_t attr;
+    task_state_t state;
+    int priority;
+} task_service_t;
+
+
+#endif /* TASK_SERVICE_H */
+
+--- END FILE: services/task-service/include/task_service.h ---
+
 --- START FILE: services/task-service/include/task_entry.h ---
 
 --- END FILE: services/task-service/include/task_entry.h ---
 
 --- START FILE: services/task-service/src/main.c ---
+#include <stdio.h>
+#include "task_entry.h"
+
+int main() {
+    task_main();
+    return 0;
+}
+
+/********* 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <pthread.h>
+#include "task_ipc.h"
+
+mqd_t em_queue, task_queue;
+
+
+void* run_task(void* arg) {
+    task_t *task = (task_t*)arg;
+
+    printf("[Task Service] Running task '%s' with priority %u\n", task->task_name, task->priority);
+    // Simulate computation
+    sleep(1);
+
+    // Send ACK
+    ipc_msg_t ack;
+    ack.type = MSG_TASK_ACK;
+    ack.task_id = 0; // could use task ID
+    ack.status = ACK_OK;
+    snprintf(ack.payload, MAX_MSG_SIZE, "Task '%s' completed successfully", task->task_name);
+
+    send_message(em_queue, &ack);
+
+    free(task);
+    return NULL;
+}
+
+int main() {
+    em_queue   = create_queue(QUEUE_NAME_EM);
+    task_queue = create_queue(QUEUE_NAME_TASK);
+
+    printf("[Task Service] Waiting for messages...\n");
+
+    while (1) {
+        ipc_msg_t msg;
+        receive_message(task_queue, &msg);
+
+        switch (msg.type) {
+            case MSG_TASK_REQUEST: {
+                task_t *task = malloc(sizeof(task_t));
+                memcpy(task, msg.payload, sizeof(task_t));
+
+                pthread_t thread;
+                pthread_create(&thread, NULL, run_task, task);
+                pthread_detach(thread);
+                break;
+            }
+
+            case MSG_GET_STATUS: {
+                ipc_msg_t status_msg;
+                status_msg.type    = MSG_TASK_STATUS;
+                status_msg.task_id = msg.task_id;
+                status_msg.status  = ACK_OK;
+                snprintf(status_msg.payload, MAX_MSG_SIZE, "Task %u status: running", msg.task_id);
+                send_message(em_queue, &status_msg);
+                break;
+            }
+
+            case MSG_GET_RESULTS: {
+                ipc_msg_t result_msg;
+                result_msg.type    = MSG_TASK_RESULT;
+                result_msg.task_id = msg.task_id;
+                result_msg.status  = ACK_OK;
+                snprintf(result_msg.payload, MAX_MSG_SIZE, "{\"result\": 42}");
+                send_message(em_queue, &result_msg);
+                break;
+            }
+
+            default:
+                printf("[Task Service] Unknown message type %d\n", msg.type);
+        }
+    }
+
+    close_queue(em_queue, QUEUE_NAME_EM);
+    close_queue(task_queue, QUEUE_NAME_TASK);
+    return 0;
+}
+
+***************/
+
+/* 
 #include <stdio.h>
 #include <string.h>
 
@@ -262,7 +615,7 @@ ENTRYPOINT ["./build/task-service"]
 int main(void) {
     task_t task;
 
-    /* Fill task fields */
+    
     strncpy(task.task_name, "test_task", TASK_NAME_MAX);
     task.policy = SCHED_POLICY_FIFO;
     task.priority = 50;
@@ -270,21 +623,21 @@ int main(void) {
     strncpy(task.input, "{\"a\": 3, \"b\": 4}", TASK_JSON_IN_MAX);
     strncpy(task.output, "{\"sum\": 7, \"product\": 12}", TASK_JSON_OUT_MAX);
 
-    /* Print task info */
+    
     printf("Task name   : %s\n", task.task_name);
     printf("Policy      : %d\n", task.policy);
     printf("Priority    : %u\n", task.priority);
     printf("Input JSON  : %s\n", task.input);
     printf("Output JSON : %s\n", task.output);
 
-    log_message(LOG_INFO, "__main__", "Task: %s, policy=%s, priority=%d", 
-                "init_core", "fifo", 30);
+    l 
     log_message(LOG_WARN, "task_service", "Task execution delayed!");
     log_message(LOG_ERROR, "rt_task", "Thread creation failed with code %d", -1);
 
     return 0;
 }
 
+  */
 --- END FILE: services/task-service/src/main.c ---
 
 --- START FILE: services/deploy-manager/Dockerfile ---
@@ -301,21 +654,22 @@ WORKDIR /app
 
 # Runtime dependencies (Git needed by GitPython)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends git && \
+    apt-get install -y --no-install-recommends git tree && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Copy packaging metadata first (better layer caching)
-COPY pyproject.toml .
-
 # Copy source code
-COPY src/ ./src/
+COPY services/deploy-manager/pyproject.toml .
+COPY services/deploy-manager/src/ ./src/
+COPY services/task-service/ ./task-service/
+COPY common/include/ task-service/include/
+COPY common/src/ task-service/src/
+
 
 # Install deploy-manager and its dependencies
 RUN pip install --no-cache-dir .
 
 # Entrypoint
 ENTRYPOINT ["python", "-m", "src.main"]
-
 --- END FILE: services/deploy-manager/Dockerfile ---
 
 --- START FILE: services/deploy-manager/pyproject.toml ---
@@ -372,45 +726,236 @@ class DeployManagerError(Exception):
 --- END FILE: services/deploy-manager/src/exceptions.py ---
 
 --- START FILE: services/deploy-manager/src/main.py ---
-# src/main.py
 from pathlib import Path
 from .logger import get_logger
 from .manifest.manifest_fetcher import ManifestFetcher
 from .manifest.parser import ManifestParser
+from .artifact.materializer import TaskArtifactMaterializer
+from .docker.builder import DockerImageBuilder
 from .exceptions import DeployManagerError
 import sys
 
 logger = get_logger(__name__)
 
 def main():
-    # Example: replace with your Git repository URL
     repo_url = "https://github.com/GeoDimi99/RT-Task-Spec.git"
-    local_path = Path("/tmp/rt-mission-spec")
+    mission_path = Path("/tmp/rt-mission-spec")
 
-    fetcher = ManifestFetcher(repo_url, local_path)
+    task_service_path = Path("/app/task-service")
+    task_service_include = task_service_path / "include"
+
+    fetcher = ManifestFetcher(repo_url, mission_path)
 
     try:
         fetcher.fetch()
-        manifest_file = local_path / "task_manifest.yaml"
-        if manifest_file.exists():
-            parser = ManifestParser(str(manifest_file))
-            schedule = parser.parse()
 
-            # Example: print tasks
-            for task in schedule.tasks:
-                logger.info(f"Task: {task.id}, policy={task.policy}, priority={task.priority}")
-        else:
-            logger.warning("Manifest file does not exist in the repository.")
+        parser = ManifestParser(
+            str(mission_path / "task_manifest.yaml")
+        )
+        schedule = parser.parse()
+
+        materializer = TaskArtifactMaterializer(
+            mission_repo_path=mission_path,
+            task_service_include_path=task_service_include,
+        )
+
+        docker_builder = DockerImageBuilder()
+
+        for task in schedule.tasks:
+            materializer.materialize_task(task)
+
+            image_tag = f"task-service:{task.name}-{schedule.version}"
+            docker_builder.build_task_service_image(
+                build_context=task_service_path,
+                image_tag=image_tag,
+            )
+
     except DeployManagerError as e:
-        logger.error(f"Failed to fetch manifest: {e}")
+        logger.error(f"Deploy Manager failed: {e}")
         sys.exit(1)
-    
-
 
 if __name__ == "__main__":
     main()
 
 --- END FILE: services/deploy-manager/src/main.py ---
+
+--- START FILE: services/deploy-manager/src/docker/builder.py ---
+import docker
+from pathlib import Path
+from ..logger import get_logger
+from ..exceptions import DeployManagerError
+
+logger = get_logger(__name__)
+
+class DockerImageBuilder:
+    """
+    Builds Docker images for task services.
+    """
+
+    def __init__(self):
+        self.client = docker.from_env()
+
+    def build_task_service_image(
+        self,
+        build_context: Path,
+        image_tag: str,
+    ) -> None:
+        try:
+            logger.info(
+                f"Building Docker image '{image_tag}' "
+                f"from {build_context}"
+            )
+            image, logs = self.client.images.build(
+                path=str(build_context),
+                tag=image_tag,
+                rm=True,
+            )
+            logger.info(f"Successfully built image '{image_tag}'")
+        except docker.errors.BuildError as e:
+            raise DeployManagerError(f"Docker build failed: {e}")
+        except Exception as e:
+            raise DeployManagerError(f"Docker error: {e}")
+
+--- END FILE: services/deploy-manager/src/docker/builder.py ---
+
+--- START FILE: services/deploy-manager/src/deploy/container_runner.py ---
+import docker
+from ..logger import get_logger
+from ..exceptions import DeployManagerError
+
+logger = get_logger(__name__)
+
+class ContainerRunner:
+    """
+    Runs task-service containers with required flags.
+    """
+
+    def __init__(self):
+        self.client = docker.from_env()
+
+    def run_task_service(self, image: str, name: str) -> None:
+        logger.info(f"Running container '{name}' from image '{image}'")
+
+        try:
+            # Remove existing container if it exists
+            try:
+                old_container = self.client.containers.get(name)
+                old_container.remove(force=True)
+                logger.info(f"Removed existing container '{name}'")
+            except docker.errors.NotFound:
+                pass
+
+            # Run container with required flags
+            self.client.containers.run(
+                image=image,
+                name=name,
+                detach=True,
+                tty=True,
+                stdin_open=True,
+                ipc_mode="host",
+                cap_add=["SYS_NICE"],
+                ulimits=[
+                    docker.types.Ulimit(name="rtprio", soft=99, hard=99),
+                    docker.types.Ulimit(name="memlock", soft=-1, hard=-1),
+                ],
+            )
+
+            logger.info(f"Container '{name}' started successfully")
+
+        except docker.errors.DockerException as e:
+            raise DeployManagerError(f"Failed to run container '{name}': {e}")
+
+--- END FILE: services/deploy-manager/src/deploy/container_runner.py ---
+
+--- START FILE: services/deploy-manager/src/deploy/image_builder.py ---
+import docker
+from pathlib import Path
+from ..logger import get_logger
+from ..exceptions import DeployManagerError
+
+logger = get_logger(__name__)
+
+class DockerImageBuilder:
+    """
+    Builds Docker images for task services.
+    """
+
+    def __init__(self):
+        self.client = docker.from_env()
+
+    def build_task_service_image(
+        self,
+        build_context: Path,
+        image_tag: str,
+    ) -> None:
+        try:
+            logger.info(f"Building Docker image '{image_tag}' from {build_context}")
+            
+            # Build the Docker image
+            image, logs = self.client.images.build(
+                path=str(build_context),
+                tag=image_tag,
+                rm=True,
+                network_mode="host"  # ensures apt works during build
+            )
+
+            logger.info(f"Successfully built image '{image_tag}'")
+
+        except docker.errors.BuildError as e:
+            raise DeployManagerError(f"Docker build failed: {e}")
+        except Exception as e:
+            raise DeployManagerError(f"Docker error: {e}")
+
+--- END FILE: services/deploy-manager/src/deploy/image_builder.py ---
+
+--- START FILE: services/deploy-manager/src/deploy/__init__.py ---
+
+--- END FILE: services/deploy-manager/src/deploy/__init__.py ---
+
+--- START FILE: services/deploy-manager/src/deploy/task_materializer.py ---
+from pathlib import Path
+import shutil
+
+from ..logger import get_logger
+from ..exceptions import DeployManagerError
+from ..domain.task import Task
+
+logger = get_logger(__name__)
+
+class TaskArtifactMaterializer:
+    """
+    Materializes task-specific artifacts into the task-service build context.
+    """
+
+    def __init__(
+        self,
+        mission_repo_path: Path,
+        task_service_include_path: Path,
+    ):
+        self.mission_repo_path = mission_repo_path
+        self.task_service_include_path = task_service_include_path
+
+    def materialize_task(self, task: Task) -> None:
+        """
+        Copy task_entry.h for a given task into task-service/include/
+        """
+        source_header = self.mission_repo_path / task.name / "task_entry.h"
+        destination = self.task_service_include_path / "task_entry.h"
+
+        if not source_header.exists():
+            raise DeployManagerError(
+                f"task_entry.h not found for task '{task.name}' at {source_header}"
+            )
+
+        try:
+            shutil.copyfile(source_header, destination)
+            logger.info(f"Injected task '{task.name}' entry header into task-service")
+        except Exception as e:
+            raise DeployManagerError(
+                f"Failed to materialize task '{task.name}': {e}"
+            )
+
+--- END FILE: services/deploy-manager/src/deploy/task_materializer.py ---
 
 --- START FILE: services/deploy-manager/src/manifest/manifest_fetcher.py ---
 # src/manifest/manifest_fetcher.py
@@ -494,7 +1039,7 @@ class ManifestParser:
         for t in tasks_data:
             try:
                 task = Task(
-                    id=t["id"],
+                    name=t["name"],
                     policy=t["policy"].lower(),
                     priority=int(t["priority"]),
                     depends_on=t.get("depends_on", []),
@@ -523,6 +1068,63 @@ class ManifestParser:
 
 --- END FILE: services/deploy-manager/src/manifest/parser.py ---
 
+--- START FILE: services/deploy-manager/src/artifact/__init__.py ---
+
+--- END FILE: services/deploy-manager/src/artifact/__init__.py ---
+
+--- START FILE: services/deploy-manager/src/artifact/materializer.py ---
+from pathlib import Path
+import shutil
+
+from ..logger import get_logger
+from ..exceptions import DeployManagerError
+from ..domain.task import Task
+
+logger = get_logger(__name__)
+
+class TaskArtifactMaterializer:
+    """
+    Materializes task-specific artifacts into the task-service build context.
+    """
+
+    def __init__(
+        self,
+        mission_repo_path: Path,
+        task_service_include_path: Path,
+    ):
+        self.mission_repo_path = mission_repo_path
+        self.task_service_include_path = task_service_include_path
+
+    def materialize_task(self, task: Task) -> None:
+        """
+        Copy task_entry.h for a given task into task-service/include/
+        """
+        source_header = (
+            self.mission_repo_path
+            / task.name
+            / "task_entry.h"
+        )
+
+        if not source_header.exists():
+            raise DeployManagerError(
+                f"task_entry.h not found for task '{task.name}' "
+                f"at {source_header}"
+            )
+
+        destination = self.task_service_include_path / "task_entry.h"
+
+        try:
+            shutil.copyfile(source_header, destination)
+            logger.info(
+                f"Injected task '{task.name}' entry header into task-service"
+            )
+        except Exception as e:
+            raise DeployManagerError(
+                f"Failed to materialize task '{task.name}': {e}"
+            )
+
+--- END FILE: services/deploy-manager/src/artifact/materializer.py ---
+
 --- START FILE: services/deploy-manager/src/domain/task.py ---
 # src/domain/task.py
 from dataclasses import dataclass, field
@@ -530,7 +1132,7 @@ from typing import List
 
 @dataclass
 class Task:
-    id: str
+    name: str
     policy: str
     priority: int
     depends_on: List[str] = field(default_factory=list)

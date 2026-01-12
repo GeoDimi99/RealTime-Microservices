@@ -10,16 +10,12 @@
 #define TASK_PRIORITY_MIN 1
 #define TASK_PRIORITY_MAX 99
 
-
-
-
 /* Scheduling Policies */
 typedef enum {
     SCHED_POLICY_OTHER = 0,
-    SCHED_POLICY_FIFO = 1,
-    SCHED_POLICY_RR   = 2
+    SCHED_POLICY_FIFO  = 1,
+    SCHED_POLICY_RR    = 2
 } sched_policy_t;
-
 
 /* Task struct */
 typedef struct {
@@ -29,6 +25,5 @@ typedef struct {
     char input[TASK_JSON_IN_MAX];
     char output[TASK_JSON_OUT_MAX];
 } task_t;
-
 
 #endif /* TASK_H */

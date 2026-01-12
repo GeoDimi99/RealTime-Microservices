@@ -4,7 +4,7 @@ from typing import List
 
 @dataclass
 class Task:
-    id: str
+    name: str
     policy: str
     priority: int
     depends_on: List[str] = field(default_factory=list)

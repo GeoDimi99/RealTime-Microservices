@@ -2,8 +2,8 @@
 services:
   deploy-manager:
     build:
-      context: ./services/deploy-manager 
-      dockerfile: Dockerfile
+      context: . 
+      dockerfile: ./services/deploy-manager/Dockerfile
     container_name: deploy-manager
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
