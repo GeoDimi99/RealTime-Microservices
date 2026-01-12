@@ -1,0 +1,559 @@
+Project Context for: RealTime-Microservices
+==================================================
+
+=== DIRECTORY STRUCTURE ===
+RealTime-Microservices/
+    README.md
+    docker-compose.yml
+    docs/
+        generate_context.py
+    common/
+        CMakeLists.txt
+        include/
+            task.h
+            logger.h
+        src/
+            logger.c
+    services/
+        task-service/
+            CMakeLists.txt
+            Dockerfile
+            include/
+                task_entry.h
+            src/
+                main.c
+        deploy-manager/
+            Dockerfile
+            pyproject.toml
+            src/
+                __init__.py
+                logger.py
+                exceptions.py
+                main.py
+                manifest/
+                    manifest_fetcher.py
+                    __init__.py
+                    parser.py
+                domain/
+                    task.py
+                    __init__.py
+                    schedule.py
+
+=== FILE CONTENTS ===
+
+--- START FILE: README.md ---
+# RealTime Microservices
+
+--- END FILE: README.md ---
+
+--- START FILE: docker-compose.yml ---
+
+services:
+  deploy-manager:
+    build:
+      context: ./services/deploy-manager 
+      dockerfile: Dockerfile
+    container_name: deploy-manager
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+
+--- END FILE: docker-compose.yml ---
+
+--- START FILE: common/CMakeLists.txt ---
+cmake_minimum_required(VERSION 3.20)
+project(common C)
+
+# Optional: create a static library for common code
+add_library(common STATIC)
+
+# Include directories for headers
+target_include_directories(common PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+# Add source files if you have .c in common/src
+target_sources(common PRIVATE src/logger.c)
+
+# If you only have headers, the library can be empty
+--- END FILE: common/CMakeLists.txt ---
+
+--- START FILE: common/include/task.h ---
+#ifndef TASK_H
+#define TASK_H
+
+#include <stdint.h>
+
+#define TASK_NAME_MAX        64
+#define TASK_JSON_IN_MAX     512
+#define TASK_JSON_OUT_MAX    512
+
+#define TASK_PRIORITY_MIN 1
+#define TASK_PRIORITY_MAX 99
+
+
+
+
+/* Scheduling Policies */
+typedef enum {
+    SCHED_POLICY_OTHER = 0,
+    SCHED_POLICY_FIFO = 1,
+    SCHED_POLICY_RR   = 2
+} sched_policy_t;
+
+
+/* Task struct */
+typedef struct {
+    char task_name[TASK_NAME_MAX];
+    sched_policy_t policy;
+    uint8_t priority;  /* 1–99 */
+    char input[TASK_JSON_IN_MAX];
+    char output[TASK_JSON_OUT_MAX];
+} task_t;
+
+
+#endif /* TASK_H */
+
+--- END FILE: common/include/task.h ---
+
+--- START FILE: common/include/logger.h ---
+#ifndef LOGGER_H
+#define LOGGER_H
+
+#include <stdio.h>
+
+typedef enum {
+    LOG_INFO,
+    LOG_WARN,
+    LOG_ERROR
+} log_level_t;
+
+/* Log a formatted message */
+void log_message(log_level_t level, const char *source, const char *fmt, ...);
+
+#endif /* LOGGER_H */
+
+--- END FILE: common/include/logger.h ---
+
+--- START FILE: common/src/logger.c ---
+#include "logger.h"
+#include <time.h>
+#include <stdarg.h>
+
+/* Get timestamp in "YYYY-MM-DD HH:MM:SS,ms" format */
+static void get_timestamp(char *buffer, size_t len) {
+    struct timespec ts;
+    struct tm tm_info;
+
+    clock_gettime(CLOCK_REALTIME, &ts);
+    localtime_r(&ts.tv_sec, &tm_info);
+
+    int ms = ts.tv_nsec / 1000000;
+
+    snprintf(buffer, len, "%04d-%02d-%02d %02d:%02d:%02d,%03d",
+             tm_info.tm_year + 1900,
+             tm_info.tm_mon + 1,
+             tm_info.tm_mday,
+             tm_info.tm_hour,
+             tm_info.tm_min,
+             tm_info.tm_sec,
+             ms);
+}
+
+void log_message(log_level_t level, const char *source, const char *fmt, ...) {
+    static const char *level_str[] = {"INFO", "WARN", "ERROR"};
+
+    char timestamp[32];
+    get_timestamp(timestamp, sizeof(timestamp));
+
+    // Build formatted message
+    va_list args;
+    va_start(args, fmt);
+
+    printf("%s [%s] %s: ", timestamp, level_str[level], source);
+    vprintf(fmt, args);
+    printf("\n");
+
+    va_end(args);
+
+    // Optionally flush immediately for RT logging
+    fflush(stdout);
+}
+
+--- END FILE: common/src/logger.c ---
+
+--- START FILE: services/task-service/CMakeLists.txt ---
+cmake_minimum_required(VERSION 3.20)
+project(task_service C)
+
+# C standard and compiler flags
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -O2")
+
+
+# Include directories
+# Task-service local headers
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+# Common headers (shared with execution manager)
+include_directories(${CMAKE_SOURCE_DIR}/common/include)
+
+
+# Add executable
+add_executable(task-service
+    src/main.c
+)
+
+# Include shared headers
+target_include_directories(task-service PRIVATE
+    ${CMAKE_SOURCE_DIR}/../common/include
+)
+
+# Threads
+find_package(Threads REQUIRED)
+target_link_libraries(task-service PRIVATE Threads::Threads)
+
+
+
+--- END FILE: services/task-service/CMakeLists.txt ---
+
+--- START FILE: services/task-service/Dockerfile ---
+FROM ubuntu:22.04
+
+# Install build tools
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        pkg-config \
+        libpthread-stubs0-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy common headers
+COPY common/ ./common/
+
+# Copy task-service source
+COPY services/task-service/ ./task-service/
+
+WORKDIR /app/task-service
+
+# Configure and build
+RUN cmake -S . -B build
+RUN cmake --build build
+
+ENTRYPOINT ["./build/task-service"]
+
+--- END FILE: services/task-service/Dockerfile ---
+
+--- START FILE: services/task-service/include/task_entry.h ---
+
+--- END FILE: services/task-service/include/task_entry.h ---
+
+--- START FILE: services/task-service/src/main.c ---
+#include <stdio.h>
+#include <string.h>
+
+#include "task.h"
+#include "logger.h"
+
+int main(void) {
+    task_t task;
+
+    /* Fill task fields */
+    strncpy(task.task_name, "test_task", TASK_NAME_MAX);
+    task.policy = SCHED_POLICY_FIFO;
+    task.priority = 50;
+
+    strncpy(task.input, "{\"a\": 3, \"b\": 4}", TASK_JSON_IN_MAX);
+    strncpy(task.output, "{\"sum\": 7, \"product\": 12}", TASK_JSON_OUT_MAX);
+
+    /* Print task info */
+    printf("Task name   : %s\n", task.task_name);
+    printf("Policy      : %d\n", task.policy);
+    printf("Priority    : %u\n", task.priority);
+    printf("Input JSON  : %s\n", task.input);
+    printf("Output JSON : %s\n", task.output);
+
+    log_message(LOG_INFO, "__main__", "Task: %s, policy=%s, priority=%d", 
+                "init_core", "fifo", 30);
+    log_message(LOG_WARN, "task_service", "Task execution delayed!");
+    log_message(LOG_ERROR, "rt_task", "Thread creation failed with code %d", -1);
+
+    return 0;
+}
+
+--- END FILE: services/task-service/src/main.c ---
+
+--- START FILE: services/deploy-manager/Dockerfile ---
+# Single-stage Dockerfile for deploy-manager
+
+FROM python:3.14-slim
+
+# Environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Working directory
+WORKDIR /app
+
+# Runtime dependencies (Git needed by GitPython)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Copy packaging metadata first (better layer caching)
+COPY pyproject.toml .
+
+# Copy source code
+COPY src/ ./src/
+
+# Install deploy-manager and its dependencies
+RUN pip install --no-cache-dir .
+
+# Entrypoint
+ENTRYPOINT ["python", "-m", "src.main"]
+
+--- END FILE: services/deploy-manager/Dockerfile ---
+
+--- START FILE: services/deploy-manager/pyproject.toml ---
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deploy-manager"
+version = "0.0.0" 
+description = "Deploy Manager for Real-Time Microservices"
+requires-python = "==3.14.*"
+
+dependencies = [
+    "GitPython==3.1.46",
+    "PyYAML==6.0.3",
+    "docker==7.1.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+--- END FILE: services/deploy-manager/pyproject.toml ---
+
+--- START FILE: services/deploy-manager/src/__init__.py ---
+# deploy_manager/__init__.py
+__author__ = "Georgi Dimitrov"
+
+--- END FILE: services/deploy-manager/src/__init__.py ---
+
+--- START FILE: services/deploy-manager/src/logger.py ---
+
+import logging
+import sys
+
+def get_logger(name="deploy-manager"):
+    logger = logging.getLogger(name)
+    if not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+    return logger
+
+--- END FILE: services/deploy-manager/src/logger.py ---
+
+--- START FILE: services/deploy-manager/src/exceptions.py ---
+
+class DeployManagerError(Exception):
+    """Base exception for Deploy Manager errors."""
+    pass
+
+--- END FILE: services/deploy-manager/src/exceptions.py ---
+
+--- START FILE: services/deploy-manager/src/main.py ---
+# src/main.py
+from pathlib import Path
+from .logger import get_logger
+from .manifest.manifest_fetcher import ManifestFetcher
+from .manifest.parser import ManifestParser
+from .exceptions import DeployManagerError
+import sys
+
+logger = get_logger(__name__)
+
+def main():
+    # Example: replace with your Git repository URL
+    repo_url = "https://github.com/GeoDimi99/RT-Task-Spec.git"
+    local_path = Path("/tmp/rt-mission-spec")
+
+    fetcher = ManifestFetcher(repo_url, local_path)
+
+    try:
+        fetcher.fetch()
+        manifest_file = local_path / "task_manifest.yaml"
+        if manifest_file.exists():
+            parser = ManifestParser(str(manifest_file))
+            schedule = parser.parse()
+
+            # Example: print tasks
+            for task in schedule.tasks:
+                logger.info(f"Task: {task.id}, policy={task.policy}, priority={task.priority}")
+        else:
+            logger.warning("Manifest file does not exist in the repository.")
+    except DeployManagerError as e:
+        logger.error(f"Failed to fetch manifest: {e}")
+        sys.exit(1)
+    
+
+
+if __name__ == "__main__":
+    main()
+
+--- END FILE: services/deploy-manager/src/main.py ---
+
+--- START FILE: services/deploy-manager/src/manifest/manifest_fetcher.py ---
+# src/manifest/manifest_fetcher.py
+from pathlib import Path
+from git import Repo, GitCommandError
+from ..logger import get_logger
+from ..exceptions import DeployManagerError
+
+logger = get_logger(__name__)
+
+class ManifestFetcher:
+
+    def __init__(self, url: str, local_path: Path):
+        self.url = url
+        self.local_path = local_path
+
+    def fetch(self) -> None:
+        """
+        Clone the repository if it doesn't exist, otherwise pull the latest changes.
+        """
+        try:
+            if self.local_path.exists():
+                logger.info(f"Repository exists at {self.local_path}, pulling latest changes...")
+                repo = Repo(self.local_path)
+                origin = repo.remotes.origin
+                origin.pull()
+                logger.info("Repository updated successfully.")
+            else:
+                logger.info(f"Cloning repository from {self.url} to {self.local_path}...")
+                Repo.clone_from(self.url, self.local_path)
+                logger.info("Repository cloned successfully.")
+
+        except GitCommandError as e:
+            raise DeployManagerError(f"Git error: {e}")
+
+--- END FILE: services/deploy-manager/src/manifest/manifest_fetcher.py ---
+
+--- START FILE: services/deploy-manager/src/manifest/__init__.py ---
+
+--- END FILE: services/deploy-manager/src/manifest/__init__.py ---
+
+--- START FILE: services/deploy-manager/src/manifest/parser.py ---
+# src/manifest/parser.py
+from typing import List
+import yaml
+from ..exceptions import DeployManagerError
+from ..logger import get_logger
+from ..domain.task import Task
+from ..domain.schedule import Schedule
+
+logger = get_logger(__name__)
+
+class ManifestParser:
+    # Only fifo and rr for now
+    VALID_POLICIES = {"fifo", "rr"}
+
+    def __init__(self, manifest_path: str):
+        self.manifest_path = manifest_path
+
+    def parse(self) -> Schedule:
+        """
+        Parse a YAML manifest file and return a Schedule object composed of Task objects.
+        """
+        try:
+            with open(self.manifest_path, "r") as f:
+                data = yaml.safe_load(f)
+        except FileNotFoundError:
+            raise DeployManagerError(f"Manifest file not found: {self.manifest_path}")
+        except yaml.YAMLError as e:
+            raise DeployManagerError(f"Error parsing YAML manifest: {e}")
+
+        # Validate top-level fields
+        if "schedule" not in data:
+            raise DeployManagerError("Manifest missing required field: 'schedule'")
+
+        schedule_data = data["schedule"]
+        tasks_data = schedule_data.get("tasks", [])
+
+        # Parse tasks into domain Task objects
+        tasks: List[Task] = []
+        for t in tasks_data:
+            try:
+                task = Task(
+                    id=t["id"],
+                    policy=t["policy"].lower(),
+                    priority=int(t["priority"]),
+                    depends_on=t.get("depends_on", []),
+                    inputs=t.get("inputs", []),
+                    outputs=t.get("outputs", []),
+                )
+            except KeyError as e:
+                raise DeployManagerError(f"Task missing required field: {e}")
+
+            # Validate policy
+            if task.policy not in self.VALID_POLICIES:
+                raise DeployManagerError(f"Invalid policy '{task.policy}' in task {task.id}")
+
+            tasks.append(task)
+
+        # Build Schedule domain object
+        schedule = Schedule(
+            name=schedule_data.get("name", "unnamed"),
+            version=schedule_data.get("version", "0.0.0"),
+            description=schedule_data.get("description", ""),
+            tasks=tasks
+        )
+
+        logger.info(f"Parsed schedule '{schedule.name}' with {len(tasks)} tasks.")
+        return schedule
+
+--- END FILE: services/deploy-manager/src/manifest/parser.py ---
+
+--- START FILE: services/deploy-manager/src/domain/task.py ---
+# src/domain/task.py
+from dataclasses import dataclass, field
+from typing import List
+
+@dataclass
+class Task:
+    id: str
+    policy: str
+    priority: int
+    depends_on: List[str] = field(default_factory=list)
+    inputs: List[str] = field(default_factory=list)
+    outputs: List[str] = field(default_factory=list)
+
+--- END FILE: services/deploy-manager/src/domain/task.py ---
+
+--- START FILE: services/deploy-manager/src/domain/__init__.py ---
+
+--- END FILE: services/deploy-manager/src/domain/__init__.py ---
+
+--- START FILE: services/deploy-manager/src/domain/schedule.py ---
+# src/domain/schedule.py
+from dataclasses import dataclass
+from typing import List
+from .task import Task  # import from domain
+
+@dataclass
+class Schedule:
+    name: str
+    version: str
+    description: str
+    tasks: List[Task]
+
+--- END FILE: services/deploy-manager/src/domain/schedule.py ---
