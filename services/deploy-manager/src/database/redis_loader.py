@@ -1,5 +1,6 @@
 # src/deploy/redis_loader.py
 import redis
+import json
 from ..logger import get_logger
 from ..domain.schedule import Schedule
 
@@ -30,10 +31,11 @@ class RedisLoader:
                 "name": task.name,
                 "policy": task.policy,
                 "priority": str(task.priority),
-                "depends_on": ",".join(task.depends_on),
-                "inputs": ",".join(task.inputs),
-                "outputs": ",".join(task.outputs)
+                "depends_on": json.dumps(task.depends_on),
+                "inputs": json.dumps(task.inputs),
+                "outputs": json.dumps(task.outputs),
             })
+
 
         logger.info(f"Loaded {len(schedule.tasks)} tasks into Redis.")
 

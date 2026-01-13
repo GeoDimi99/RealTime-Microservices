@@ -43,8 +43,8 @@ class ManifestParser:
                     policy=t["policy"].lower(),
                     priority=int(t["priority"]),
                     depends_on=t.get("depends_on", []),
-                    inputs=t.get("inputs", []),
-                    outputs=t.get("outputs", []),
+                    inputs=t.get("inputs", {}),
+                    outputs=t.get("outputs", {}),
                 )
             except KeyError as e:
                 raise DeployManagerError(f"Task missing required field: {e}")

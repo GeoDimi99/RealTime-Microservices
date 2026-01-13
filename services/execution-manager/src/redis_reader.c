@@ -2,138 +2,94 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h> 
-#include "jsmn.h"
+#include <unistd.h>
 
-/* Connect to Redis */
-redisContext* redis_connect(const char *host, int port) {
+/* ---------- Redis ---------- */
+
+redisContext* redis_connect(const char *host, int port)
+{
     redisContext *ctx = redisConnect(host, port);
-    if (ctx == NULL || ctx->err) {
-        if (ctx) {
-            fprintf(stderr, "Redis connection error: %s\n", ctx->errstr);
-            redisFree(ctx);
-        } else {
-            fprintf(stderr, "Redis connection allocation error\n");
-        }
-        return NULL;
+    if (!ctx || ctx->err) {
+        fprintf(stderr, "Redis connection error\n");
+        exit(1);
     }
     return ctx;
 }
 
-/* Helper to parse JSON token */
-static void json_copy_value(const char *json, jsmntok_t *t, char *dest, size_t maxlen) {
-    int len = t->end - t->start;
-    if ((size_t)len >= maxlen) len = maxlen - 1;
-    strncpy(dest, json + t->start, len);
-    dest[len] = '\0';
-}
-
-/* Wait for schedule to be uploaded */
-int redis_wait_for_schedule(redisContext *ctx) {
-    redisReply *reply = NULL;
-
-    printf("Waiting for schedule to be uploaded...\n");
-
+int redis_wait_for_schedule(redisContext *ctx)
+{
     while (1) {
-        reply = redisCommand(ctx, "EXISTS schedule:meta");
-
-        if (reply && reply->type == REDIS_REPLY_INTEGER && reply->integer == 1) {
-            freeReplyObject(reply);
-            printf("Schedule found!\n");
+        redisReply *r = redisCommand(ctx, "EXISTS schedule");
+        if (r && r->integer == 1) {
+            freeReplyObject(r);
             return 0;
         }
-
-        if (reply)
-            freeReplyObject(reply);
-
+        if (r) freeReplyObject(r);
         sleep(1);
     }
 }
 
-/* Read schedule from Redis */
-int redis_read_schedule(redisContext *ctx, schedule_t *schedule) {
-    if (!ctx || !schedule) return -1;
+/* ---------- Helpers ---------- */
 
-    /* Read schedule meta */
-    redisReply *reply = redisCommand(ctx, "GET schedule:meta");
-    if (!reply || reply->type != REDIS_REPLY_STRING) {
-        if (reply) freeReplyObject(reply);
-        fprintf(stderr, "Failed to get schedule:meta\n");
-        return -1;
+static const char* hget(redisReply *r, const char *key)
+{
+    for (size_t i = 0; i < r->elements; i += 2) {
+        if (strcmp(r->element[i]->str, key) == 0)
+            return r->element[i + 1]->str;
     }
+    return NULL;
+}
 
-    jsmn_parser parser;
-    jsmntok_t tokens[64];
-    jsmn_init(&parser);
-    int r = jsmn_parse(&parser, reply->str, strlen(reply->str), tokens, sizeof(tokens)/sizeof(tokens[0]));
-    if (r < 1 || tokens[0].type != JSMN_OBJECT) {
-        fprintf(stderr, "Failed to parse schedule meta JSON\n");
-        freeReplyObject(reply);
-        return -1;
-    }
+/* ---------- Main Reader ---------- */
 
-    for (int i = 1; i < r; i += 2) {
-        jsmntok_t *key = &tokens[i];
-        jsmntok_t *val = &tokens[i+1];
-        char keybuf[64];
-        json_copy_value(reply->str, key, keybuf, sizeof(keybuf));
+int redis_read_schedule(redisContext *ctx, schedule_t *sched)
+{
+    redisReply *r = redisCommand(ctx, "HGETALL schedule");
+    if (!r || r->type != REDIS_REPLY_ARRAY) return -1;
 
-        if (strcmp(keybuf, "name") == 0) {
-            json_copy_value(reply->str, val, schedule->name, sizeof(schedule->name));
-        } else if (strcmp(keybuf, "version") == 0) {
-            json_copy_value(reply->str, val, schedule->version, sizeof(schedule->version));
-        } else if (strcmp(keybuf, "description") == 0) {
-            json_copy_value(reply->str, val, schedule->description, sizeof(schedule->description));
-        } else if (strcmp(keybuf, "length") == 0) {
-            char buf[16];
-            json_copy_value(reply->str, val, buf, sizeof(buf));
-            schedule->num_tasks = atoi(buf);
-        }
-    }
-    freeReplyObject(reply);
+    const char *v;
 
-    /* Read each task */
-    for (int i = 0; i < schedule->num_tasks; i++) {
-        char key[64];
-        snprintf(key, sizeof(key), "schedule:task:%d", i+1);
-        reply = redisCommand(ctx, "GET %s", key);
-        if (!reply || reply->type != REDIS_REPLY_STRING) {
-            fprintf(stderr, "Failed to get %s\n", key);
-            if (reply) freeReplyObject(reply);
-            continue;
-        }
+    if ((v = hget(r, "name")))
+        strncpy(sched->name, v, sizeof(sched->name));
 
-        jsmn_init(&parser);
-        r = jsmn_parse(&parser, reply->str, strlen(reply->str), tokens, sizeof(tokens)/sizeof(tokens[0]));
-        if (r < 1 || tokens[0].type != JSMN_OBJECT) {
-            fprintf(stderr, "Failed to parse task JSON %s\n", key);
-            freeReplyObject(reply);
-            continue;
-        }
+    if ((v = hget(r, "version")))
+        strncpy(sched->version, v, sizeof(sched->version));
 
-        task_t *task = &schedule->tasks[i];
+    if ((v = hget(r, "description")))
+        strncpy(sched->description, v, sizeof(sched->description));
 
-        for (int j = 1; j < r; j += 2) {
-            jsmntok_t *keytok = &tokens[j];
-            jsmntok_t *valtok = &tokens[j+1];
-            char keybuf[64];
-            json_copy_value(reply->str, keytok, keybuf, sizeof(keybuf));
+    if ((v = hget(r, "length")))
+        sched->num_tasks = atoi(v);
 
-            if (strcmp(keybuf, "name") == 0) {
-                json_copy_value(reply->str, valtok, task->name, sizeof(task->name));
-            } else if (strcmp(keybuf, "policy") == 0) {
-                json_copy_value(reply->str, valtok, task->policy, sizeof(task->policy));
-            } else if (strcmp(keybuf, "priority") == 0) {
-                char buf[16];
-                json_copy_value(reply->str, valtok, buf, sizeof(buf));
-                task->priority = atoi(buf);
-            } else if (strcmp(keybuf, "inputs") == 0) {
-                json_copy_value(reply->str, valtok, task->inputs, sizeof(task->inputs));
-            } else if (strcmp(keybuf, "outputs") == 0) {
-                json_copy_value(reply->str, valtok, task->outputs, sizeof(task->outputs));
-            }
-        }
-        freeReplyObject(reply);
+    freeReplyObject(r);
+
+    /* ---------- Tasks ---------- */
+
+    for (int i = 0; i < sched->num_tasks; i++) {
+        char key[32];
+        snprintf(key, sizeof(key), "scheduletask:%d", i + 1);
+
+        r = redisCommand(ctx, "HGETALL %s", key);
+        if (!r || r->type != REDIS_REPLY_ARRAY) continue;
+
+        task_t *task = &sched->tasks[i];
+
+        if ((v = hget(r, "name")))
+            strncpy(task->name, v, sizeof(task->name));
+
+        if ((v = hget(r, "policy")))
+            strncpy(task->policy, v, sizeof(task->policy));
+
+        if ((v = hget(r, "priority")))
+            task->priority = atoi(v);
+
+        if ((v = hget(r, "inputs")))
+            strncpy(task->inputs, v, sizeof(task->inputs));
+
+        if ((v = hget(r, "outputs")))
+            strncpy(task->outputs, v, sizeof(task->outputs));
+
+        freeReplyObject(r);
     }
 
     return 0;

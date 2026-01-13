@@ -20,14 +20,14 @@ services:
       - redis
     
 
-  #exection-manager:
-    #build:
-      #context: . 
-      #dockerfile: ./services/execution-manager/Dockerfile
-    #cpuset: "1"
-    #container_name: execution-manager
-    #depends_on:
-     #- redis
-     #- deploy-manager
+  exection-manager:
+    build:
+      context: . 
+      dockerfile: ./services/execution-manager/Dockerfile
+    cpuset: "1"
+    container_name: execution-manager
+    depends_on:
+     - redis
+     - deploy-manager
   
 

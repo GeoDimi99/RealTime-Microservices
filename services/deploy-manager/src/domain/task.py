@@ -1,6 +1,6 @@
-# src/domain/task.py
+# domain/task.py
 from dataclasses import dataclass, field
-from typing import List
+from typing import Dict, List, Any
 
 @dataclass
 class Task:
@@ -8,5 +8,5 @@ class Task:
     policy: str
     priority: int
     depends_on: List[str] = field(default_factory=list)
-    inputs: List[str] = field(default_factory=list)
-    outputs: List[str] = field(default_factory=list)
+    inputs: Dict[str, Any] = field(default_factory=dict)
+    outputs: Dict[str, Any] = field(default_factory=dict)
