@@ -49,6 +49,7 @@ def main():
             docker_builder.build_task_service_image(
                 build_context=task_service_path,
                 image_tag=image_tag,
+                task_queue_prefix="/" + task.name
             )
 
             # Run container

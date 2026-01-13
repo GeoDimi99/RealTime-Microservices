@@ -11,7 +11,7 @@ WORKDIR /app
 
 # Runtime dependencies (Git needed by GitPython)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends git tree && \
+    apt-get install -y --no-install-recommends git && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy source code

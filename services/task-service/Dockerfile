@@ -1,5 +1,8 @@
 FROM ubuntu:24.04
 
+# Docker build argument
+ARG TASK_QUEUE_PREFIX="/task"
+
 # Install build tools
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -15,7 +18,7 @@ COPY . ./task-service/
 WORKDIR /app/task-service
 
 # Configure and build
-RUN cmake -S . -B build
+RUN cmake -S . -B build -DTASK_QUEUE_PREFIX=${TASK_QUEUE_PREFIX}
 RUN cmake --build build
 
 ENTRYPOINT ["./build/task-service"]

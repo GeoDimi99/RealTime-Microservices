@@ -1,10 +1,21 @@
 #include <stdio.h>
 #include "task_entry.h"
 
+#include "task_config.h"
+#include <stdint.h>
+
+char queue_name[64];
+
+void get_task_queue_name(uint32_t task_id) {
+    snprintf(queue_name, sizeof(queue_name), "%s_%u", TASK_QUEUE_PREFIX, task_id);
+}
+
 int main() {
-    task_main();
+    get_task_queue_name(1);
+    printf("Queue name: %s\n", queue_name);
     return 0;
 }
+
 
 /********* 
 #include <stdio.h>

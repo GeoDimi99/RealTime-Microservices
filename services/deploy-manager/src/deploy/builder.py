@@ -17,6 +17,7 @@ class DockerImageBuilder:
         self,
         build_context: Path,
         image_tag: str,
+        task_queue_prefix: str = "/task"
     ) -> None:
         try:
             logger.info(
@@ -27,6 +28,7 @@ class DockerImageBuilder:
                 path=str(build_context),
                 tag=image_tag,
                 rm=True,
+                buildargs={"TASK_QUEUE_PREFIX": task_queue_prefix}
             )
             logger.info(f"Successfully built image '{image_tag}'")
         except docker.errors.BuildError as e:

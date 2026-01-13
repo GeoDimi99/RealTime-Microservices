@@ -30,6 +30,7 @@ RealTime-Microservices/
             CMakeLists.txt
             Dockerfile
             include/
+                task_config.h.in
                 task_service.h
                 task_entry.h
             src/
@@ -89,15 +90,15 @@ services:
       - redis
     
 
-  #exection-manager:
-    #build:
-      #context: . 
-      #dockerfile: ./services/execution-manager/Dockerfile
-    #cpuset: "1"
-    #container_name: execution-manager
-    #depends_on:
-     #- redis
-     #- deploy-manager
+  exection-manager:
+    build:
+      context: . 
+      dockerfile: ./services/execution-manager/Dockerfile
+    cpuset: "1"
+    container_name: execution-manager
+    depends_on:
+     - redis
+     - deploy-manager
   
 
 
@@ -860,32 +861,27 @@ JSMN_API void jsmn_init(jsmn_parser *parser) {
 
 #include <hiredis/hiredis.h>
 
-#define MAX_TASKS 32
-#define MAX_JSON_LEN 1024
+#define MAX_TASKS     32
+#define MAX_JSON_LEN  1024
 
 typedef struct {
     char name[64];
     char policy[16];
-    int priority;
-    char inputs[MAX_JSON_LEN];
-    char outputs[MAX_JSON_LEN];
+    int  priority;
+    char inputs[MAX_JSON_LEN];   // JSON string
+    char outputs[MAX_JSON_LEN];  // JSON string
 } task_t;
 
 typedef struct {
     char name[64];
     char version[16];
     char description[128];
-    int num_tasks;
+    int  num_tasks;
     task_t tasks[MAX_TASKS];
 } schedule_t;
 
-/* Initialize Redis connection */
 redisContext* redis_connect(const char *host, int port);
-
-/* Wait until there is a loaded schedule */
 int redis_wait_for_schedule(redisContext *ctx);
-
-/* Read schedule from Redis into schedule_t */
 int redis_read_schedule(redisContext *ctx, schedule_t *schedule);
 
 #endif
@@ -897,138 +893,94 @@ int redis_read_schedule(redisContext *ctx, schedule_t *schedule);
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h> 
-#include "jsmn.h"
+#include <unistd.h>
 
-/* Connect to Redis */
-redisContext* redis_connect(const char *host, int port) {
+/* ---------- Redis ---------- */
+
+redisContext* redis_connect(const char *host, int port)
+{
     redisContext *ctx = redisConnect(host, port);
-    if (ctx == NULL || ctx->err) {
-        if (ctx) {
-            fprintf(stderr, "Redis connection error: %s\n", ctx->errstr);
-            redisFree(ctx);
-        } else {
-            fprintf(stderr, "Redis connection allocation error\n");
-        }
-        return NULL;
+    if (!ctx || ctx->err) {
+        fprintf(stderr, "Redis connection error\n");
+        exit(1);
     }
     return ctx;
 }
 
-/* Helper to parse JSON token */
-static void json_copy_value(const char *json, jsmntok_t *t, char *dest, size_t maxlen) {
-    int len = t->end - t->start;
-    if ((size_t)len >= maxlen) len = maxlen - 1;
-    strncpy(dest, json + t->start, len);
-    dest[len] = '\0';
-}
-
-/* Wait for schedule to be uploaded */
-int redis_wait_for_schedule(redisContext *ctx) {
-    redisReply *reply = NULL;
-
-    printf("Waiting for schedule to be uploaded...\n");
-
+int redis_wait_for_schedule(redisContext *ctx)
+{
     while (1) {
-        reply = redisCommand(ctx, "EXISTS schedule:meta");
-
-        if (reply && reply->type == REDIS_REPLY_INTEGER && reply->integer == 1) {
-            freeReplyObject(reply);
-            printf("Schedule found!\n");
+        redisReply *r = redisCommand(ctx, "EXISTS schedule");
+        if (r && r->integer == 1) {
+            freeReplyObject(r);
             return 0;
         }
-
-        if (reply)
-            freeReplyObject(reply);
-
+        if (r) freeReplyObject(r);
         sleep(1);
     }
 }
 
-/* Read schedule from Redis */
-int redis_read_schedule(redisContext *ctx, schedule_t *schedule) {
-    if (!ctx || !schedule) return -1;
+/* ---------- Helpers ---------- */
 
-    /* Read schedule meta */
-    redisReply *reply = redisCommand(ctx, "GET schedule:meta");
-    if (!reply || reply->type != REDIS_REPLY_STRING) {
-        if (reply) freeReplyObject(reply);
-        fprintf(stderr, "Failed to get schedule:meta\n");
-        return -1;
+static const char* hget(redisReply *r, const char *key)
+{
+    for (size_t i = 0; i < r->elements; i += 2) {
+        if (strcmp(r->element[i]->str, key) == 0)
+            return r->element[i + 1]->str;
     }
+    return NULL;
+}
 
-    jsmn_parser parser;
-    jsmntok_t tokens[64];
-    jsmn_init(&parser);
-    int r = jsmn_parse(&parser, reply->str, strlen(reply->str), tokens, sizeof(tokens)/sizeof(tokens[0]));
-    if (r < 1 || tokens[0].type != JSMN_OBJECT) {
-        fprintf(stderr, "Failed to parse schedule meta JSON\n");
-        freeReplyObject(reply);
-        return -1;
-    }
+/* ---------- Main Reader ---------- */
 
-    for (int i = 1; i < r; i += 2) {
-        jsmntok_t *key = &tokens[i];
-        jsmntok_t *val = &tokens[i+1];
-        char keybuf[64];
-        json_copy_value(reply->str, key, keybuf, sizeof(keybuf));
+int redis_read_schedule(redisContext *ctx, schedule_t *sched)
+{
+    redisReply *r = redisCommand(ctx, "HGETALL schedule");
+    if (!r || r->type != REDIS_REPLY_ARRAY) return -1;
 
-        if (strcmp(keybuf, "name") == 0) {
-            json_copy_value(reply->str, val, schedule->name, sizeof(schedule->name));
-        } else if (strcmp(keybuf, "version") == 0) {
-            json_copy_value(reply->str, val, schedule->version, sizeof(schedule->version));
-        } else if (strcmp(keybuf, "description") == 0) {
-            json_copy_value(reply->str, val, schedule->description, sizeof(schedule->description));
-        } else if (strcmp(keybuf, "length") == 0) {
-            char buf[16];
-            json_copy_value(reply->str, val, buf, sizeof(buf));
-            schedule->num_tasks = atoi(buf);
-        }
-    }
-    freeReplyObject(reply);
+    const char *v;
 
-    /* Read each task */
-    for (int i = 0; i < schedule->num_tasks; i++) {
-        char key[64];
-        snprintf(key, sizeof(key), "schedule:task:%d", i+1);
-        reply = redisCommand(ctx, "GET %s", key);
-        if (!reply || reply->type != REDIS_REPLY_STRING) {
-            fprintf(stderr, "Failed to get %s\n", key);
-            if (reply) freeReplyObject(reply);
-            continue;
-        }
+    if ((v = hget(r, "name")))
+        strncpy(sched->name, v, sizeof(sched->name));
 
-        jsmn_init(&parser);
-        r = jsmn_parse(&parser, reply->str, strlen(reply->str), tokens, sizeof(tokens)/sizeof(tokens[0]));
-        if (r < 1 || tokens[0].type != JSMN_OBJECT) {
-            fprintf(stderr, "Failed to parse task JSON %s\n", key);
-            freeReplyObject(reply);
-            continue;
-        }
+    if ((v = hget(r, "version")))
+        strncpy(sched->version, v, sizeof(sched->version));
 
-        task_t *task = &schedule->tasks[i];
+    if ((v = hget(r, "description")))
+        strncpy(sched->description, v, sizeof(sched->description));
 
-        for (int j = 1; j < r; j += 2) {
-            jsmntok_t *keytok = &tokens[j];
-            jsmntok_t *valtok = &tokens[j+1];
-            char keybuf[64];
-            json_copy_value(reply->str, keytok, keybuf, sizeof(keybuf));
+    if ((v = hget(r, "length")))
+        sched->num_tasks = atoi(v);
 
-            if (strcmp(keybuf, "name") == 0) {
-                json_copy_value(reply->str, valtok, task->name, sizeof(task->name));
-            } else if (strcmp(keybuf, "policy") == 0) {
-                json_copy_value(reply->str, valtok, task->policy, sizeof(task->policy));
-            } else if (strcmp(keybuf, "priority") == 0) {
-                char buf[16];
-                json_copy_value(reply->str, valtok, buf, sizeof(buf));
-                task->priority = atoi(buf);
-            } else if (strcmp(keybuf, "inputs") == 0) {
-                json_copy_value(reply->str, valtok, task->inputs, sizeof(task->inputs));
-            } else if (strcmp(keybuf, "outputs") == 0) {
-                json_copy_value(reply->str, valtok, task->outputs, sizeof(task->outputs));
-            }
-        }
-        freeReplyObject(reply);
+    freeReplyObject(r);
+
+    /* ---------- Tasks ---------- */
+
+    for (int i = 0; i < sched->num_tasks; i++) {
+        char key[32];
+        snprintf(key, sizeof(key), "scheduletask:%d", i + 1);
+
+        r = redisCommand(ctx, "HGETALL %s", key);
+        if (!r || r->type != REDIS_REPLY_ARRAY) continue;
+
+        task_t *task = &sched->tasks[i];
+
+        if ((v = hget(r, "name")))
+            strncpy(task->name, v, sizeof(task->name));
+
+        if ((v = hget(r, "policy")))
+            strncpy(task->policy, v, sizeof(task->policy));
+
+        if ((v = hget(r, "priority")))
+            task->priority = atoi(v);
+
+        if ((v = hget(r, "inputs")))
+            strncpy(task->inputs, v, sizeof(task->inputs));
+
+        if ((v = hget(r, "outputs")))
+            strncpy(task->outputs, v, sizeof(task->outputs));
+
+        freeReplyObject(r);
     }
 
     return 0;
@@ -1038,42 +990,36 @@ int redis_read_schedule(redisContext *ctx, schedule_t *schedule) {
 
 --- START FILE: services/execution-manager/src/main.c ---
 #include <stdio.h>
+#include <unistd.h>
 #include "redis_reader.h"
 
-int main() {
+int main(void)
+{
     redisContext *ctx = redis_connect("redis", 6379);
-    if (!ctx) return 1;
-
-    /* Wait until schedule exists */
     redis_wait_for_schedule(ctx);
 
-    schedule_t schedule;
+    schedule_t s;
 
     while (1) {
-        if (redis_read_schedule(ctx, &schedule) == 0) {
+        redis_read_schedule(ctx, &s);
 
-            printf("\n=== SCHEDULE ===\n");
-            printf("Name       : %s\n", schedule.name);
-            printf("Version    : %s\n", schedule.version);
-            printf("Description: %s\n", schedule.description);
-            printf("Tasks      : %d\n", schedule.num_tasks);
+        printf("\n=== SCHEDULE ===\n");
+        printf("Name: %s\n", s.name);
+        printf("Version: %s\n", s.version);
+        printf("Tasks: %d\n", s.num_tasks);
 
-            for (int i = 0; i < schedule.num_tasks; i++) {
-                task_t *t = &schedule.tasks[i];
-                printf("\nTask %d\n", i + 1);
-                printf("  Name     : %s\n", t->name);
-                printf("  Policy   : %s\n", t->policy);
-                printf("  Priority : %d\n", t->priority);
-                printf("  Inputs   : %s\n", t->inputs);
-                printf("  Outputs  : %s\n", t->outputs);
-            }
+        for (int i = 0; i < s.num_tasks; i++) {
+            task_t *t = &s.tasks[i];
+            printf("\nTask %d\n", i+1);
+            printf("  Name     : %s\n", t->name);
+            printf("  Policy   : %s\n", t->policy);
+            printf("  Priority : %d\n", t->priority);
+            printf("  Inputs   : %s\n", t->inputs);
+            printf("  Outputs  : %s\n", t->outputs);
         }
 
-        sleep(1);   // future-proof for version updates
+        sleep(1);
     }
-
-    redisFree(ctx);
-    return 0;
 }
 
 --- END FILE: services/execution-manager/src/main.c ---
@@ -1100,10 +1046,29 @@ add_executable(task-service
 find_package(Threads REQUIRED)
 target_link_libraries(task-service PRIVATE Threads::Threads)
 
+
+# Default queue prefix if not passed
+if(NOT DEFINED TASK_QUEUE_PREFIX)
+    set(TASK_QUEUE_PREFIX "/task")
+endif()
+
+# Generate header from template
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/task_config.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/task_config.h
+    @ONLY
+)
+
+# Include generated header
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
 --- END FILE: services/task-service/CMakeLists.txt ---
 
 --- START FILE: services/task-service/Dockerfile ---
 FROM ubuntu:24.04
+
+# Docker build argument
+ARG TASK_QUEUE_PREFIX="/task"
 
 # Install build tools
 RUN apt-get update && \
@@ -1120,12 +1085,20 @@ COPY . ./task-service/
 WORKDIR /app/task-service
 
 # Configure and build
-RUN cmake -S . -B build
+RUN cmake -S . -B build -DTASK_QUEUE_PREFIX=${TASK_QUEUE_PREFIX}
 RUN cmake --build build
 
 ENTRYPOINT ["./build/task-service"]
 
 --- END FILE: services/task-service/Dockerfile ---
+
+--- START FILE: services/task-service/include/task_config.h.in ---
+#pragma once
+
+// Queue prefix injected at build time
+#define TASK_QUEUE_PREFIX "@TASK_QUEUE_PREFIX@"
+
+--- END FILE: services/task-service/include/task_config.h.in ---
 
 --- START FILE: services/task-service/include/task_service.h ---
 #ifndef TASK_SERVICE_H
@@ -1158,10 +1131,21 @@ typedef struct {
 #include <stdio.h>
 #include "task_entry.h"
 
+#include "task_config.h"
+#include <stdint.h>
+
+char queue_name[64];
+
+void get_task_queue_name(uint32_t task_id) {
+    snprintf(queue_name, sizeof(queue_name), "%s_%u", TASK_QUEUE_PREFIX, task_id);
+}
+
 int main() {
-    task_main();
+    get_task_queue_name(1);
+    printf("Queue name: %s\n", queue_name);
     return 0;
 }
+
 
 /********* 
 #include <stdio.h>
@@ -1296,7 +1280,7 @@ WORKDIR /app
 
 # Runtime dependencies (Git needed by GitPython)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends git tree && \
+    apt-get install -y --no-install-recommends git && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy source code
@@ -1420,6 +1404,7 @@ def main():
             docker_builder.build_task_service_image(
                 build_context=task_service_path,
                 image_tag=image_tag,
+                task_queue_prefix="/" + task.name
             )
 
             # Run container
@@ -1451,6 +1436,7 @@ if __name__ == "__main__":
 --- START FILE: services/deploy-manager/src/database/redis_loader.py ---
 # src/deploy/redis_loader.py
 import redis
+import json
 from ..logger import get_logger
 from ..domain.schedule import Schedule
 
@@ -1481,10 +1467,11 @@ class RedisLoader:
                 "name": task.name,
                 "policy": task.policy,
                 "priority": str(task.priority),
-                "depends_on": ",".join(task.depends_on),
-                "inputs": ",".join(task.inputs),
-                "outputs": ",".join(task.outputs)
+                "depends_on": json.dumps(task.depends_on),
+                "inputs": json.dumps(task.inputs),
+                "outputs": json.dumps(task.outputs),
             })
+
 
         logger.info(f"Loaded {len(schedule.tasks)} tasks into Redis.")
 
@@ -1642,6 +1629,7 @@ class DockerImageBuilder:
         self,
         build_context: Path,
         image_tag: str,
+        task_queue_prefix: str = "/task"
     ) -> None:
         try:
             logger.info(
@@ -1652,6 +1640,7 @@ class DockerImageBuilder:
                 path=str(build_context),
                 tag=image_tag,
                 rm=True,
+                buildargs={"TASK_QUEUE_PREFIX": task_queue_prefix}
             )
             logger.info(f"Successfully built image '{image_tag}'")
         except docker.errors.BuildError as e:
@@ -1747,8 +1736,8 @@ class ManifestParser:
                     policy=t["policy"].lower(),
                     priority=int(t["priority"]),
                     depends_on=t.get("depends_on", []),
-                    inputs=t.get("inputs", []),
-                    outputs=t.get("outputs", []),
+                    inputs=t.get("inputs", {}),
+                    outputs=t.get("outputs", {}),
                 )
             except KeyError as e:
                 raise DeployManagerError(f"Task missing required field: {e}")
@@ -1773,9 +1762,9 @@ class ManifestParser:
 --- END FILE: services/deploy-manager/src/manifest/parser.py ---
 
 --- START FILE: services/deploy-manager/src/domain/task.py ---
-# src/domain/task.py
+# domain/task.py
 from dataclasses import dataclass, field
-from typing import List
+from typing import Dict, List, Any
 
 @dataclass
 class Task:
@@ -1783,8 +1772,8 @@ class Task:
     policy: str
     priority: int
     depends_on: List[str] = field(default_factory=list)
-    inputs: List[str] = field(default_factory=list)
-    outputs: List[str] = field(default_factory=list)
+    inputs: Dict[str, Any] = field(default_factory=dict)
+    outputs: Dict[str, Any] = field(default_factory=dict)
 
 --- END FILE: services/deploy-manager/src/domain/task.py ---
 
