@@ -12,6 +12,7 @@ dependencies = [
     "GitPython==3.1.46",
     "PyYAML==6.0.3",
     "docker==7.1.0",
+    "redis==7.1.0",
 ]
 
 [tool.setuptools.packages.find]

@@ -21,7 +21,10 @@ RealTime-Microservices/
             CMakeLists.txt
             Dockerfile
             include/
+                jsmn.h
+                redis_reader.h
             src/
+                redis_reader.c
                 main.c
         task-service/
             CMakeLists.txt
@@ -39,20 +42,18 @@ RealTime-Microservices/
                 logger.py
                 exceptions.py
                 main.py
-                docker/
-                    builder.py
-                deploy/
-                    container_runner.py
-                    image_builder.py
+                database/
                     __init__.py
-                    task_materializer.py
+                    redis_loader.py
+                deploy/
+                    runner.py
+                    __init__.py
+                    materializer.py
+                    builder.py
                 manifest/
                     manifest_fetcher.py
                     __init__.py
                     parser.py
-                artifact/
-                    __init__.py
-                    materializer.py
                 domain/
                     task.py
                     __init__.py
@@ -68,13 +69,36 @@ RealTime-Microservices/
 --- START FILE: docker-compose.yml ---
 
 services:
+  
+  redis:
+    image: "redis:8.4"
+    cpuset: "1"
+    container_name: redis
+    ports:
+      - "6379:6379"
+
   deploy-manager:
     build:
       context: . 
       dockerfile: ./services/deploy-manager/Dockerfile
+    cpuset: "1"
     container_name: deploy-manager
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - redis
+    
+
+  #exection-manager:
+    #build:
+      #context: . 
+      #dockerfile: ./services/execution-manager/Dockerfile
+    #cpuset: "1"
+    #container_name: execution-manager
+    #depends_on:
+     #- redis
+     #- deploy-manager
+  
 
 
 --- END FILE: docker-compose.yml ---
@@ -316,13 +340,14 @@ include_directories(${CMAKE_SOURCE_DIR}/../common/include)
 # Add executable
 add_executable(execution-manager
     src/main.c
+    src/redis_reader.c
     ../common/src/logger.c  # directly add logger.c to build
     ../common/src/task_ipc.c
 )
 
 # Threads
 find_package(Threads REQUIRED)
-target_link_libraries(execution-manager PRIVATE Threads::Threads)
+target_link_libraries(execution-manager PRIVATE Threads::Threads hiredis)
 
 --- END FILE: services/execution-manager/CMakeLists.txt ---
 
@@ -334,8 +359,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
         cmake \
-        pkg-config \
-        libpthread-stubs0-dev && \
+        libhiredis-dev && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -356,76 +380,699 @@ ENTRYPOINT ["./build/execution-manager"]
 
 --- END FILE: services/execution-manager/Dockerfile ---
 
---- START FILE: services/execution-manager/src/main.c ---
+--- START FILE: services/execution-manager/include/jsmn.h ---
+/*
+ * MIT License
+ *
+ * Copyright (c) 2010 Serge Zaitsev
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+#ifndef JSMN_H
+#define JSMN_H
+
+#include <stddef.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifdef JSMN_STATIC
+#define JSMN_API static
+#else
+#define JSMN_API extern
+#endif
+
+/**
+ * JSON type identifier. Basic types are:
+ * 	o Object
+ * 	o Array
+ * 	o String
+ * 	o Other primitive: number, boolean (true/false) or null
+ */
+typedef enum {
+  JSMN_UNDEFINED = 0,
+  JSMN_OBJECT = 1 << 0,
+  JSMN_ARRAY = 1 << 1,
+  JSMN_STRING = 1 << 2,
+  JSMN_PRIMITIVE = 1 << 3
+} jsmntype_t;
+
+enum jsmnerr {
+  /* Not enough tokens were provided */
+  JSMN_ERROR_NOMEM = -1,
+  /* Invalid character inside JSON string */
+  JSMN_ERROR_INVAL = -2,
+  /* The string is not a full JSON packet, more bytes expected */
+  JSMN_ERROR_PART = -3
+};
+
+/**
+ * JSON token description.
+ * type		type (object, array, string etc.)
+ * start	start position in JSON data string
+ * end		end position in JSON data string
+ */
+typedef struct jsmntok {
+  jsmntype_t type;
+  int start;
+  int end;
+  int size;
+#ifdef JSMN_PARENT_LINKS
+  int parent;
+#endif
+} jsmntok_t;
+
+/**
+ * JSON parser. Contains an array of token blocks available. Also stores
+ * the string being parsed now and current position in that string.
+ */
+typedef struct jsmn_parser {
+  unsigned int pos;     /* offset in the JSON string */
+  unsigned int toknext; /* next token to allocate */
+  int toksuper;         /* superior token node, e.g. parent object or array */
+} jsmn_parser;
+
+/**
+ * Create JSON parser over an array of tokens
+ */
+JSMN_API void jsmn_init(jsmn_parser *parser);
+
+/**
+ * Run JSON parser. It parses a JSON data string into and array of tokens, each
+ * describing
+ * a single JSON object.
+ */
+JSMN_API int jsmn_parse(jsmn_parser *parser, const char *js, const size_t len,
+                        jsmntok_t *tokens, const unsigned int num_tokens);
+
+#ifndef JSMN_HEADER
+/**
+ * Allocates a fresh unused token from the token pool.
+ */
+static jsmntok_t *jsmn_alloc_token(jsmn_parser *parser, jsmntok_t *tokens,
+                                   const size_t num_tokens) {
+  jsmntok_t *tok;
+  if (parser->toknext >= num_tokens) {
+    return NULL;
+  }
+  tok = &tokens[parser->toknext++];
+  tok->start = tok->end = -1;
+  tok->size = 0;
+#ifdef JSMN_PARENT_LINKS
+  tok->parent = -1;
+#endif
+  return tok;
+}
+
+/**
+ * Fills token type and boundaries.
+ */
+static void jsmn_fill_token(jsmntok_t *token, const jsmntype_t type,
+                            const int start, const int end) {
+  token->type = type;
+  token->start = start;
+  token->end = end;
+  token->size = 0;
+}
+
+/**
+ * Fills next available token with JSON primitive.
+ */
+static int jsmn_parse_primitive(jsmn_parser *parser, const char *js,
+                                const size_t len, jsmntok_t *tokens,
+                                const size_t num_tokens) {
+  jsmntok_t *token;
+  int start;
+
+  start = parser->pos;
+
+  for (; parser->pos < len && js[parser->pos] != '\0'; parser->pos++) {
+    switch (js[parser->pos]) {
+#ifndef JSMN_STRICT
+    /* In strict mode primitive must be followed by "," or "}" or "]" */
+    case ':':
+#endif
+    case '\t':
+    case '\r':
+    case '\n':
+    case ' ':
+    case ',':
+    case ']':
+    case '}':
+      goto found;
+    default:
+                   /* to quiet a warning from gcc*/
+      break;
+    }
+    if (js[parser->pos] < 32 || js[parser->pos] >= 127) {
+      parser->pos = start;
+      return JSMN_ERROR_INVAL;
+    }
+  }
+#ifdef JSMN_STRICT
+  /* In strict mode primitive must be followed by a comma/object/array */
+  parser->pos = start;
+  return JSMN_ERROR_PART;
+#endif
+
+found:
+  if (tokens == NULL) {
+    parser->pos--;
+    return 0;
+  }
+  token = jsmn_alloc_token(parser, tokens, num_tokens);
+  if (token == NULL) {
+    parser->pos = start;
+    return JSMN_ERROR_NOMEM;
+  }
+  jsmn_fill_token(token, JSMN_PRIMITIVE, start, parser->pos);
+#ifdef JSMN_PARENT_LINKS
+  token->parent = parser->toksuper;
+#endif
+  parser->pos--;
+  return 0;
+}
+
+/**
+ * Fills next token with JSON string.
+ */
+static int jsmn_parse_string(jsmn_parser *parser, const char *js,
+                             const size_t len, jsmntok_t *tokens,
+                             const size_t num_tokens) {
+  jsmntok_t *token;
+
+  int start = parser->pos;
+  
+  /* Skip starting quote */
+  parser->pos++;
+  
+  for (; parser->pos < len && js[parser->pos] != '\0'; parser->pos++) {
+    char c = js[parser->pos];
+
+    /* Quote: end of string */
+    if (c == '\"') {
+      if (tokens == NULL) {
+        return 0;
+      }
+      token = jsmn_alloc_token(parser, tokens, num_tokens);
+      if (token == NULL) {
+        parser->pos = start;
+        return JSMN_ERROR_NOMEM;
+      }
+      jsmn_fill_token(token, JSMN_STRING, start + 1, parser->pos);
+#ifdef JSMN_PARENT_LINKS
+      token->parent = parser->toksuper;
+#endif
+      return 0;
+    }
+
+    /* Backslash: Quoted symbol expected */
+    if (c == '\\' && parser->pos + 1 < len) {
+      int i;
+      parser->pos++;
+      switch (js[parser->pos]) {
+      /* Allowed escaped symbols */
+      case '\"':
+      case '/':
+      case '\\':
+      case 'b':
+      case 'f':
+      case 'r':
+      case 'n':
+      case 't':
+        break;
+      /* Allows escaped symbol \uXXXX */
+      case 'u':
+        parser->pos++;
+        for (i = 0; i < 4 && parser->pos < len && js[parser->pos] != '\0';
+             i++) {
+          /* If it isn't a hex character we have an error */
+          if (!((js[parser->pos] >= 48 && js[parser->pos] <= 57) ||   /* 0-9 */
+                (js[parser->pos] >= 65 && js[parser->pos] <= 70) ||   /* A-F */
+                (js[parser->pos] >= 97 && js[parser->pos] <= 102))) { /* a-f */
+            parser->pos = start;
+            return JSMN_ERROR_INVAL;
+          }
+          parser->pos++;
+        }
+        parser->pos--;
+        break;
+      /* Unexpected symbol */
+      default:
+        parser->pos = start;
+        return JSMN_ERROR_INVAL;
+      }
+    }
+  }
+  parser->pos = start;
+  return JSMN_ERROR_PART;
+}
+
+/**
+ * Parse JSON string and fill tokens.
+ */
+JSMN_API int jsmn_parse(jsmn_parser *parser, const char *js, const size_t len,
+                        jsmntok_t *tokens, const unsigned int num_tokens) {
+  int r;
+  int i;
+  jsmntok_t *token;
+  int count = parser->toknext;
+
+  for (; parser->pos < len && js[parser->pos] != '\0'; parser->pos++) {
+    char c;
+    jsmntype_t type;
+
+    c = js[parser->pos];
+    switch (c) {
+    case '{':
+    case '[':
+      count++;
+      if (tokens == NULL) {
+        break;
+      }
+      token = jsmn_alloc_token(parser, tokens, num_tokens);
+      if (token == NULL) {
+        return JSMN_ERROR_NOMEM;
+      }
+      if (parser->toksuper != -1) {
+        jsmntok_t *t = &tokens[parser->toksuper];
+#ifdef JSMN_STRICT
+        /* In strict mode an object or array can't become a key */
+        if (t->type == JSMN_OBJECT) {
+          return JSMN_ERROR_INVAL;
+        }
+#endif
+        t->size++;
+#ifdef JSMN_PARENT_LINKS
+        token->parent = parser->toksuper;
+#endif
+      }
+      token->type = (c == '{' ? JSMN_OBJECT : JSMN_ARRAY);
+      token->start = parser->pos;
+      parser->toksuper = parser->toknext - 1;
+      break;
+    case '}':
+    case ']':
+      if (tokens == NULL) {
+        break;
+      }
+      type = (c == '}' ? JSMN_OBJECT : JSMN_ARRAY);
+#ifdef JSMN_PARENT_LINKS
+      if (parser->toknext < 1) {
+        return JSMN_ERROR_INVAL;
+      }
+      token = &tokens[parser->toknext - 1];
+      for (;;) {
+        if (token->start != -1 && token->end == -1) {
+          if (token->type != type) {
+            return JSMN_ERROR_INVAL;
+          }
+          token->end = parser->pos + 1;
+          parser->toksuper = token->parent;
+          break;
+        }
+        if (token->parent == -1) {
+          if (token->type != type || parser->toksuper == -1) {
+            return JSMN_ERROR_INVAL;
+          }
+          break;
+        }
+        token = &tokens[token->parent];
+      }
+#else
+      for (i = parser->toknext - 1; i >= 0; i--) {
+        token = &tokens[i];
+        if (token->start != -1 && token->end == -1) {
+          if (token->type != type) {
+            return JSMN_ERROR_INVAL;
+          }
+          parser->toksuper = -1;
+          token->end = parser->pos + 1;
+          break;
+        }
+      }
+      /* Error if unmatched closing bracket */
+      if (i == -1) {
+        return JSMN_ERROR_INVAL;
+      }
+      for (; i >= 0; i--) {
+        token = &tokens[i];
+        if (token->start != -1 && token->end == -1) {
+          parser->toksuper = i;
+          break;
+        }
+      }
+#endif
+      break;
+    case '\"':
+      r = jsmn_parse_string(parser, js, len, tokens, num_tokens);
+      if (r < 0) {
+        return r;
+      }
+      count++;
+      if (parser->toksuper != -1 && tokens != NULL) {
+        tokens[parser->toksuper].size++;
+      }
+      break;
+    case '\t':
+    case '\r':
+    case '\n':
+    case ' ':
+      break;
+    case ':':
+      parser->toksuper = parser->toknext - 1;
+      break;
+    case ',':
+      if (tokens != NULL && parser->toksuper != -1 &&
+          tokens[parser->toksuper].type != JSMN_ARRAY &&
+          tokens[parser->toksuper].type != JSMN_OBJECT) {
+#ifdef JSMN_PARENT_LINKS
+        parser->toksuper = tokens[parser->toksuper].parent;
+#else
+        for (i = parser->toknext - 1; i >= 0; i--) {
+          if (tokens[i].type == JSMN_ARRAY || tokens[i].type == JSMN_OBJECT) {
+            if (tokens[i].start != -1 && tokens[i].end == -1) {
+              parser->toksuper = i;
+              break;
+            }
+          }
+        }
+#endif
+      }
+      break;
+#ifdef JSMN_STRICT
+    /* In strict mode primitives are: numbers and booleans */
+    case '-':
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9':
+    case 't':
+    case 'f':
+    case 'n':
+      /* And they must not be keys of the object */
+      if (tokens != NULL && parser->toksuper != -1) {
+        const jsmntok_t *t = &tokens[parser->toksuper];
+        if (t->type == JSMN_OBJECT ||
+            (t->type == JSMN_STRING && t->size != 0)) {
+          return JSMN_ERROR_INVAL;
+        }
+      }
+#else
+    /* In non-strict mode every unquoted value is a primitive */
+    default:
+#endif
+      r = jsmn_parse_primitive(parser, js, len, tokens, num_tokens);
+      if (r < 0) {
+        return r;
+      }
+      count++;
+      if (parser->toksuper != -1 && tokens != NULL) {
+        tokens[parser->toksuper].size++;
+      }
+      break;
+
+#ifdef JSMN_STRICT
+    /* Unexpected char in strict mode */
+    default:
+      return JSMN_ERROR_INVAL;
+#endif
+    }
+  }
+
+  if (tokens != NULL) {
+    for (i = parser->toknext - 1; i >= 0; i--) {
+      /* Unmatched opened object or array */
+      if (tokens[i].start != -1 && tokens[i].end == -1) {
+        return JSMN_ERROR_PART;
+      }
+    }
+  }
+
+  return count;
+}
+
+/**
+ * Creates a new parser based over a given buffer with an array of tokens
+ * available.
+ */
+JSMN_API void jsmn_init(jsmn_parser *parser) {
+  parser->pos = 0;
+  parser->toknext = 0;
+  parser->toksuper = -1;
+}
+
+#endif /* JSMN_HEADER */
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* JSMN_H */
+--- END FILE: services/execution-manager/include/jsmn.h ---
+
+--- START FILE: services/execution-manager/include/redis_reader.h ---
+#ifndef REDIS_READER_H
+#define REDIS_READER_H
+
+#include <hiredis/hiredis.h>
+
+#define MAX_TASKS 32
+#define MAX_JSON_LEN 1024
+
+typedef struct {
+    char name[64];
+    char policy[16];
+    int priority;
+    char inputs[MAX_JSON_LEN];
+    char outputs[MAX_JSON_LEN];
+} task_t;
+
+typedef struct {
+    char name[64];
+    char version[16];
+    char description[128];
+    int num_tasks;
+    task_t tasks[MAX_TASKS];
+} schedule_t;
+
+/* Initialize Redis connection */
+redisContext* redis_connect(const char *host, int port);
+
+/* Wait until there is a loaded schedule */
+int redis_wait_for_schedule(redisContext *ctx);
+
+/* Read schedule from Redis into schedule_t */
+int redis_read_schedule(redisContext *ctx, schedule_t *schedule);
+
+#endif
+
+--- END FILE: services/execution-manager/include/redis_reader.h ---
+
+--- START FILE: services/execution-manager/src/redis_reader.c ---
+#include "redis_reader.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "task_ipc.h"
+#include <unistd.h> 
+#include "jsmn.h"
 
-mqd_t em_queue, task_queue;
-
-void send_task_request(uint32_t task_id, task_t *task) {
-    ipc_msg_t msg;
-    memset(&msg, 0, sizeof(msg));
-
-    msg.type    = MSG_TASK_REQUEST;
-    msg.task_id = task_id;
-    msg.status  = ACK_OK;
-
-    memcpy(msg.payload, task, sizeof(task_t));
-    send_message(task_queue, &msg);
+/* Connect to Redis */
+redisContext* redis_connect(const char *host, int port) {
+    redisContext *ctx = redisConnect(host, port);
+    if (ctx == NULL || ctx->err) {
+        if (ctx) {
+            fprintf(stderr, "Redis connection error: %s\n", ctx->errstr);
+            redisFree(ctx);
+        } else {
+            fprintf(stderr, "Redis connection allocation error\n");
+        }
+        return NULL;
+    }
+    return ctx;
 }
 
-void get_status(uint32_t task_id) {
-    ipc_msg_t msg = {0};
-    msg.type    = MSG_GET_STATUS;
-    msg.task_id = task_id;
-    send_message(task_queue, &msg);
+/* Helper to parse JSON token */
+static void json_copy_value(const char *json, jsmntok_t *t, char *dest, size_t maxlen) {
+    int len = t->end - t->start;
+    if ((size_t)len >= maxlen) len = maxlen - 1;
+    strncpy(dest, json + t->start, len);
+    dest[len] = '\0';
 }
 
-void get_results(uint32_t task_id) {
-    ipc_msg_t msg = {0};
-    msg.type    = MSG_GET_RESULTS;
-    msg.task_id = task_id;
-    send_message(task_queue, &msg);
-}
+/* Wait for schedule to be uploaded */
+int redis_wait_for_schedule(redisContext *ctx) {
+    redisReply *reply = NULL;
 
-int main() {
-    em_queue   = create_queue(QUEUE_NAME_EM);
-    task_queue = create_queue(QUEUE_NAME_TASK);
-
-    // Example: send a task
-    task_t task;
-    strncpy(task.task_name, "compute_sum", TASK_NAME_MAX);
-    task.policy   = SCHED_POLICY_FIFO;
-    task.priority = 50;
-    snprintf(task.input, TASK_JSON_IN_MAX, "{\"a\": 3, \"b\": 4}");
-    snprintf(task.output, TASK_JSON_OUT_MAX, "{}");
-
-    printf("[Execution Manager] Sending task request...\n");
-    send_task_request(1, &task);
+    printf("Waiting for schedule to be uploaded...\n");
 
     while (1) {
-        ipc_msg_t msg;
-        receive_message(em_queue, &msg);
+        reply = redisCommand(ctx, "EXISTS schedule:meta");
 
-        switch (msg.type) {
-            case MSG_TASK_ACK:
-                printf("[Execution Manager] ACK: %s\n", msg.payload);
-                break;
-            case MSG_TASK_STATUS:
-                printf("[Execution Manager] STATUS: %s\n", msg.payload);
-                break;
-            case MSG_TASK_RESULT:
-                printf("[Execution Manager] RESULT: %s\n", msg.payload);
-                break;
-            default:
-                printf("[Execution Manager] Unknown message type %d\n", msg.type);
+        if (reply && reply->type == REDIS_REPLY_INTEGER && reply->integer == 1) {
+            freeReplyObject(reply);
+            printf("Schedule found!\n");
+            return 0;
         }
+
+        if (reply)
+            freeReplyObject(reply);
+
+        sleep(1);
+    }
+}
+
+/* Read schedule from Redis */
+int redis_read_schedule(redisContext *ctx, schedule_t *schedule) {
+    if (!ctx || !schedule) return -1;
+
+    /* Read schedule meta */
+    redisReply *reply = redisCommand(ctx, "GET schedule:meta");
+    if (!reply || reply->type != REDIS_REPLY_STRING) {
+        if (reply) freeReplyObject(reply);
+        fprintf(stderr, "Failed to get schedule:meta\n");
+        return -1;
     }
 
-    close_queue(em_queue, QUEUE_NAME_EM);
-    close_queue(task_queue, QUEUE_NAME_TASK);
+    jsmn_parser parser;
+    jsmntok_t tokens[64];
+    jsmn_init(&parser);
+    int r = jsmn_parse(&parser, reply->str, strlen(reply->str), tokens, sizeof(tokens)/sizeof(tokens[0]));
+    if (r < 1 || tokens[0].type != JSMN_OBJECT) {
+        fprintf(stderr, "Failed to parse schedule meta JSON\n");
+        freeReplyObject(reply);
+        return -1;
+    }
+
+    for (int i = 1; i < r; i += 2) {
+        jsmntok_t *key = &tokens[i];
+        jsmntok_t *val = &tokens[i+1];
+        char keybuf[64];
+        json_copy_value(reply->str, key, keybuf, sizeof(keybuf));
+
+        if (strcmp(keybuf, "name") == 0) {
+            json_copy_value(reply->str, val, schedule->name, sizeof(schedule->name));
+        } else if (strcmp(keybuf, "version") == 0) {
+            json_copy_value(reply->str, val, schedule->version, sizeof(schedule->version));
+        } else if (strcmp(keybuf, "description") == 0) {
+            json_copy_value(reply->str, val, schedule->description, sizeof(schedule->description));
+        } else if (strcmp(keybuf, "length") == 0) {
+            char buf[16];
+            json_copy_value(reply->str, val, buf, sizeof(buf));
+            schedule->num_tasks = atoi(buf);
+        }
+    }
+    freeReplyObject(reply);
+
+    /* Read each task */
+    for (int i = 0; i < schedule->num_tasks; i++) {
+        char key[64];
+        snprintf(key, sizeof(key), "schedule:task:%d", i+1);
+        reply = redisCommand(ctx, "GET %s", key);
+        if (!reply || reply->type != REDIS_REPLY_STRING) {
+            fprintf(stderr, "Failed to get %s\n", key);
+            if (reply) freeReplyObject(reply);
+            continue;
+        }
+
+        jsmn_init(&parser);
+        r = jsmn_parse(&parser, reply->str, strlen(reply->str), tokens, sizeof(tokens)/sizeof(tokens[0]));
+        if (r < 1 || tokens[0].type != JSMN_OBJECT) {
+            fprintf(stderr, "Failed to parse task JSON %s\n", key);
+            freeReplyObject(reply);
+            continue;
+        }
+
+        task_t *task = &schedule->tasks[i];
+
+        for (int j = 1; j < r; j += 2) {
+            jsmntok_t *keytok = &tokens[j];
+            jsmntok_t *valtok = &tokens[j+1];
+            char keybuf[64];
+            json_copy_value(reply->str, keytok, keybuf, sizeof(keybuf));
+
+            if (strcmp(keybuf, "name") == 0) {
+                json_copy_value(reply->str, valtok, task->name, sizeof(task->name));
+            } else if (strcmp(keybuf, "policy") == 0) {
+                json_copy_value(reply->str, valtok, task->policy, sizeof(task->policy));
+            } else if (strcmp(keybuf, "priority") == 0) {
+                char buf[16];
+                json_copy_value(reply->str, valtok, buf, sizeof(buf));
+                task->priority = atoi(buf);
+            } else if (strcmp(keybuf, "inputs") == 0) {
+                json_copy_value(reply->str, valtok, task->inputs, sizeof(task->inputs));
+            } else if (strcmp(keybuf, "outputs") == 0) {
+                json_copy_value(reply->str, valtok, task->outputs, sizeof(task->outputs));
+            }
+        }
+        freeReplyObject(reply);
+    }
+
+    return 0;
+}
+
+--- END FILE: services/execution-manager/src/redis_reader.c ---
+
+--- START FILE: services/execution-manager/src/main.c ---
+#include <stdio.h>
+#include "redis_reader.h"
+
+int main() {
+    redisContext *ctx = redis_connect("redis", 6379);
+    if (!ctx) return 1;
+
+    /* Wait until schedule exists */
+    redis_wait_for_schedule(ctx);
+
+    schedule_t schedule;
+
+    while (1) {
+        if (redis_read_schedule(ctx, &schedule) == 0) {
+
+            printf("\n=== SCHEDULE ===\n");
+            printf("Name       : %s\n", schedule.name);
+            printf("Version    : %s\n", schedule.version);
+            printf("Description: %s\n", schedule.description);
+            printf("Tasks      : %d\n", schedule.num_tasks);
+
+            for (int i = 0; i < schedule.num_tasks; i++) {
+                task_t *t = &schedule.tasks[i];
+                printf("\nTask %d\n", i + 1);
+                printf("  Name     : %s\n", t->name);
+                printf("  Policy   : %s\n", t->policy);
+                printf("  Priority : %d\n", t->priority);
+                printf("  Inputs   : %s\n", t->inputs);
+                printf("  Outputs  : %s\n", t->outputs);
+            }
+        }
+
+        sleep(1);   // future-proof for version updates
+    }
+
+    redisFree(ctx);
     return 0;
 }
 
@@ -458,22 +1105,17 @@ target_link_libraries(task-service PRIVATE Threads::Threads)
 --- START FILE: services/task-service/Dockerfile ---
 FROM ubuntu:24.04
 
-# Set noninteractive mode
-ENV DEBIAN_FRONTEND=noninteractive
-
 # Install build tools
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
-        cmake \
-        pkg-config && \
+        cmake  &&\
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Copy task-service source
-COPY . ./task-service/ 
-# task-service/ ./task-service/
+COPY . ./task-service/
 
 WORKDIR /app/task-service
 
@@ -687,6 +1329,7 @@ dependencies = [
     "GitPython==3.1.46",
     "PyYAML==6.0.3",
     "docker==7.1.0",
+    "redis==7.1.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -730,8 +1373,10 @@ from pathlib import Path
 from .logger import get_logger
 from .manifest.manifest_fetcher import ManifestFetcher
 from .manifest.parser import ManifestParser
-from .artifact.materializer import TaskArtifactMaterializer
-from .docker.builder import DockerImageBuilder
+from .deploy.materializer import TaskArtifactMaterializer
+from .deploy.builder import DockerImageBuilder
+from .deploy.runner import DockerContainerRunner
+from .database.redis_loader import RedisLoader  # NEW
 from .exceptions import DeployManagerError
 import sys
 
@@ -745,30 +1390,50 @@ def main():
     task_service_include = task_service_path / "include"
 
     fetcher = ManifestFetcher(repo_url, mission_path)
+    docker_builder = DockerImageBuilder()
+    docker_runner = DockerContainerRunner()
+    redis_loader = RedisLoader(host="redis", port=6379)  # NEW
 
     try:
+        # Fetch mission repository
         fetcher.fetch()
 
-        parser = ManifestParser(
-            str(mission_path / "task_manifest.yaml")
-        )
+        # Parse manifest
+        parser = ManifestParser(str(mission_path / "task_manifest.yaml"))
         schedule = parser.parse()
 
+        # Materialize task entries
         materializer = TaskArtifactMaterializer(
             mission_repo_path=mission_path,
             task_service_include_path=task_service_include,
         )
 
-        docker_builder = DockerImageBuilder()
-
+        # Build and run containers for each task
         for task in schedule.tasks:
+            logger.info(f"Processing task '{task.name}'")
+
+            # Materialize task header
             materializer.materialize_task(task)
 
+            # Build Docker image
             image_tag = f"task-service:{task.name}-{schedule.version}"
             docker_builder.build_task_service_image(
                 build_context=task_service_path,
                 image_tag=image_tag,
             )
+
+            # Run container
+            container_name = f"task-service-{task.name}"
+            docker_runner.run_task_service(
+                image_tag=image_tag,
+                container_name=container_name,
+            )
+        
+        # Load schedule and tasks into Redis
+        redis_loader.load_schedule(schedule)
+        redis_loader.debug_print()  # REMOVE AFTER DEBUGGING
+        logger.info("Schedule data loaded into Redis successfully.")
+        
 
     except DeployManagerError as e:
         logger.error(f"Deploy Manager failed: {e}")
@@ -779,7 +1444,185 @@ if __name__ == "__main__":
 
 --- END FILE: services/deploy-manager/src/main.py ---
 
---- START FILE: services/deploy-manager/src/docker/builder.py ---
+--- START FILE: services/deploy-manager/src/database/__init__.py ---
+
+--- END FILE: services/deploy-manager/src/database/__init__.py ---
+
+--- START FILE: services/deploy-manager/src/database/redis_loader.py ---
+# src/deploy/redis_loader.py
+import redis
+from ..logger import get_logger
+from ..domain.schedule import Schedule
+
+logger = get_logger(__name__)
+
+class RedisLoader:
+    """
+    Loads schedule/task data into Redis for debugging purposes.
+    """
+
+    def __init__(self, host="localhost", port=6379, db=0):
+        self.client = redis.Redis(host=host, port=port, db=db, decode_responses=True)
+
+    def load_schedule(self, schedule: Schedule):
+        """
+        Push schedule and tasks into Redis.
+        """
+        self.client.hset("schedule", mapping={
+            "name": schedule.name,
+            "version": schedule.version,
+            "description": schedule.description,
+            "length": str(len(schedule.tasks))
+        })
+
+        for i, task in enumerate(schedule.tasks, start=1):
+            task_key = f"scheduletask:{i}"
+            self.client.hset(task_key, mapping={
+                "name": task.name,
+                "policy": task.policy,
+                "priority": str(task.priority),
+                "depends_on": ",".join(task.depends_on),
+                "inputs": ",".join(task.inputs),
+                "outputs": ",".join(task.outputs)
+            })
+
+        logger.info(f"Loaded {len(schedule.tasks)} tasks into Redis.")
+
+    def debug_print(self):
+        """
+        Read back all schedule/task data and print for debugging.
+        """
+        schedule_data = self.client.hgetall("schedule")
+        print("=== SCHEDULE ===")
+        for k, v in schedule_data.items():
+            print(f"{k}: {v}")
+
+        print("\n=== TASKS ===")
+        length = int(schedule_data.get("length", 0))
+        for i in range(1, length + 1):
+            task_key = f"scheduletask:{i}"
+            task_data = self.client.hgetall(task_key)
+            print(f"{task_key}: {task_data}")
+
+--- END FILE: services/deploy-manager/src/database/redis_loader.py ---
+
+--- START FILE: services/deploy-manager/src/deploy/runner.py ---
+import docker
+from ..logger import get_logger
+from ..exceptions import DeployManagerError
+
+logger = get_logger(__name__)
+
+class DockerContainerRunner:
+    """
+    Runs Docker containers for task services with the required real-time privileges.
+    """
+
+    def __init__(self):
+        self.client = docker.from_env()
+
+    def run_task_service(
+        self,
+        image_tag: str,
+        container_name: str = "task-service",
+        detach: bool = True,
+    ):
+        """
+        Run a task-service container with privileged capabilities and ulimits.
+        """
+
+        try:
+            # Remove existing container if it exists
+            try:
+                existing = self.client.containers.get(container_name)
+                logger.info(f"Stopping and removing existing container '{container_name}'")
+                existing.stop()
+                existing.remove()
+            except docker.errors.NotFound:
+                pass  # Container does not exist, OK
+
+            logger.info(f"Running container '{container_name}' from image '{image_tag}'")
+
+            container = self.client.containers.run(
+                image=image_tag,
+                name=container_name,
+                detach=detach,
+                tty=True,
+                ipc_mode="host",
+                cap_add=["SYS_NICE"],
+                ulimits=[
+                    docker.types.Ulimit(name="rtprio", soft=99, hard=99),
+                    docker.types.Ulimit(name="memlock", soft=-1, hard=-1),
+                ],
+                cpuset_cpus="1",
+                #remove=True,
+            )
+
+            logger.info(f"Container '{container_name}' is running (ID: {container.short_id})")
+            return container
+
+        except docker.errors.DockerException as e:
+            raise DeployManagerError(f"Failed to run container '{container_name}': {e}")
+
+--- END FILE: services/deploy-manager/src/deploy/runner.py ---
+
+--- START FILE: services/deploy-manager/src/deploy/__init__.py ---
+
+--- END FILE: services/deploy-manager/src/deploy/__init__.py ---
+
+--- START FILE: services/deploy-manager/src/deploy/materializer.py ---
+from pathlib import Path
+import shutil
+from ..logger import get_logger
+from ..exceptions import DeployManagerError
+from ..domain.task import Task
+
+logger = get_logger(__name__)
+
+class TaskArtifactMaterializer:
+    """
+    Materializes task-specific artifacts into the task-service build context.
+    """
+
+    def __init__(
+        self,
+        mission_repo_path: Path,
+        task_service_include_path: Path,
+    ):
+        self.mission_repo_path = mission_repo_path
+        self.task_service_include_path = task_service_include_path
+
+    def materialize_task(self, task: Task) -> None:
+        """
+        Copy task_entry.h for a given task into task-service/include/
+        """
+        source_header = (
+            self.mission_repo_path
+            / task.name
+            / "task_entry.h"
+        )
+
+        if not source_header.exists():
+            raise DeployManagerError(
+                f"task_entry.h not found for task '{task.name}' "
+                f"at {source_header}"
+            )
+
+        destination = self.task_service_include_path / "task_entry.h"
+
+        try:
+            shutil.copyfile(source_header, destination)
+            logger.info(
+                f"Injected task '{task.name}' entry header into task-service"
+            )
+        except Exception as e:
+            raise DeployManagerError(
+                f"Failed to materialize task '{task.name}': {e}"
+            )
+
+--- END FILE: services/deploy-manager/src/deploy/materializer.py ---
+
+--- START FILE: services/deploy-manager/src/deploy/builder.py ---
 import docker
 from pathlib import Path
 from ..logger import get_logger
@@ -816,146 +1659,7 @@ class DockerImageBuilder:
         except Exception as e:
             raise DeployManagerError(f"Docker error: {e}")
 
---- END FILE: services/deploy-manager/src/docker/builder.py ---
-
---- START FILE: services/deploy-manager/src/deploy/container_runner.py ---
-import docker
-from ..logger import get_logger
-from ..exceptions import DeployManagerError
-
-logger = get_logger(__name__)
-
-class ContainerRunner:
-    """
-    Runs task-service containers with required flags.
-    """
-
-    def __init__(self):
-        self.client = docker.from_env()
-
-    def run_task_service(self, image: str, name: str) -> None:
-        logger.info(f"Running container '{name}' from image '{image}'")
-
-        try:
-            # Remove existing container if it exists
-            try:
-                old_container = self.client.containers.get(name)
-                old_container.remove(force=True)
-                logger.info(f"Removed existing container '{name}'")
-            except docker.errors.NotFound:
-                pass
-
-            # Run container with required flags
-            self.client.containers.run(
-                image=image,
-                name=name,
-                detach=True,
-                tty=True,
-                stdin_open=True,
-                ipc_mode="host",
-                cap_add=["SYS_NICE"],
-                ulimits=[
-                    docker.types.Ulimit(name="rtprio", soft=99, hard=99),
-                    docker.types.Ulimit(name="memlock", soft=-1, hard=-1),
-                ],
-            )
-
-            logger.info(f"Container '{name}' started successfully")
-
-        except docker.errors.DockerException as e:
-            raise DeployManagerError(f"Failed to run container '{name}': {e}")
-
---- END FILE: services/deploy-manager/src/deploy/container_runner.py ---
-
---- START FILE: services/deploy-manager/src/deploy/image_builder.py ---
-import docker
-from pathlib import Path
-from ..logger import get_logger
-from ..exceptions import DeployManagerError
-
-logger = get_logger(__name__)
-
-class DockerImageBuilder:
-    """
-    Builds Docker images for task services.
-    """
-
-    def __init__(self):
-        self.client = docker.from_env()
-
-    def build_task_service_image(
-        self,
-        build_context: Path,
-        image_tag: str,
-    ) -> None:
-        try:
-            logger.info(f"Building Docker image '{image_tag}' from {build_context}")
-            
-            # Build the Docker image
-            image, logs = self.client.images.build(
-                path=str(build_context),
-                tag=image_tag,
-                rm=True,
-                network_mode="host"  # ensures apt works during build
-            )
-
-            logger.info(f"Successfully built image '{image_tag}'")
-
-        except docker.errors.BuildError as e:
-            raise DeployManagerError(f"Docker build failed: {e}")
-        except Exception as e:
-            raise DeployManagerError(f"Docker error: {e}")
-
---- END FILE: services/deploy-manager/src/deploy/image_builder.py ---
-
---- START FILE: services/deploy-manager/src/deploy/__init__.py ---
-
---- END FILE: services/deploy-manager/src/deploy/__init__.py ---
-
---- START FILE: services/deploy-manager/src/deploy/task_materializer.py ---
-from pathlib import Path
-import shutil
-
-from ..logger import get_logger
-from ..exceptions import DeployManagerError
-from ..domain.task import Task
-
-logger = get_logger(__name__)
-
-class TaskArtifactMaterializer:
-    """
-    Materializes task-specific artifacts into the task-service build context.
-    """
-
-    def __init__(
-        self,
-        mission_repo_path: Path,
-        task_service_include_path: Path,
-    ):
-        self.mission_repo_path = mission_repo_path
-        self.task_service_include_path = task_service_include_path
-
-    def materialize_task(self, task: Task) -> None:
-        """
-        Copy task_entry.h for a given task into task-service/include/
-        """
-        source_header = self.mission_repo_path / task.name / "task_entry.h"
-        destination = self.task_service_include_path / "task_entry.h"
-
-        if not source_header.exists():
-            raise DeployManagerError(
-                f"task_entry.h not found for task '{task.name}' at {source_header}"
-            )
-
-        try:
-            shutil.copyfile(source_header, destination)
-            logger.info(f"Injected task '{task.name}' entry header into task-service")
-        except Exception as e:
-            raise DeployManagerError(
-                f"Failed to materialize task '{task.name}': {e}"
-            )
-
---- END FILE: services/deploy-manager/src/deploy/task_materializer.py ---
+--- END FILE: services/deploy-manager/src/deploy/builder.py ---
 
 --- START FILE: services/deploy-manager/src/manifest/manifest_fetcher.py ---
 # src/manifest/manifest_fetcher.py
@@ -1067,63 +1771,6 @@ class ManifestParser:
         return schedule
 
 --- END FILE: services/deploy-manager/src/manifest/parser.py ---
-
---- START FILE: services/deploy-manager/src/artifact/__init__.py ---
-
---- END FILE: services/deploy-manager/src/artifact/__init__.py ---
-
---- START FILE: services/deploy-manager/src/artifact/materializer.py ---
-from pathlib import Path
-import shutil
-
-from ..logger import get_logger
-from ..exceptions import DeployManagerError
-from ..domain.task import Task
-
-logger = get_logger(__name__)
-
-class TaskArtifactMaterializer:
-    """
-    Materializes task-specific artifacts into the task-service build context.
-    """
-
-    def __init__(
-        self,
-        mission_repo_path: Path,
-        task_service_include_path: Path,
-    ):
-        self.mission_repo_path = mission_repo_path
-        self.task_service_include_path = task_service_include_path
-
-    def materialize_task(self, task: Task) -> None:
-        """
-        Copy task_entry.h for a given task into task-service/include/
-        """
-        source_header = (
-            self.mission_repo_path
-            / task.name
-            / "task_entry.h"
-        )
-
-        if not source_header.exists():
-            raise DeployManagerError(
-                f"task_entry.h not found for task '{task.name}' "
-                f"at {source_header}"
-            )
-
-        destination = self.task_service_include_path / "task_entry.h"
-
-        try:
-            shutil.copyfile(source_header, destination)
-            logger.info(
-                f"Injected task '{task.name}' entry header into task-service"
-            )
-        except Exception as e:
-            raise DeployManagerError(
-                f"Failed to materialize task '{task.name}': {e}"
-            )
-
---- END FILE: services/deploy-manager/src/artifact/materializer.py ---
 
 --- START FILE: services/deploy-manager/src/domain/task.py ---
 # src/domain/task.py

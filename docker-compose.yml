@@ -1,10 +1,33 @@
 
 services:
+  
+  redis:
+    image: "redis:8.4"
+    cpuset: "1"
+    container_name: redis
+    ports:
+      - "6379:6379"
+
   deploy-manager:
     build:
       context: . 
       dockerfile: ./services/deploy-manager/Dockerfile
+    cpuset: "1"
     container_name: deploy-manager
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - redis
+    
+
+  #exection-manager:
+    #build:
+      #context: . 
+      #dockerfile: ./services/execution-manager/Dockerfile
+    #cpuset: "1"
+    #container_name: execution-manager
+    #depends_on:
+     #- redis
+     #- deploy-manager
+  
 

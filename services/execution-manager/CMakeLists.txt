@@ -12,10 +12,11 @@ include_directories(${CMAKE_SOURCE_DIR}/../common/include)
 # Add executable
 add_executable(execution-manager
     src/main.c
+    src/redis_reader.c
     ../common/src/logger.c  # directly add logger.c to build
     ../common/src/task_ipc.c
 )
 
 # Threads
 find_package(Threads REQUIRED)
-target_link_libraries(execution-manager PRIVATE Threads::Threads)
+target_link_libraries(execution-manager PRIVATE Threads::Threads hiredis)
