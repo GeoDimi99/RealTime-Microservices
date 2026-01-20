@@ -24,7 +24,7 @@ WORKDIR /app/task-service
 RUN cmake -S . -B build
 RUN cmake --build build
 
-ENV TASK_NAME=sum
-ENV TASK_QUEUE_NAME=sum
+#ENV TASK_NAME=sum
+#ENV TASK_QUEUE_NAME=sum
 
 ENTRYPOINT ["./build/task-service"]

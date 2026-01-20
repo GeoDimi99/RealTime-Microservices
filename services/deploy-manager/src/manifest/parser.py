@@ -10,7 +10,7 @@ logger = get_logger(__name__)
 
 class ManifestParser:
     # Only fifo and rr for now
-    VALID_POLICIES = {"fifo", "rr"}
+    VALID_POLICIES = {"fifo", "rr", "other"}
 
     def __init__(self, manifest_path: str):
         self.manifest_path = manifest_path
@@ -42,9 +42,9 @@ class ManifestParser:
                     name=t["name"],
                     policy=t["policy"].lower(),
                     priority=int(t["priority"]),
-                    depends_on=t.get("depends_on", []),
+
                     inputs=t.get("inputs", {}),
-                    outputs=t.get("outputs", {}),
+
                 )
             except KeyError as e:
                 raise DeployManagerError(f"Task missing required field: {e}")

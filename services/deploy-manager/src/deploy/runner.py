@@ -41,6 +41,10 @@ class DockerContainerRunner:
                 tty=True,
                 ipc_mode="host",
                 cap_add=["SYS_NICE"],
+                environment={
+                    "TASK_NAME": image_tag,
+                    "TASK_QUEUE_NAME": image_tag,
+                    },
                 ulimits=[
                     docker.types.Ulimit(name="rtprio", soft=99, hard=99),
                     docker.types.Ulimit(name="memlock", soft=-1, hard=-1),

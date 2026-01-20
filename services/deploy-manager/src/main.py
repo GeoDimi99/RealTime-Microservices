@@ -19,7 +19,6 @@ def main():
     task_service_include = task_service_path / "include"
 
     fetcher = ManifestFetcher(repo_url, mission_path)
-    docker_builder = DockerImageBuilder()
     docker_runner = DockerContainerRunner()
     redis_loader = RedisLoader(host="redis", port=6379)  # NEW
 
@@ -31,31 +30,18 @@ def main():
         parser = ManifestParser(str(mission_path / "task_manifest.yaml"))
         schedule = parser.parse()
 
-        # Materialize task entries
-        materializer = TaskArtifactMaterializer(
-            mission_repo_path=mission_path,
-            task_service_include_path=task_service_include,
-        )
+        
 
-        # Build and run containers for each task
+        # Run containers for each task
         for task in schedule.tasks:
             logger.info(f"Processing task '{task.name}'")
 
-            # Materialize task header
-            materializer.materialize_task(task)
 
-            # Build Docker image
-            image_tag = f"task-service:{task.name}-{schedule.version}"
-            docker_builder.build_task_service_image(
-                build_context=task_service_path,
-                image_tag=image_tag,
-                task_queue_prefix="/" + task.name
-            )
 
             # Run container
             container_name = f"task-service-{task.name}"
             docker_runner.run_task_service(
-                image_tag=image_tag,
+                image_tag=task.name,
                 container_name=container_name,
             )
         
