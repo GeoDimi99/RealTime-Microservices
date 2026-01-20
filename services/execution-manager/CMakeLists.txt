@@ -12,9 +12,13 @@ include_directories(${CMAKE_SOURCE_DIR}/../common/include)
 # Add executable
 add_executable(execution-manager
     src/main.c
-    src/redis_reader.c
+    src/execution_manager.c
+    src/schedule.c
     ../common/src/logger.c  # directly add logger.c to build
     ../common/src/task_ipc.c
+    ../common/src/task.c
+    
+
 )
 
 # Threads

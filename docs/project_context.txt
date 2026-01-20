@@ -90,15 +90,15 @@ services:
       - redis
     
 
-  exection-manager:
-    build:
-      context: . 
-      dockerfile: ./services/execution-manager/Dockerfile
-    cpuset: "1"
-    container_name: execution-manager
-    depends_on:
-     - redis
-     - deploy-manager
+  #exection-manager:
+    #build:
+      #context: . 
+      #dockerfile: ./services/execution-manager/Dockerfile
+    #cpuset: "1"
+    #container_name: execution-manager
+    #depends_on:
+     #- redis
+     #- deploy-manager
   
 
 
@@ -164,8 +164,7 @@ typedef struct {
 #include "task.h"
 
 /* Queue names */
-#define QUEUE_NAME_TASK "/task_queue"
-#define QUEUE_NAME_EM   "/execution_manager_queue"
+#define QUEUE_NAME_EM   "/execution_manager"
 
 /* Message types */
 typedef enum {
@@ -992,13 +991,38 @@ int redis_read_schedule(redisContext *ctx, schedule_t *sched)
 #include <stdio.h>
 #include <unistd.h>
 #include "redis_reader.h"
+#include "task_ipc.h"
 
 int main(void)
 {
+    // Execution Manager init
     redisContext *ctx = redis_connect("redis", 6379);
+    mqd_t em_queue = create_queue(QUEUE_NAME_EM, O_RDONLY);
+
+    
+    // Wait until there is a schedule to perform 
     redis_wait_for_schedule(ctx);
 
+    // Read schedule
     schedule_t s;
+    redis_read_schedule(ctx, &s);
+
+    printf("\n=== SCHEDULE ===\n");
+    printf("Name: %s\n", s.name);
+    printf("Version: %s\n", s.version);
+    printf("Tasks: %d\n", s.num_tasks);
+
+    for (int i = 0; i < s.num_tasks; i++) {
+        task_t *t = &s.tasks[i];
+        printf("\nTask %d\n", i+1);
+        printf("  Name     : %s\n", t->name);
+        printf("  Policy   : %s\n", t->policy);
+        printf("  Priority : %d\n", t->priority);
+        printf("  Inputs   : %s\n", t->inputs);
+        printf("  Outputs  : %s\n", t->outputs);
+    
+    }
+
 
     while (1) {
         redis_read_schedule(ctx, &s);
@@ -1096,7 +1120,7 @@ ENTRYPOINT ["./build/task-service"]
 #pragma once
 
 // Queue prefix injected at build time
-#define TASK_QUEUE_PREFIX "@TASK_QUEUE_PREFIX@"
+#define TASK_QUEUE "@TASK_QUEUE_PREFIX@"
 
 --- END FILE: services/task-service/include/task_config.h.in ---
 
@@ -1137,7 +1161,7 @@ typedef struct {
 char queue_name[64];
 
 void get_task_queue_name(uint32_t task_id) {
-    snprintf(queue_name, sizeof(queue_name), "%s_%u", TASK_QUEUE_PREFIX, task_id);
+    snprintf(queue_name, sizeof(queue_name), "%s", TASK_QUEUE);
 }
 
 int main() {

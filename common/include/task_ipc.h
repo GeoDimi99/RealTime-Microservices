@@ -3,13 +3,22 @@
 
 #include <stdint.h>
 #include <mqueue.h>
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+#include <stdlib.h>
 #include "task.h"
 
-/* Queue names */
-#define QUEUE_NAME_TASK "/task_queue"
-#define QUEUE_NAME_EM   "/execution_manager_queue"
+/* Max Queue names */
+#define MAX_QUEUE_NAME   64
 
-/* Message types */
+/* Queue names */
+#define DEFAULT_EM_QUEUE    "/execution_manager"
+#define DEFAULT_TASK_QUEUE  "/task_service"
+
+/* --- Data Structures & Enums --- */
+
+/* Message types identifier */
 typedef enum {
     MSG_TASK_REQUEST = 1,
     MSG_TASK_ACK,
@@ -19,35 +28,50 @@ typedef enum {
     MSG_TASK_RESULT
 } msg_type_t;
 
-/* ACK status */
+/* ACK status codes */
 typedef enum {
     ACK_OK = 0,
     ACK_ERROR = 1
 } ack_status_t;
 
-/* Task-service states */
+/* Service operational states */
 typedef enum {
-    TS_IDLE = 0,
-    TS_RUNNING,
-    TS_COMPLETED
+    IDLE = 0,
+    RUNNING,
+    COMPLETED
 } task_service_state_t;
 
-/* IPC message */
+/* Main IPC Message Structure */
 typedef struct {
     msg_type_t type;
     uint32_t   task_id;
 
     union {
-        task_t task;                  /* For TASK_REQUEST */
-        ack_status_t ack;              /* For TASK_ACK */
-        task_service_state_t status;   /* For STATUS */
-        char result[TASK_JSON_OUT_MAX];/* For TASK_RESULT */
+        task_t task;                    /* Payload for TASK_REQUEST */
+        ack_status_t ack;               /* Payload for TASK_ACK */
+        task_service_state_t status;    /* Payload for STATUS */
+        char result[MAX_TASK_JSON_OUT]; /* Payload for TASK_RESULT */
     } data;
 } ipc_msg_t;
 
-/* POSIX MQ helpers */
+/* --- POSIX MQ Helper Prototypes --- */
+
+/* Create a new queue (uses O_CREAT). Exits on failure. */
 mqd_t create_queue(const char *name, int flags);
+
+/* Open an existing queue (no O_CREAT). Returns -1 on failure. */
+mqd_t open_queue(const char *name, int flags);
+
+/* Send a typed message */
 int send_message(mqd_t qd, const ipc_msg_t *msg);
-int receive_message(mqd_t qd, ipc_msg_t *msg);
+
+/* Receive a typed message */
+ssize_t receive_message(mqd_t qd, ipc_msg_t *msg);
+
+/* Close the queue descriptor (Process level) */
+void close_queue(mqd_t qd);
+
+/* Unlink/Destroy the queue (System level) */
+void destroy_queue(const char *name);
 
 #endif /* TASK_IPC_H */

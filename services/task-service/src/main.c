@@ -1,136 +1,215 @@
-#include <stdio.h>
-#include "task_entry.h"
-
-#include "task_config.h"
-#include <stdint.h>
-
-char queue_name[64];
-
-void get_task_queue_name(uint32_t task_id) {
-    snprintf(queue_name, sizeof(queue_name), "%s_%u", TASK_QUEUE_PREFIX, task_id);
-}
-
-int main() {
-    get_task_queue_name(1);
-    printf("Queue name: %s\n", queue_name);
-    return 0;
-}
-
-
-/********* 
+#define _GNU_SOURCE
+#include <limits.h>
+#include <pthread.h>
+#include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <sys/mman.h>
+#include <errno.h>
 #include <unistd.h>
-#include <pthread.h>
+
+#include "task.h"
 #include "task_ipc.h"
+#include "task_service.h"
+#include "logger.h"
+#include "task_entry.h"
 
-mqd_t em_queue, task_queue;
 
 
-void* run_task(void* arg) {
-    task_t *task = (task_t*)arg;
+/* * Global pointer to the current task context.
+ * We use this to maintain state between different IPC messages.
+ */
+static task_context_t * task_context = NULL;
 
-    printf("[Task Service] Running task '%s' with priority %u\n", task->task_name, task->priority);
-    // Simulate computation
-    sleep(1);
 
-    // Send ACK
-    ipc_msg_t ack;
-    ack.type = MSG_TASK_ACK;
-    ack.task_id = 0; // could use task ID
-    ack.status = ACK_OK;
-    snprintf(ack.payload, MAX_MSG_SIZE, "Task '%s' completed successfully", task->task_name);
+int main(int argc, char *argv[]){
+    (void)argc;
+    (void)argv;
+    /* Task Service Initialization */
+    int exit_code = 0;
+    
 
-    send_message(em_queue, &ack);
+    /* Memory Locking: Essential for Real-Time determinism */
+    if(mlockall(MCL_CURRENT|MCL_FUTURE) == -1) {
+        perror("mlockall failed");
+        exit_code = -1;
+        goto exit_program;
+    }
 
-    free(task);
-    return NULL;
-}
+    /* Set Task and Queues Names */
+    const char* env_task_name = getenv("TASK_NAME");
+    char task_name[MAX_TASK_NAME];
+    snprintf(task_name, MAX_TASK_NAME, "%s", env_task_name != NULL ? env_task_name : DEFAULT_TASK_NAME);
 
-int main() {
-    em_queue   = create_queue(QUEUE_NAME_EM);
-    task_queue = create_queue(QUEUE_NAME_TASK);
+    const char* env_task_queue_name = getenv("TASK_QUEUE_NAME");
+    char task_queue_name[MAX_QUEUE_NAME];
+    snprintf(task_queue_name, MAX_QUEUE_NAME, "/%s", env_task_queue_name != NULL ? env_task_queue_name : DEFAULT_TASK_QUEUE);
 
-    printf("[Task Service] Waiting for messages...\n");
+    log_message(LOG_INFO, task_name, "Starting Task Service...\n");
 
-    while (1) {
-        ipc_msg_t msg;
-        receive_message(task_queue, &msg);
 
-        switch (msg.type) {
-            case MSG_TASK_REQUEST: {
-                task_t *task = malloc(sizeof(task_t));
-                memcpy(task, msg.payload, sizeof(task_t));
+    task_service_t svc;
+    if (init_task_service(&svc, task_name, task_queue_name, DEFAULT_EM_QUEUE) != 0){
+        exit_code = -1;
+        log_message(LOG_ERROR, svc.task_name, "Failed to initialize Task Service\n");
+        goto cleanup_task_service;
+    }
 
-                pthread_t thread;
-                pthread_create(&thread, NULL, run_task, task);
-                pthread_detach(thread);
-                break;
+    task_context = (task_context_t *)malloc(sizeof(task_context_t));
+    if (!task_context){
+        exit_code = -1;
+        log_message(LOG_ERROR, svc.task_name, "Failed to allocate task context\n");
+        goto cleanup_task_service;
+    }
+
+    memset(task_context, 0, sizeof(task_context_t));
+    pthread_mutex_init(&task_context->lock, NULL);
+    task_context->status = IDLE;
+
+
+    ipc_msg_t in_msg, out_msg;
+
+
+    /* Main loop: Task Service waits for commands and manages them */
+    while(1){
+        if(receive_message(svc.rx_fd, &in_msg) > 0){
+            switch(in_msg.type){
+
+                /* --- HANDLE NEW TASK REQUEST --- */
+                case MSG_TASK_REQUEST:
+                    log_message(LOG_INFO, svc.task_name, "Received Task Request\n");
+                    if(task_context->status != IDLE){
+                        log_message(LOG_INFO, svc.task_name, "Cannot recive request, not IDLE state");
+                        
+                        /* Send Error ACK */
+                        out_msg.type = MSG_TASK_ACK;
+                        out_msg.data.ack = ACK_ERROR;
+                        send_message(svc.tx_fd, &out_msg);
+                        continue;
+                    }
+
+                    /* Task Logic */
+                    /* Parse Inputs */
+                    log_message(LOG_INFO, svc.task_name, "Received JSON: %s\n", in_msg.data.task.input);
+                    if (convert_input(in_msg.data.task.input, &task_context->input) != 0) {
+                        log_message(LOG_ERROR, svc.task_name, "Error parsing input JSON\n");
+                        
+                        /* Send Error ACK */
+                        out_msg.type = MSG_TASK_ACK;
+                        out_msg.data.ack = ACK_ERROR;
+                        send_message(svc.tx_fd, &out_msg);
+                        continue;
+                    }
+
+                    /* Prepare Thread Attributes */
+                    pthread_attr_t attr;
+                    struct sched_param param;
+                    pthread_t thread;
+                    int ret;
+
+                    pthread_attr_init(&attr);
+
+                    /* Set Stack Size (Avoid page faults) */
+                    pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN + 0x4000);
+
+                    /* CPU Affinity */
+                    cpu_set_t cpuset;
+                    CPU_ZERO(&cpuset);
+                    CPU_SET(2, &cpuset);
+                    ret = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset);
+                    if (ret != 0) {
+                        log_message(LOG_WARN, svc.task_name, "Affinity failed: %s\n", strerror(ret));
+                    } 
+
+
+                    /* Set Scheduling Policy */
+                    int policy = SCHED_OTHER; // Default
+                    if (in_msg.data.task.policy == SCHED_POLICY_FIFO)    policy = SCHED_FIFO;
+                    else if (in_msg.data.task.policy == SCHED_POLICY_RR) policy = SCHED_RR;
+                    
+                    if (pthread_attr_setschedpolicy(&attr, policy) != 0) {
+                        log_message(LOG_WARN, svc.task_name, "Failed to set policy (Need root?)\n");
+
+                        /* Send Error ACK */
+                        out_msg.type = MSG_TASK_ACK;
+                        out_msg.data.ack = ACK_ERROR;
+                        send_message(svc.tx_fd, &out_msg);
+                        continue;
+                    }
+                    
+                    /* Set Priority */
+                    param.sched_priority = in_msg.data.task.priority;
+                    pthread_attr_setschedparam(&attr, &param);
+
+                    /* Inherit Scheduler */
+                    pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+
+                    /* Create Thread */
+                    ret = pthread_create(&thread, &attr, task_main, task_context);
+                    if (ret != 0) {
+                        log_message(LOG_WARN, svc.task_name, "Failed to create thread: %s\n", strerror(ret));
+                        
+                        /* Send Error ACK */
+                        out_msg.type = MSG_TASK_ACK;
+                        out_msg.data.ack = ACK_ERROR;
+                        send_message(svc.tx_fd, &out_msg);
+                        continue;
+                        
+                    }
+
+                    pthread_detach(thread);
+                    pthread_attr_destroy(&attr);
+
+                    /* Send ACK */
+                    out_msg.type = MSG_TASK_ACK;
+                    out_msg.data.ack = ACK_OK;
+                    if (send_message(svc.tx_fd, &out_msg) != 0) {
+                        log_message(LOG_ERROR, svc.task_name, "Failed to send ACK: %s\n", strerror(errno));
+                    }
+                    break;
+
+
+                /* --- HANDLE STATUS REQUEST --- */
+                case MSG_GET_STATUS:
+                    log_message(LOG_INFO, svc.task_name, "Received Status Request\n");
+
+                    /* Status Logic */
+                    out_msg.type = MSG_TASK_STATUS;
+
+                    pthread_mutex_lock(&task_context->lock);
+                    out_msg.data.status = task_context->status;
+                    pthread_mutex_unlock(&task_context->lock);
+                    
+                    send_message(svc.tx_fd, &out_msg);
+
+                    break;
+
+                /* --- HANDLE RESULTS REQUEST --- */
+                case MSG_GET_RESULTS:
+                    log_message(LOG_INFO, svc.task_name, "Received Results Request\n");
+                    
+                    /* Results Logic */
+                    out_msg.type = MSG_TASK_RESULT;
+
+                    pthread_mutex_lock(&task_context->lock);
+                    convert_output(&task_context->output, out_msg.data.result);
+                    task_context->status = IDLE;
+                    pthread_mutex_unlock(&task_context->lock);
+                    
+                    send_message(svc.tx_fd, &out_msg);
+                    break;
+                    
+                default:
+                    log_message(LOG_WARN, svc.task_name, "Received unknown message type %d", in_msg.type);
+
             }
-
-            case MSG_GET_STATUS: {
-                ipc_msg_t status_msg;
-                status_msg.type    = MSG_TASK_STATUS;
-                status_msg.task_id = msg.task_id;
-                status_msg.status  = ACK_OK;
-                snprintf(status_msg.payload, MAX_MSG_SIZE, "Task %u status: running", msg.task_id);
-                send_message(em_queue, &status_msg);
-                break;
-            }
-
-            case MSG_GET_RESULTS: {
-                ipc_msg_t result_msg;
-                result_msg.type    = MSG_TASK_RESULT;
-                result_msg.task_id = msg.task_id;
-                result_msg.status  = ACK_OK;
-                snprintf(result_msg.payload, MAX_MSG_SIZE, "{\"result\": 42}");
-                send_message(em_queue, &result_msg);
-                break;
-            }
-
-            default:
-                printf("[Task Service] Unknown message type %d\n", msg.type);
         }
     }
 
-    close_queue(em_queue, QUEUE_NAME_EM);
-    close_queue(task_queue, QUEUE_NAME_TASK);
-    return 0;
-}
-
-***************/
-
-/* 
-#include <stdio.h>
-#include <string.h>
-
-#include "task.h"
-#include "logger.h"
-
-int main(void) {
-    task_t task;
-
     
-    strncpy(task.task_name, "test_task", TASK_NAME_MAX);
-    task.policy = SCHED_POLICY_FIFO;
-    task.priority = 50;
+cleanup_task_service:
+    close_task_service(&svc);
 
-    strncpy(task.input, "{\"a\": 3, \"b\": 4}", TASK_JSON_IN_MAX);
-    strncpy(task.output, "{\"sum\": 7, \"product\": 12}", TASK_JSON_OUT_MAX);
-
-    
-    printf("Task name   : %s\n", task.task_name);
-    printf("Policy      : %d\n", task.policy);
-    printf("Priority    : %u\n", task.priority);
-    printf("Input JSON  : %s\n", task.input);
-    printf("Output JSON : %s\n", task.output);
-
-    l 
-    log_message(LOG_WARN, "task_service", "Task execution delayed!");
-    log_message(LOG_ERROR, "rt_task", "Thread creation failed with code %d", -1);
-
-    return 0;
+exit_program:
+    return exit_code;
 }
-
-  */

@@ -72,7 +72,7 @@ int redis_read_schedule(redisContext *ctx, schedule_t *sched)
         r = redisCommand(ctx, "HGETALL %s", key);
         if (!r || r->type != REDIS_REPLY_ARRAY) continue;
 
-        task_t *task = &sched->tasks[i];
+        rtask_t *task = &sched->tasks[i];
 
         if ((v = hget(r, "name")))
             strncpy(task->name, v, sizeof(task->name));

@@ -2,18 +2,38 @@
 #define TASK_SERVICE_H
 
 #include <stdint.h>
-#include <pthread.h>
+#include <unistd.h>       /* For sleep() */
+#include <errno.h>        /* For errno, ENOENT */
+#include <stdio.h>
+#include <string.h>
 
-/* Possible states */
-typedef enum { IDLE, RUNNING, COMPLETED, FAULT } task_state_t;
+#include "task.h"
+#include "logger.h"
+#include "task_ipc.h"
+
+#define DEFAULT_TASK_NAME "task-service"
+
+
 
 /* Task descriptor */
 typedef struct {
-    pthread_t thread;
-    pthread_attr_t attr;
-    task_state_t state;
-    int priority;
+    /* Static configuration */
+    char task_name[MAX_TASK_NAME];
+    char rx_queue_name[MAX_QUEUE_NAME];     // Listening queue (Task Queue)
+    char tx_queue_name[MAX_QUEUE_NAME];     // Response queue (EM Queue) 
+
+    /* Runtime state */
+    mqd_t rx_fd;                            // Input queue descriptor
+    mqd_t tx_fd;                            // Output queue descriptor
+
 } task_service_t;
+
+
+
+int init_task_service(task_service_t* svc, const char* name, const char* rx_q, const char* tx_q);
+void run_task_service(task_service_t* svc);
+void close_task_service(task_service_t* svc);
+
 
 
 #endif /* TASK_SERVICE_H */

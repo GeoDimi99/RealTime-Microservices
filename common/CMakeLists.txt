@@ -10,6 +10,9 @@ target_include_directories(common PUBLIC
 )
 
 # Add source files if you have .c in common/src
-target_sources(common PRIVATE src/logger.c src/task_ipc.c)
+target_sources(common PRIVATE   src/logger.c 
+                                src/task_ipc.c
+                                src/task.c
+                                )
 
 # If you only have headers, the library can be empty

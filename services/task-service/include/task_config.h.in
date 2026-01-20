@@ -1,4 +1,0 @@
-#pragma once
-
-// Queue prefix injected at build time
-#define TASK_QUEUE_PREFIX "@TASK_QUEUE_PREFIX@"

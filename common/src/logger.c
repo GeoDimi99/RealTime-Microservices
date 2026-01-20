@@ -34,7 +34,8 @@ void log_message(log_level_t level, const char *source, const char *fmt, ...) {
 
     printf("%s [%s] %s: ", timestamp, level_str[level], source);
     vprintf(fmt, args);
-    printf("\n");
+    
+
 
     va_end(args);
 

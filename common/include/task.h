@@ -2,13 +2,14 @@
 #define TASK_H
 
 #include <stdint.h>
+#include <string.h>
 
-#define TASK_NAME_MAX        64
-#define TASK_JSON_IN_MAX     512
-#define TASK_JSON_OUT_MAX    512
+#define MAX_TASK_NAME        64
+#define MAX_TASK_JSON_IN     512
+#define MAX_TASK_JSON_OUT    512
 
-#define TASK_PRIORITY_MIN 1
-#define TASK_PRIORITY_MAX 99
+#define MIN_TASK_PRIORITY 0
+#define MAX_TASK_PRIORITY 99
 
 /* Scheduling Policies */
 typedef enum {
@@ -19,11 +20,14 @@ typedef enum {
 
 /* Task struct */
 typedef struct {
-    char task_name[TASK_NAME_MAX];
+    char task_name[MAX_TASK_NAME];
     sched_policy_t policy;
-    uint8_t priority;  /* 1–99 */
-    char input[TASK_JSON_IN_MAX];
-    char output[TASK_JSON_OUT_MAX];
+    uint8_t priority;  /* 0–99 */
+    char input[MAX_TASK_JSON_IN];
+    char output[MAX_TASK_JSON_OUT];
 } task_t;
+
+int init_task(task_t* task, const char* name, sched_policy_t policy, uint8_t priority, const char* input, const char* output);
+
 
 #endif /* TASK_H */
