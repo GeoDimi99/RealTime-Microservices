@@ -137,7 +137,7 @@ void *task_main(void *arg){
     /* * Accessing ctx->input is thread-safe here because 
      * the Main thread does not modify it after creation.
      */
-    int res = ctx->input.a / ctx->input.b;
+    int res = ctx->input.a + ctx->input.b;
 
     // Simulate heavy workload if needed
     // usleep(1000); 

@@ -54,6 +54,33 @@ int main(int argc, char *argv[]){
                 goto cleanup;
             }
 
+            task_t task_2;
+            if (init_task(&task_2,"multiply", SCHED_POLICY_FIFO, 2, "{\"a\": 10, \"b\": 2}", "{\"result\": 0}") != 0){
+                exit_code = -1;
+                log_message(LOG_ERROR, em.execution_manager_name, "Failed to add Task to Schedule\n");
+                goto cleanup;
+            }
+
+            if(add_task_to_schedule(&sched, task_2) != 0){
+                exit_code = -1;
+                log_message(LOG_ERROR, em.execution_manager_name, "Failed to add Task to Schedule\n");
+                goto cleanup;
+            }
+
+            task_t task_3;
+            if (init_task(&task_3,"divide", SCHED_POLICY_FIFO, 1, "{\"a\": 10, \"b\": 5}", "{\"result\": 0}") != 0){
+                exit_code = -1;
+                log_message(LOG_ERROR, em.execution_manager_name, "Failed to add Task to Schedule\n");
+                goto cleanup;
+            }
+
+            if(add_task_to_schedule(&sched, task_3) != 0){
+                exit_code = -1;
+                log_message(LOG_ERROR, em.execution_manager_name, "Failed to add Task to Schedule\n");
+                goto cleanup;
+            }
+
+
             if (set_execution_manager_schedule(&em, &sched) != 0){
                 exit_code = -1;
                 log_message(LOG_ERROR, em.execution_manager_name, "Failed to set Execution Manager Schedule\n");
