@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(task_service C)
+project(task_wrapper C)
 
 
 set(CMAKE_C_STANDARD 99)
@@ -12,16 +12,16 @@ add_compile_definitions(_GNU_SOURCE)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Add executable
-add_executable(task-service
+add_executable(task-wrapper
     src/main.c
     src/logger.c  # directly add logger.c to build
     src/task_ipc.c
-    src/task_service.c
+    src/task_wrapper.c
     src/task.c
 )
 
 # Threads
 find_package(Threads REQUIRED)
-target_link_libraries(task-service PRIVATE Threads::Threads)
+target_link_libraries(task-wrapper PRIVATE Threads::Threads)
 
 

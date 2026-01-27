@@ -1,14 +1,14 @@
-#include "task_service.h"
+#include "task_wrapper.h"
 
 
 
 /**
- * Initializes the task service context and queues.
- * 1. Sets up the service name and queue names.
+ * Initializes the task wrapper context and queues.
+ * 1. Sets up the wrapper name and queue names.
  * 2. Creates/Resets the RX queue (Input).
  * 3. Polls/Waits for the TX queue (Output/Manager) to become available.
  */
-int init_task_service(task_service_t* svc, const char* name, const char* rx_q, const char* tx_q) {
+int init_task_wrapper(task_wrapper_t* svc, const char* name, const char* rx_q, const char* tx_q) {
     if (!svc) return -1;
 
     /* Initialize context strings and state */
@@ -16,7 +16,7 @@ int init_task_service(task_service_t* svc, const char* name, const char* rx_q, c
     snprintf(svc->rx_queue_name, MAX_QUEUE_NAME, "%s", rx_q);
     snprintf(svc->tx_queue_name, MAX_QUEUE_NAME, "%s", tx_q);
 
-    /* Setup RX Queue (Service Input) */
+    /* Setup RX Queue (Wrapper Input) */
     /* Destroy the queue if it was left over from a previous crash. This ensures we start with an empty queue. */
     destroy_queue(svc->rx_queue_name);
     svc->rx_fd = create_queue(svc->rx_queue_name, O_RDONLY); 
@@ -56,7 +56,7 @@ int init_task_service(task_service_t* svc, const char* name, const char* rx_q, c
 /**
  * Cleanups resources.
  */
-void close_task_service(task_service_t* svc) {
+void close_task_wrapper(task_wrapper_t* svc) {
     if (svc) {
         log_message(LOG_INFO, svc->task_name , "Shutting down...\n");
         close_queue(svc->rx_fd);

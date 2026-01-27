@@ -9,16 +9,16 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Copy task-service source
+# Copy task-wrapper source
 
-COPY services/task-service/ ./task-service/
-COPY common/include/ ./task-service/include/
-COPY common/src/ ./task-service/src/
-
-
+COPY services/task-wrapper/ ./task-wrapper/
+COPY common/include/ ./task-wrapper/include/
+COPY common/src/ ./task-wrapper/src/
 
 
-WORKDIR /app/task-service
+
+
+WORKDIR /app/task-wrapper
 
 # Configure and build
 RUN cmake -S . -B build
@@ -27,4 +27,4 @@ RUN cmake --build build
 #ENV TASK_NAME=sum
 #ENV TASK_QUEUE_NAME=sum
 
-ENTRYPOINT ["./build/task-service"]
+ENTRYPOINT ["./build/task-wrapper"]

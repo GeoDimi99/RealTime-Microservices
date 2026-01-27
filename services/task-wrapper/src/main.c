@@ -10,9 +10,11 @@
 
 #include "task.h"
 #include "task_ipc.h"
-#include "task_service.h"
+#include "app_task.h"
 #include "logger.h"
-#include "task_entry.h"
+#include "task_wrapper.h"
+
+
 
 
 
@@ -25,7 +27,7 @@ static task_context_t * task_context = NULL;
 int main(int argc, char *argv[]){
     (void)argc;
     (void)argv;
-    /* Task Service Initialization */
+    /* Task wrapper Initialization */
     int exit_code = 0;
     
 
@@ -45,21 +47,21 @@ int main(int argc, char *argv[]){
     char task_queue_name[MAX_QUEUE_NAME];
     snprintf(task_queue_name, MAX_QUEUE_NAME, "/%s", env_task_queue_name != NULL ? env_task_queue_name : DEFAULT_TASK_QUEUE);
 
-    log_message(LOG_INFO, task_name, "Starting Task Service...\n");
+    log_message(LOG_INFO, task_name, "Starting Task wrapper...\n");
 
 
-    task_service_t svc;
-    if (init_task_service(&svc, task_name, task_queue_name, DEFAULT_EM_QUEUE) != 0){
+    task_wrapper_t svc;
+    if (init_task_wrapper(&svc, task_name, task_queue_name, DEFAULT_EM_QUEUE) != 0){
         exit_code = -1;
-        log_message(LOG_ERROR, svc.task_name, "Failed to initialize Task Service\n");
-        goto cleanup_task_service;
+        log_message(LOG_ERROR, svc.task_name, "Failed to initialize Task wrapper\n");
+        goto cleanup_task_wrapper;
     }
 
     task_context = (task_context_t *)malloc(sizeof(task_context_t));
     if (!task_context){
         exit_code = -1;
         log_message(LOG_ERROR, svc.task_name, "Failed to allocate task context\n");
-        goto cleanup_task_service;
+        goto cleanup_task_wrapper;
     }
 
     memset(task_context, 0, sizeof(task_context_t));
@@ -70,7 +72,7 @@ int main(int argc, char *argv[]){
     ipc_msg_t in_msg, out_msg;
 
 
-    /* Main loop: Task Service waits for commands and manages them */
+    /* Main loop: Task wrapper waits for commands and manages them */
     while(1){
         if(receive_message(svc.rx_fd, &in_msg) > 0){
             switch(in_msg.type){
@@ -207,8 +209,8 @@ int main(int argc, char *argv[]){
     }
 
     
-cleanup_task_service:
-    close_task_service(&svc);
+cleanup_task_wrapper:
+    close_task_wrapper(&svc);
 
 exit_program:
     return exit_code;
