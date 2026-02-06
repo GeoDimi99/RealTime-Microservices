@@ -1,0 +1,13 @@
+FROM ${base_image}
+
+# Infrastructure setup
+WORKDIR /app
+
+# Inject user-defined logic
+COPY ${source_dir}/app_task.h ./src/logic/app_task.h
+
+# Build-time operations
+RUN make clean && make all
+
+# Execution
+ENTRYPOINT ["./microservice_bin"]
