@@ -1,0 +1,42 @@
+images:
+  - alias: "sum"
+    src: "sum"  
+  
+  - alias: "subtract"
+    src: "subtract"
+
+
+schedule:
+  name: "Demo Schedule"
+  version: "0.0.1"
+  
+  tasks:
+  
+    - id: 1
+      image: "sum"  
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+      outputs:
+        result:
+          type: int
+    
+
+    - id: 2
+      image: "subtract"  
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+      outputs:
+        result:
+          type: int
