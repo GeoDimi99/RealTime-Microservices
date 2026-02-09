@@ -1,6 +1,7 @@
 
 images:
   base: "geodimi99/realtime-microservices:task-wrapper"
+  repo: "geodimi99/realtime-microservices"
   tasks:
     - alias: "sum"
       src: "sum"  
