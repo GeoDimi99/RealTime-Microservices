@@ -1,7 +1,9 @@
 import argparse
 import os
 import sys
-
+from pathlib import Path
+from dotenv import load_dotenv
+from publisher.publisher import Publisher
 from dslparser.parser import DSL_Parser
 from dslparser.exceptions import ParserError
 from builder.builder import Builder
@@ -32,8 +34,17 @@ def main():
 
     args = parser.parse_args()
 
+    # Init phase : set all builder variables 
     file_manifest = args.file_manifest
     context = args.context
+    base_dir = os.path.dirname(__file__)
+    env_path = Path(base_dir) / ".env"
+    load_dotenv(dotenv_path=env_path)
+
+    docker_user = os.getenv("DOCKER_USER")
+    docker_password = os.getenv("DOCKER_TOKEN")
+
+    
 
     # Parsing phase : read the manifest file
     try:
@@ -41,6 +52,7 @@ def main():
         data = dslparser.parse()
         images = data.get('images', {})
         base_image = images.get('base', '')
+        repository_url = images.get('repo', '')
         tasks = images.get('tasks', [])
         
 
@@ -67,7 +79,7 @@ def main():
     # --- Building phase ---
     print(f"Starting build process for {len(images)} services...")
     
-    image_builder = Builder(context_path=args.context, base_image=base_image)
+    image_builder = Builder(base_dir=base_dir, context_path=args.context, base_image=base_image)
 
     for img in tasks:
         alias = img['alias']  
@@ -81,6 +93,23 @@ def main():
         except Exception as e:
             print(f"Error building {alias}: {e}", file=sys.stderr)
             continue
+    
+    # --- Publishing phase ---
+    publisher = Publisher()
+
+    for img in tasks:
+        alias = img['alias']
+        try:
+            # Push using the DockerHub username
+            publisher.publish(
+                repository_url=repository_url, 
+                local_image_name=alias
+            )
+        except Exception as e:
+            print(f"Skipping push for {alias} due to error.")
+
+
+    
 
 if __name__ == "__main__":
     main()

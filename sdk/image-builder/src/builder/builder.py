@@ -3,12 +3,11 @@ import docker
 from string import Template
 
 class Builder:
-    # Path to the template within the package structure
-    TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), "template", "Dockerfile.j2")
 
-    def __init__(self, context_path, base_image):
+    def __init__(self, base_dir, context_path, base_image):
         self.context_path = context_path
         self.base_image = base_image
+        self.template_path = os.path.join(base_dir, "builder", "template", "Dockerfile.j2")
         
         try:
             # Connect to the local Docker daemon using environment variables
@@ -17,9 +16,9 @@ class Builder:
             raise RuntimeError(f"Could not connect to Docker daemon: {e}")
 
     def _get_template(self):
-        if not os.path.exists(self.TEMPLATE_PATH):
-            raise FileNotFoundError(f"Template not found at: {self.TEMPLATE_PATH}")
-        with open(self.TEMPLATE_PATH, "r") as f:
+        if not os.path.exists(self.template_path):
+            raise FileNotFoundError(f"Template not found at: {self.template_path}")
+        with open(self.template_path, "r") as f:
             return Template(f.read())
 
     def generate_dockerfile(self, service_name, source_dir):
