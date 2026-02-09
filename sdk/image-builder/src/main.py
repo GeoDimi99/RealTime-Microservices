@@ -74,11 +74,9 @@ def main():
         src_dir = img['src']  
         
         try:
-            print(f"Building {alias}...")
+
             dockerfile_path = image_builder.generate_dockerfile(alias, src_dir)
-            #print(dockerfile_name)
             image_builder.run_build(image_tag=alias, dockerfile_path=dockerfile_path)
-            
             
         except Exception as e:
             print(f"Error building {alias}: {e}", file=sys.stderr)
