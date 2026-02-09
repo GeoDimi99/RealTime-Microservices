@@ -18,13 +18,13 @@ COPY common/src/ ./task-wrapper/src/
 
 
 
-WORKDIR /app/task-wrapper
+#WORKDIR /app/task-wrapper
 
 # Configure and build
-RUN cmake -S . -B build
-RUN cmake --build build
+#RUN cmake -S . -B build
+#RUN cmake --build build
 
 #ENV TASK_NAME=sum
 #ENV TASK_QUEUE_NAME=sum
 
-ENTRYPOINT ["./build/task-wrapper"]
+#ENTRYPOINT ["./build/task-wrapper"]

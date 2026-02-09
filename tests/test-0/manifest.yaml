@@ -1,9 +1,12 @@
+
 images:
-  - alias: "sum"
-    src: "sum"  
+  base: "geodimi99/realtime-microservices:task-wrapper"
+  tasks:
+    - alias: "sum"
+      src: "sum"  
   
-  - alias: "subtract"
-    src: "subtract"
+    - alias: "subtract"
+      src: "subtract"
 
 
 schedule:

@@ -1,28 +1,77 @@
 import os
+import docker
 from string import Template
 
 class Builder:
-    BASE_IMAGE = "geodimi99/realtime-microservices:task-wrapper"
-    TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), "templates/Dockerfile.j2")
+    # Path to the template within the package structure
+    TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), "template", "Dockerfile.j2")
 
-    def __init__(self, context_path):
+    def __init__(self, context_path, base_image):
         self.context_path = context_path
+        self.base_image = base_image
+        
+        try:
+            # Connect to the local Docker daemon using environment variables
+            self.client = docker.from_env()
+        except Exception as e:
+            raise RuntimeError(f"Could not connect to Docker daemon: {e}")
 
     def _get_template(self):
+        if not os.path.exists(self.TEMPLATE_PATH):
+            raise FileNotFoundError(f"Template not found at: {self.TEMPLATE_PATH}")
         with open(self.TEMPLATE_PATH, "r") as f:
             return Template(f.read())
 
     def generate_dockerfile(self, service_name, source_dir):
+        """Generates a Dockerfile inside the specific microservice directory."""
         template = self._get_template()
-        
-        # Map Python variables to Template placeholders
         content = template.substitute(
-            base_image=self.BASE_IMAGE,
+            base_image=self.base_image,
             source_dir=source_dir
         )
-
-        df_path = os.path.join(self.context_path, f"Dockerfile.{service_name}")
+        
+        # Place Dockerfile inside the source directory (e.g., test-0/sum/Dockerfile.sum)
+        target_dir = os.path.join(self.context_path, source_dir)
+        df_name = f"Dockerfile.{service_name}"
+        df_path = os.path.join(target_dir, df_name)
+        
         with open(df_path, "w") as f:
             f.write(content)
-            
         return df_path
+
+    def run_build(self, image_tag, dockerfile_path):
+        """Builds the image using the Docker SDK."""
+        print(f"--- Starting Build: {image_tag} ---")
+        
+        # The SDK needs the Dockerfile path relative to the build context
+        relative_df_path = os.path.relpath(dockerfile_path, self.context_path)
+
+        try:
+            # .build() returns a generator for the log output
+            # 'path' is the build context (where all microservice folders live)
+            print("context:",self.context_path)
+            generator = self.client.api.build(
+                path=self.context_path,
+                dockerfile=relative_df_path,
+                tag=image_tag,
+                decode=True,
+                rm=True,  # Automatically remove intermediate containers
+                pull=True
+            )
+
+            for chunk in generator:
+                if 'stream' in chunk:
+                    # Print build/compilation logs to stdout
+                    print(chunk['stream'].strip())
+                elif 'error' in chunk:
+                    raise Exception(f"Docker Build Error: {chunk['error']}")
+
+            print(f"--- Successfully built {image_tag} ---\n")
+            
+        except Exception as e:
+            print(f"Build failed: {e}")
+            raise
+        finally:
+            # Clean up: Remove the generated Dockerfile
+            if os.path.exists(dockerfile_path):
+                os.remove(dockerfile_path)

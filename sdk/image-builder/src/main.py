@@ -4,6 +4,7 @@ import sys
 
 from dslparser.parser import DSL_Parser
 from dslparser.exceptions import ParserError
+from builder.builder import Builder
 
 
 
@@ -38,17 +39,20 @@ def main():
     try:
         dslparser = DSL_Parser(args.file_manifest)
         data = dslparser.parse()
+        images = data.get('images', {})
+        base_image = images.get('base', '')
+        tasks = images.get('tasks', [])
         
+
         # Check if the 'src' directories exist relative to the context
-        for img in data.get('images', []):
+        for img in tasks:
             src_path = os.path.join(args.context, img['src'])
             if not os.path.isdir(src_path):
                 # We raise this here because main knows about the context path
                 raise ImageBuilderError(f"Source path '{src_path}' for alias '{img['alias']}' does not exist.")
         
-        images = data.get('images', [])
         print("Manifest validated. Ready to build.")
-
+        
     except ParserError as e:
         # Professional CLI error reporting
         print(f"Build Error: {e}", file=sys.stderr)
@@ -59,10 +63,26 @@ def main():
         print(f"An unexpected internal error occurred: {e}", file=sys.stderr)
         sys.exit(1)
     
+    
+    # --- Building phase ---
+    print(f"Starting build process for {len(images)} services...")
+    
+    image_builder = Builder(context_path=args.context, base_image=base_image)
 
-    # Building phase :
-    print(images)
-
+    for img in tasks:
+        alias = img['alias']  
+        src_dir = img['src']  
+        
+        try:
+            print(f"Building {alias}...")
+            dockerfile_path = image_builder.generate_dockerfile(alias, src_dir)
+            #print(dockerfile_name)
+            image_builder.run_build(image_tag=alias, dockerfile_path=dockerfile_path)
+            
+            
+        except Exception as e:
+            print(f"Error building {alias}: {e}", file=sys.stderr)
+            continue
 
 if __name__ == "__main__":
     main()
