@@ -1,219 +1,110 @@
-#include <stdbool.h>
-#include "logger.h"
-#include "execution_manager.h"
-#include "task.h"
+#include <stdio.h>
+#include <glib.h>
 #include "schedule.h"
-#include "task_ipc.h"
 
-int main(int argc, char *argv[]){
+/**
+ * Helper to inspect the internal state of the schedule.
+ * It demonstrates how to iterate through the GQueue (start info)
+ * and the GHashTable (end info).
+ */
+void print_schedule_report(schedule_t *sched) {
+    if (!sched) return;
 
-    /* Execution Manager Initializzaztion */
-    int exit_code = 0;
+    printf("\n--- SCHEDULE REPORT: %s (v%s) ---\n", 
+           sched->schedule_name->str, sched->schedule_version->str);
+    printf("Total Duration: %ld units\n", sched->schedule_duration);
 
-    execution_manager_t em;
-    if (init_execution_manager(&em, DEFAULT_EXECUTION_MANAGER_NAME, DEFAULT_EM_QUEUE) != 0){
-        exit_code = -1;
-        log_message(LOG_ERROR, em.execution_manager_name, "Failed to initialize Execution Manager\n");
-        goto cleanup_em;
+    // 1. Inspect Activation Queue (schedule_start_info)
+    printf("\n[Activation Timeline (GQueue)]:\n");
+    GList *q_iter;
+    for (q_iter = sched->schedule_start_info->head; q_iter != NULL; q_iter = q_iter->next) {
+        start_entry_t *entry = (start_entry_t *)q_iter->data;
+        printf("  Time %ld: ", entry->start_time);
+        
+        for (GSList *s_iter = entry->activation_data; s_iter != NULL; s_iter = s_iter->next) {
+            activation_data_t *act = (activation_data_t *)s_iter->data;
+            printf("[%s (ID:%u)] ", act->task_name->str, act->task_id);
+        }
+        printf("\n");
     }
 
-    /* Prepera datas */
-    schedule_t sched;
-
-
-    /* Wait for New Schedule */
-    bool new_schedule = true;
-
-    /* Start Execution Managment */
-    ipc_msg_t in_msg, out_msg;
-    while(1){
-
-
-        /* Compare Schedule Version */
-
-        
-        if(new_schedule){
-            /* Set new schedule */
-
-            if (init_schedule(&sched, "Schedule", "0.1") != 0){
-                exit_code = -1;
-                log_message(LOG_ERROR, em.execution_manager_name, "Failed to initialize Schedule\n");
-                goto cleanup;
-            }
-
-            task_t task_1;
-            if (init_task(&task_1,"sum", SCHED_POLICY_FIFO, 3, "{\"a\": 10, \"b\": 12}", "{\"result\": 0}") != 0){
-                exit_code = -1;
-                log_message(LOG_ERROR, em.execution_manager_name, "Failed to initialize Task\n");
-                goto cleanup;
-            }
-
-            if(add_task_to_schedule(&sched, task_1) != 0){
-                exit_code = -1;
-                log_message(LOG_ERROR, em.execution_manager_name, "Failed to add Task to Schedule\n");
-                goto cleanup;
-            }
-
-            task_t task_2;
-            if (init_task(&task_2,"multiply", SCHED_POLICY_FIFO, 2, "{\"a\": 10, \"b\": 2}", "{\"result\": 0}") != 0){
-                exit_code = -1;
-                log_message(LOG_ERROR, em.execution_manager_name, "Failed to add Task to Schedule\n");
-                goto cleanup;
-            }
-
-            if(add_task_to_schedule(&sched, task_2) != 0){
-                exit_code = -1;
-                log_message(LOG_ERROR, em.execution_manager_name, "Failed to add Task to Schedule\n");
-                goto cleanup;
-            }
-
-            task_t task_3;
-            if (init_task(&task_3,"divide", SCHED_POLICY_FIFO, 1, "{\"a\": 10, \"b\": 5}", "{\"result\": 0}") != 0){
-                exit_code = -1;
-                log_message(LOG_ERROR, em.execution_manager_name, "Failed to add Task to Schedule\n");
-                goto cleanup;
-            }
-
-            if(add_task_to_schedule(&sched, task_3) != 0){
-                exit_code = -1;
-                log_message(LOG_ERROR, em.execution_manager_name, "Failed to add Task to Schedule\n");
-                goto cleanup;
-            }
-
-
-            if (set_execution_manager_schedule(&em, &sched) != 0){
-                exit_code = -1;
-                log_message(LOG_ERROR, em.execution_manager_name, "Failed to set Execution Manager Schedule\n");
-                goto cleanup;
-            }
-
-
-            
-            new_schedule = false;
+    // 2. Inspect Results Array (schedule_results)
+    printf("\n[Results Storage (GArray)]:\n");
+    for (guint i = 0; i < sched->schedule_results->len; i++) {
+        task_result_t *res = &g_array_index(sched->schedule_results, task_result_t, i);
+        // Only print slots that were actually initialized (remaining_runs > 0)
+        if (res->remaining_runs > 0) {
+            printf("  Index [%u]: Remaining Runs: %u, JSON: %s\n", 
+                   i, res->remaining_runs, res->output_data->str);
         }
+    }
+    printf("--------------------------------------------\n\n");
+}
 
-        /* Run The Schedule */
-        for(int i = 0; i < em.schedule.num_tasks; i++){
+int main(int argc, char *argv[]) {
+    printf("============================================\n");
+    printf("   SCHEDULE INTERFACE ARCHITECTURE TESTER   \n");
+    printf("============================================\n\n");
 
-            /* Craft the message REQUEST */
-            out_msg =  (ipc_msg_t){0};
-            out_msg.type = MSG_TASK_REQUEST;
-            out_msg.data.task = em.schedule.tasks[i];
+    /* TEST 1: Version Comparison Logic */
+    printf("[Test 1] Testing Versioning Logic...\n");
+    const gchar *v1 = "1.2.0";
+    const gchar *v2 = "1.10.2";
+    int cmp = compare_versions(v1, v2);
+    printf("  Comparing %s vs %s: %s\n\n", v1, v2, (cmp < 0) ? "v1 is older" : "v1 is newer");
 
-            /* Send the message REQUEST */
-            log_message(LOG_INFO, em.execution_manager_name, "Sending Task Request to %s\n",em.schedule.tasks[i].task_name);
-            if(send_message(em.tx_fd[i], &out_msg) != 0){
-                exit_code = -1;
-                log_message(LOG_ERROR, em.execution_manager_name, "Failed to send message to task queue\n");
-                goto cleanup;
-            }
-
-            /* Receive the ACK {OK, ERROR} */
-            bool ack_ok = false;
-            while(!ack_ok){
-                if (receive_message(em.rx_fd, &in_msg) > 0){
-                    if (in_msg.type == MSG_TASK_ACK){
-                        switch(in_msg.data.ack){
-                            case ACK_OK:
-                                log_message(LOG_INFO, em.execution_manager_name, "Received Task ACK with OK\n");
-                                ack_ok = true;
-                                break;    
-                            case ACK_ERROR:
-                                log_message(LOG_INFO, em.execution_manager_name, "Received Task ACK with ERROR\n");
-                                break;
-                            default:
-                                log_message(LOG_INFO, em.execution_manager_name, "Received Unknown Task ACK\n");
-                        }
-                    } else {
-                        log_message(LOG_WARN, em.execution_manager_name, "Received unknown message type %d", in_msg.type);
-                    }
-                    
-            
-                }
-            }
-
-            /* Receive the Task REsult  */
-            bool result_received= false;
-            while(!result_received){
-                /* Craft GET STATUS message */
-                out_msg =  (ipc_msg_t){0};
-                out_msg.type = MSG_GET_STATUS;
-
-                /* Send GET STATUS message */
-                log_message(LOG_INFO, em.execution_manager_name, "Sending Status Request to %s\n",em.schedule.tasks[i].task_name);
-                if(send_message(em.tx_fd[i], &out_msg) != 0){
-                    exit_code = -1;
-                    log_message(LOG_ERROR, em.execution_manager_name, "Failed to send message to task queue\n");
-                    goto cleanup;
-                }
-
-                /* Receive Task Status */
-                if (receive_message(em.rx_fd, &in_msg) > 0){
-                    if (in_msg.type == MSG_TASK_STATUS){
-                        switch(in_msg.data.status){
-                            
-                            case IDLE:
-                                log_message(LOG_INFO, em.execution_manager_name, "Received Task Status IDLE\n");
-                                result_received = true;
-                                break;
-
-                            case RUNNING:
-                                log_message(LOG_INFO, em.execution_manager_name, "Received Task Status RUNNING\n");
-                                break;
-
-                            case COMPLETED:
-                                log_message(LOG_INFO, em.execution_manager_name, "Received Task Status COMPLETED\n");
-
-                                /* Craft GET RESULTS message */
-                                out_msg =  (ipc_msg_t){0};
-                                out_msg.type = MSG_GET_RESULTS;
-
-                                /* Send GET RESULTS message */
-                                log_message(LOG_INFO, em.execution_manager_name, "Sending Results Request to %s\n",em.schedule.tasks[i].task_name);
-                                if(send_message(em.tx_fd[i], &out_msg) !=  0){
-                                    exit_code = -1;
-                                    log_message(LOG_ERROR, em.execution_manager_name, "Failed to send message to task queue\n");
-                                    goto cleanup;  
-                                }
-
-                                /* Receive Task Results */
-                                if (receive_message(em.rx_fd, &in_msg) > 0){
-                                    if (in_msg.type == MSG_TASK_RESULT){
-                                        log_message(LOG_INFO, em.execution_manager_name, "Received Task Results: %s\n", in_msg.data.result);
-                                    }else{
-                                        log_message(LOG_INFO, em.execution_manager_name, "Received Unknown Task Results\n");
-                                    }
-
-                                }
-                                result_received = true;
-                                break;                            
-                            default:
-                                log_message(LOG_INFO, em.execution_manager_name, "Received Unknown Task Status\n");
-                        
-                        }
-                    } else {
-                        log_message(LOG_WARN, em.execution_manager_name, "Received unknown message type %d", in_msg.type);
-                    }
-                }
-
-                
-            }
-                    
-
-
-
-
-        }
-
-        sleep(1);
-        
+    /* TEST 2: Schedule Constructor */
+    printf("[Test 2] Initializing new Schedule...\n");
+    schedule_t *my_sched = schedule_new("Industrial_Control_Plan", "2.5.1");
+    if (my_sched) {
+        printf("  Success: '%s' created.\n", my_sched->schedule_name->str);
     }
 
-cleanup:
-cleanup_em:
-    close_execution_manager(&em);
+    /* TEST 3: Adding Tasks (Checking Queue grouping) */
+    printf("[Test 3] Adding tasks to schedule...\n");
+    
+    // Task A: Starts at 100
+    schedule_add_task(my_sched, 1, "Sensor_Read", SCHED_POLICY_FIFO, 10, 5, NULL, 100, 200, "{\"dev\": \"temp\"}");
+    
+    // Task B: Also starts at 100 (Testing grouping logic in GQueue)
+    schedule_add_task(my_sched, 2, "Voltage_Check", SCHED_POLICY_FIFO, 8, 3, NULL, 100, 150, "{\"dev\": \"volt\"}");
+    
+    // Task C: Starts at 300 (New start_entry_t)
+    schedule_add_task(my_sched, 5, "Data_Sync", SCHED_POLICY_RR, 5, 1, NULL, 300, 500, NULL);
 
-exit_program:
-    return exit_code;
+    print_schedule_report(my_sched);
 
+    /* TEST 4: Expiration Mapping (GHashTable) */
+    printf("[Test 4] Testing Expiration Mapping (Lookup by end_time)...\n");
+    gint64 lookup_time = 150;
+    GSList *expiring_tasks = g_hash_table_lookup(my_sched->schedule_end_info, &lookup_time);
+    if (expiring_tasks) {
+        printf("  Tasks expiring at %ld: ", lookup_time);
+        for (GSList *it = expiring_tasks; it != NULL; it = it->next) {
+            expiration_data_t *e = (expiration_data_t *)it->data;
+            printf("[%s (ID:%u)] ", e->task_name->str, e->task_id);
+        }
+        printf("\n");
+    } else {
+        printf("  No tasks found expiring at %ld.\n", lookup_time);
+    }
+
+    /* TEST 5: Boundary Check - Duplicate Start Time at Tail */
+    printf("\n[Test 5] Adding another task at time 300 (checking Tail-Peek optimization)...\n");
+    schedule_add_task(my_sched, 10, "Log_Cleanup", SCHED_POLICY_OTHER, 0, 1, NULL, 300, 400, "");
+    
+    /* TEST 6: Sparse ID in GArray */
+    printf("[Test 6] Adding task with high ID (Sparse Array Check)...\n");
+    schedule_add_task(my_sched, 20, "Emergency_Stop", SCHED_POLICY_FIFO, 12, 1, NULL, 600, 700, "");
+    
+    print_schedule_report(my_sched);
+
+    /* CLEANUP */
+    printf("Terminating and performing Deep Memory Cleanup...\n");
+    // This will trigger all the _free callbacks: 
+    // expiration_list_free, start_entry_free, task_result_free, etc.
+    schedule_free(my_sched);
+
+    printf("Test Suite Finished Successfully.\n");
+    return 0;
 }
