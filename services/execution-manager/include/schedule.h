@@ -1,22 +1,48 @@
 #ifndef SCHEDULE_H
 #define SCHEDULE_H
 
-#include <string.h>
+#include <glib.h>
+#include <stdlib.h>
 #include "task.h"
 
-#define MAX_SCHEDULE_NAME 64
-#define MAX_SCHEDULE_VERSION 16
-#define MAX_TASKS_PER_SCHEDULE 32
+/* Task Output Structures */
+typedef struct{
+    GString *output_data;       // Contains the effective output in json format (if the task is not void)
+    guint8 remaining_runs;      // Contains the value of the repetition that lefts 
+} task_result_t;
 
-/* Schedule Descriptor */
+/* Schedule Structure */
 typedef struct {
-    char schedule_name[MAX_SCHEDULE_NAME];
-    char schedule_version[MAX_SCHEDULE_VERSION];
-    task_t tasks[MAX_TASKS_PER_SCHEDULE];
-    int num_tasks;
+    GString *schedule_name;
+    GString *schedule_version;
+    guint16 length;
+    GSList *tasks;
+    GHashTable *results;
+
 } schedule_t;
 
-int init_schedule(schedule_t* sched, const char* name, const char* version); 
-int add_task_to_schedule(schedule_t* sched, task_t task);
+/* Schedule Plan Structure */
+
+
+typedef struct {
+
+} schedule_plan_t;
+
+/* Schedule Constructors */
+schedule_t* schedule_new(const gchar *name, const gchar *version);
+
+/* Schedule Distructor */
+void schedule_free(schedule_t *sched);
+
+/* Schedule Getters */
+GSList* schedule_get_tasks(schedule_t *sched);
+GHashTable* schedule_get_results(schedule_t *sched);
+
+/* Schedule Additional Operation */
+void schedule_add_task(schedule_t *sched, task_t *task);
+
+/* Schedule Utils Functions */
+int compare_versions(const gchar *v1, const gchar *v2);
+
 
 #endif // SCHEDULE_H

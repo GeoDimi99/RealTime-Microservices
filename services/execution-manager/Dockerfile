@@ -3,8 +3,9 @@ FROM ubuntu:24.04
 # Install build tools
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        build-essential \
         cmake \
+        build-essential \
+        libglib2.0-dev \
         libhiredis-dev && \
     rm -rf /var/lib/apt/lists/*
 

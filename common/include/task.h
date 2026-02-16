@@ -1,33 +1,50 @@
 #ifndef TASK_H
 #define TASK_H
 
-#include <stdint.h>
-#include <string.h>
+#include <glib.h>
 
-#define MAX_TASK_NAME        64
-#define MAX_TASK_JSON_IN     512
-#define MAX_TASK_JSON_OUT    512
 
-#define MIN_TASK_PRIORITY 0
+#define MIN_TASK_PRIORITY -20
 #define MAX_TASK_PRIORITY 99
 
 /* Scheduling Policies */
 typedef enum {
-    SCHED_POLICY_OTHER = 0,
-    SCHED_POLICY_FIFO  = 1,
-    SCHED_POLICY_RR    = 2
+    SCHED_POLICY_OTHER      = 0,
+    SCHED_POLICY_FIFO       = 1,
+    SCHED_POLICY_RR         = 2,
+    SCHED_POLICY_DEADLINE   = 3
 } sched_policy_t;
 
 /* Task struct */
 typedef struct {
-    char task_name[MAX_TASK_NAME];
-    sched_policy_t policy;
-    uint8_t priority;  /* 0–99 */
-    char input[MAX_TASK_JSON_IN];
-    char output[MAX_TASK_JSON_OUT];
+    guint16 task_id;            // TaskID: it's the id of the task call, the possible values 0 - 65.536 
+    GString *task_name;         // Image name: image name of the task wrapper
+    sched_policy_t policy;      // Policy: OTHER, FIFO, RR, DEADLINE;
+    gint8 priority;             // Priority: OTHER {-20..19}, RT {1..99} 
+    guint8 repetition;          // Repetition: how many times to call the task
+    GSList *depends_on;         // Depends on: is a list with TaskIDs 
+    gint64 start_time;          // Start time
+    gint64 end_time;            // Deadline
+    GString *input;             // Input for the task call
 } task_t;
 
-int init_task(task_t* task, const char* name, sched_policy_t policy, uint8_t priority, const char* input, const char* output);
+/* Task Constructors */
+task_t* task_new(guint16 id, 
+                const gchar *name, 
+                sched_policy_t policy, 
+                gint8 priority, 
+                guint8 repetition, 
+                gint64 start_time, 
+                gint64 end_time, 
+                const gchar *input);
+
+
+/* Task Distructor */
+void task_free(task_t *task);
+
+/* Task Additional Operation */
+void task_add_dependency(task_t *task, 
+                        guint16 dep_id);
 
 
 #endif /* TASK_H */
