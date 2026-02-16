@@ -114,10 +114,77 @@ void schedule_add_task(schedule_t *sched,
                 const gchar *name, 
                 sched_policy_t policy, 
                 gint8 priority, 
-                guint8 repetition, 
+                guint8 repetition,
+                GSList *depends_on, 
                 gint64 start_time, 
                 gint64 end_time, 
-                const gchar *input);
+                const gchar *input){
+
+                    /* Validate input */
+                    g_return_if_fail(sched != NULL);
+                    g_return_if_fail(name != NULL);
+                    g_return_if_fail(policy >= 0 && policy <= 3);
+                    g_return_if_fail(priority >= MIN_TASK_PRIORITY && priority <= MAX_TASK_PRIORITY);
+                    g_return_if_fail(repetition > 0);
+                    g_return_if_fail(start_time >= 0);
+                    g_return_if_fail(start_time < end_time);
+
+                    /* Create activation data */
+                    activation_data_t *act = g_new0(activation_data_t, 1);
+                    act->task_id = id;
+                    act->task_name = g_string_new(name);
+                    act->policy = policy;
+                    act->priority = priority;
+                    act->repetition = repetition;
+                    act->depends_on = depends_on;
+                    act->input_data = g_string_new(input ? input : "{}");
+
+                    /* Add the activation data to the schedule_start_info queue */
+                    start_entry_t *last_entry = (start_entry_t *)g_queue_peek_tail(sched->schedule_start_info);
+                    
+                    if (last_entry != NULL && last_entry->start_time == start_time) {
+                        last_entry->activation_data = g_slist_append(last_entry->activation_data, act);
+                    } else {
+                        start_entry_t *new_entry = g_new0(start_entry_t, 1);
+                        new_entry->start_time = start_time;
+                        new_entry->activation_data = g_slist_append(NULL, act);
+
+                        g_queue_push_tail(sched->schedule_start_info, new_entry);
+                    }
+
+
+                    /* Add to the expiration data in tha hash table schedule_end_info  */
+                    expiration_data_t *exp = g_new0(expiration_data_t, 1);
+                    exp->task_id = id;
+                    exp->task_name = g_string_new(name);
+
+                    GSList *exp_list = g_hash_table_lookup(sched->schedule_end_info, &end_time);
+
+                    if (exp_list != NULL) {
+                        g_slist_append(exp_list, exp);
+                    } else {
+                        gint64 *key_end = g_new(gint64, 1);
+                        *key_end = end_time;
+                        exp_list = g_slist_append(NULL, exp);
+                        g_hash_table_insert(sched->schedule_end_info, key_end, exp_list);
+                    }
+
+                    /* Initialize the result structure for this task  */
+                    task_result_t res;
+                    res.output_data = g_string_new("{}");
+                    res.remaining_runs = repetition;
+                    
+                    if (id >= sched->schedule_results->len) {
+                        g_array_set_size(sched->schedule_results, id + 1);
+                    }
+                    g_array_index(sched->schedule_results, task_result_t, id) = res;
+
+                    /* Update the schedule duration */
+                    if (end_time > sched->schedule_duration) {
+                        sched->schedule_duration = end_time;
+                    }
+                
+                }
 
 /* ---- Schedule Utils Functions ---- */
 
