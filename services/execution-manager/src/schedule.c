@@ -3,9 +3,6 @@
 /* ---- Utils Functions ---- */
 
 gboolean is_version_valid(const gchar *version) {
-    /*
-    * is_version_valid control if the version verify the pattern x.x.x where x is a number
-    */
     if (version == NULL) return FALSE;
 
     static GRegex *regex = NULL;
@@ -16,16 +13,44 @@ gboolean is_version_valid(const gchar *version) {
     return g_regex_match(regex, version, 0, NULL);
 }
 
-void task_result_free(task_result_t *res) {
-    /* 
-    * task_result_free free the memory of an object task_result_t 
-    * It's passed as GDestroyNotify in GHashTable
-    */
-    if (res) {
-        if (res->output_data) {
-            g_string_free(res->output_data, TRUE);
+static void expiration_data_free(expiration_data_t *data) {
+    if (data != NULL) {
+        if (data->task_name != NULL) {
+            g_string_free(data->task_name, TRUE);
         }
-        g_free(res);
+        g_free(data);
+    }
+}
+
+void expiration_list_free(gpointer data) {
+    GSList *list = (GSList *)data;
+    g_slist_free_full(list, (GDestroyNotify)expiration_data_free);
+}
+
+void task_result_free(gpointer data) {
+    task_result_t *res = (task_result_t *)data;
+    if (res->output_data != NULL) {
+        g_string_free(res->output_data, TRUE);
+        res->output_data = NULL;
+    }
+}
+
+static void activation_data_free(gpointer data) {
+
+    activation_data_t *act = (activation_data_t *)data;
+    if (act) {
+        g_string_free(act->task_name, TRUE);
+        g_string_free(act->input_data, TRUE);
+        g_slist_free(act->depends_on); 
+        g_free(act);
+    }
+}
+
+static void start_entry_free(gpointer data) {
+    start_entry_t *entry = (start_entry_t *)data;
+    if (entry) {
+        g_slist_free_full(entry->activation_data, activation_data_free);
+        g_free(entry);
     }
 }
 
@@ -42,16 +67,21 @@ schedule_t* schedule_new(const gchar *name, const gchar *version){
 
     /* Setup struct fields */
     sched->schedule_name = g_string_new(name);
-    if(version == NULL) sched->schedule_version = g_string_new("0.0.0"); else sched->schedule_version = g_string_new(version);
     
-    
+    const gchar *v = (version == NULL) ? "0.0.0" : version;
+    sched->schedule_version = g_string_new(v);
 
-    sched->results = g_hash_table_new_full(
-        g_direct_hash, 
-        g_direct_equal, 
-        NULL, 
-        (GDestroyNotify)task_result_free
+    sched->schedule_duration = 0;
+    
+    sched->schedule_start_info = g_queue_new();
+    sched->schedule_end_info = g_hash_table_new_full(
+        g_int64_hash, 
+        g_int64_equal, 
+        g_free, 
+        (GDestroyNotify)expiration_list_free
     );
+    sched->schedule_results = g_array_new(FALSE, TRUE, sizeof(task_result_t));
+    g_array_set_clear_func(sched->schedule_results, (GDestroyNotify)task_result_free);
 
     /* Return the created schedule */
     return sched;
@@ -66,44 +96,28 @@ void schedule_free(schedule_t *sched) {
     g_string_free(sched->schedule_name, TRUE);
     g_string_free(sched->schedule_version, TRUE);
 
-    /* Free all the tasks in the list */
-    g_slist_free_full(sched->tasks, (GDestroyNotify)task_free);
-
-    /* Free the hash table */
-    g_hash_table_destroy(sched->results);
+    g_queue_free_full(sched->schedule_start_info, (GDestroyNotify) start_entry_free);
+    g_hash_table_destroy(sched->schedule_end_info);
+    g_array_unref(sched->schedule_results);
 
     g_free(sched);
 }
 
 /* ---- Schedule Getters ---- */
-GSList* schedule_get_tasks(schedule_t *sched) {
-    g_return_val_if_fail(sched != NULL, NULL);
-    return sched->tasks;
-}
 
-GHashTable* schedule_get_results(schedule_t *sched) {
-    g_return_val_if_fail(sched != NULL, NULL);
-    return sched->results;
-}
+
+
 
 /* ---- Schedule Additional Operation ---- */
-void schedule_add_task(schedule_t *sched, task_t *task){
-    /* Validate input */
-    g_return_if_fail(sched != NULL);
-    g_return_if_fail(task != NULL);
-
-    /* Add task to the list */
-    sched->tasks = g_slist_append(sched->tasks, task);
-    sched->length++;
-
-    /* Initialize automatically an empty result for this task in the hash table */
-    task_result_t *res = g_new0(task_result_t, 1);
-    res->output_data = g_string_new("{}"); // JSON vuoto di default
-    res->remaining_runs = task->repetition;
-
-    /* We use GUINT_TO_POINTER for memorise the numeric id as key */
-    g_hash_table_insert(sched->results, GUINT_TO_POINTER(task->task_id), res);
-}
+void schedule_add_task(schedule_t *sched, 
+                guint16 id, 
+                const gchar *name, 
+                sched_policy_t policy, 
+                gint8 priority, 
+                guint8 repetition, 
+                gint64 start_time, 
+                gint64 end_time, 
+                const gchar *input);
 
 /* ---- Schedule Utils Functions ---- */
 

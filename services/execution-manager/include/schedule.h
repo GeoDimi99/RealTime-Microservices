@@ -28,11 +28,6 @@ typedef struct {
 } expiration_data_t;
 
 
-typedef struct {
-    gint64 end_time;
-    GSList *expiration_data;
-} end_entry_t;
-
 typedef struct{
     GString *output_data;
     guint8 remaining_runs;    
@@ -46,9 +41,10 @@ typedef struct{
 typedef struct {
     GString *schedule_name;
     GString *schedule_version;
-    GSList *schedule_start_info;
+    GQueue *schedule_start_info;
     GHashTable *schedule_end_info;
     GArray *schedule_results;
+    gint64 schedule_duration;
 } schedule_t;
 
 
@@ -62,7 +58,15 @@ void schedule_free(schedule_t *sched);
 
 
 /* Schedule Additional Operation */
-void schedule_add_task(schedule_t *sched, task_t *task);
+void schedule_add_task(schedule_t *sched, 
+                guint16 id, 
+                const gchar *name, 
+                sched_policy_t policy, 
+                gint8 priority, 
+                guint8 repetition, 
+                gint64 start_time, 
+                gint64 end_time, 
+                const gchar *input);
 
 /* Schedule Utils Functions */
 int compare_versions(const gchar *v1, const gchar *v2);
