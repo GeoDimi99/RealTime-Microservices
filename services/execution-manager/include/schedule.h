@@ -5,28 +5,52 @@
 #include <stdlib.h>
 #include "task.h"
 
-/* Task Output Structures */
+/* Utils Structures */
+
+typedef struct {
+    guint16 task_id;
+    GString *task_name;
+    sched_policy_t policy;
+    gint8 priority;
+    guint8 repetition;
+    GSList *depends_on; 
+    GString *input_data;        
+} activation_data_t;
+
+typedef struct {
+    gint64 start_time;
+    GSList *activation_data;
+} start_entry_t;
+
+typedef struct {
+    guint16 task_id;
+    GString *task_name;
+} expiration_data_t;
+
+
+typedef struct {
+    gint64 end_time;
+    GSList *expiration_data;
+} end_entry_t;
+
 typedef struct{
-    GString *output_data;       // Contains the effective output in json format (if the task is not void)
-    guint8 remaining_runs;      // Contains the value of the repetition that lefts 
+    GString *output_data;
+    guint8 remaining_runs;    
 } task_result_t;
+
+/* Utils Structures */
+
+
 
 /* Schedule Structure */
 typedef struct {
     GString *schedule_name;
     GString *schedule_version;
-    guint16 length;
-    GSList *tasks;
-    GHashTable *results;
-
+    GSList *schedule_start_info;
+    GHashTable *schedule_end_info;
+    GArray *schedule_results;
 } schedule_t;
 
-/* Schedule Plan Structure */
-
-
-typedef struct {
-
-} schedule_plan_t;
 
 /* Schedule Constructors */
 schedule_t* schedule_new(const gchar *name, const gchar *version);
@@ -35,8 +59,7 @@ schedule_t* schedule_new(const gchar *name, const gchar *version);
 void schedule_free(schedule_t *sched);
 
 /* Schedule Getters */
-GSList* schedule_get_tasks(schedule_t *sched);
-GHashTable* schedule_get_results(schedule_t *sched);
+
 
 /* Schedule Additional Operation */
 void schedule_add_task(schedule_t *sched, task_t *task);

@@ -41,7 +41,7 @@ void task_free(task_t *task) {
     g_string_free(task->input, TRUE);
 
     /* Free the depends_on list  */
-    g_slist_free_full(task->depends_on, g_free);
+    g_slist_free(task->depends_on);
 
     // Libera la struct
     g_free(task);
@@ -51,8 +51,5 @@ void task_free(task_t *task) {
 void task_add_dependency(task_t *task, guint16 dep_id) {
     g_return_if_fail(task != NULL);
 
-    guint16 *new_dep = g_new(guint16, 1);
-    *new_dep = dep_id;
-
-    task->depends_on = g_slist_append(task->depends_on, new_dep);
+    task->depends_on = g_slist_append(task->depends_on, GUINT_TO_POINTER(dep_id));
 }

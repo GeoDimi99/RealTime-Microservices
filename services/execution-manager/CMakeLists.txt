@@ -21,7 +21,7 @@ pkg_check_modules(HIREDIS REQUIRED IMPORTED_TARGET hiredis)
 add_executable(execution-manager
     src/main.c
     #src/execution_manager.c
-    src/schedule.c
+    #src/schedule.c
     #../common/src/logger.c
     #../common/src/task_ipc.c
     ../common/src/task.c

@@ -43,7 +43,8 @@ schedule_t* schedule_new(const gchar *name, const gchar *version){
     /* Setup struct fields */
     sched->schedule_name = g_string_new(name);
     if(version == NULL) sched->schedule_version = g_string_new("0.0.0"); else sched->schedule_version = g_string_new(version);
-    sched->tasks = NULL;
+    
+    
 
     sched->results = g_hash_table_new_full(
         g_direct_hash, 
