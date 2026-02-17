@@ -1,58 +1,110 @@
-#include <glib.h>
 #include <stdio.h>
+#include <glib.h>
 #include "schedule.h"
-#include "task.h"
 
-int main() {
-    g_print("=== Starting Scheduler System Test ===\n\n");
+/**
+ * Helper to inspect the internal state of the schedule.
+ * It demonstrates how to iterate through the GQueue (start info)
+ * and the GHashTable (end info).
+ */
+void print_schedule_report(schedule_t *sched) {
+    if (!sched) return;
 
-    // 1. Test Version Comparison
-    g_print("[TEST 1] Version Validation:\n");
-    const gchar *v_old = "1.2.5";
-    const gchar *v_new = "1.3.0";
-    int cmp = compare_versions(v_old, v_new);
-    g_print("  Comparing %s vs %s: %s\n", v_old, v_new, (cmp < 0) ? "Newer version detected" : "Old version detected");
+    printf("\n--- SCHEDULE REPORT: %s (v%s) ---\n", 
+           sched->schedule_name->str, sched->schedule_version->str);
+    printf("Total Duration: %ld units\n", sched->schedule_duration);
 
-    // 2. Initialize Schedule
-    g_print("\n[TEST 2] Schedule Initialization:\n");
-    schedule_t *my_sched = schedule_new("Production_Workflow", "2.1.0");
-    if (my_sched) {
-        g_print("  Schedule '%s' created (Ver: %s)\n", 
-                my_sched->schedule_name->str, my_sched->schedule_version->str);
-    }
-
-    // 3. Create and Add Tasks
-    g_print("\n[TEST 3] Adding Tasks and Resolving Dependencies:\n");
-    
-    // Task 1: Data Fetching
-    task_t *t1 = task_new(10, "Data_Fetch", SCHED_POLICY_FIFO, 50, 3, 1000, 2000, NULL, "data.json");
-    schedule_add_task(my_sched, t1);
-    
-    // Task 2: Data Processing (depends on Task 1)
-    task_t *t2 = task_new(20, "Data_Process", SCHED_POLICY_RR, 40, 1, 2001, 3000, "data.json", "out.json");
-    task_add_dependency(t2, "Data_Fetch");
-    schedule_add_task(my_sched, t2);
-
-    g_print("  Added %u tasks to the schedule.\n", my_sched->length);
-
-    // 4. Verify Hash Table Mapping
-    g_print("\n[TEST 4] Result Mapping (Hash Table):\n");
-    // Retrieve the result for Task ID 10
-    task_result_t *res = g_hash_table_lookup(my_sched->results, GUINT_TO_POINTER(10));
-    if (res) {
-        g_print("  Found result entry for Task 10!\n");
-        g_print("  Initial remaining runs: %u\n", res->remaining_runs);
+    // 1. Inspect Activation Queue (schedule_start_info)
+    printf("\n[Activation Timeline (GQueue)]:\n");
+    GList *q_iter;
+    for (q_iter = sched->schedule_start_info->head; q_iter != NULL; q_iter = q_iter->next) {
+        start_entry_t *entry = (start_entry_t *)q_iter->data;
+        printf("  Time %ld: ", entry->start_time);
         
-        // Simulate a result update
-        g_string_assign(res->output_data, "{\"status\": \"success\", \"items\": 150}");
-        g_print("  Updated JSON output: %s\n", res->output_data->str);
+        for (GSList *s_iter = entry->activation_data; s_iter != NULL; s_iter = s_iter->next) {
+            activation_data_t *act = (activation_data_t *)s_iter->data;
+            printf("[%s (ID:%u)] ", act->task_name->str, act->task_id);
+        }
+        printf("\n");
     }
 
-    // 5. Cleanup
-    g_print("\n[TEST 5] Deep Memory Cleanup...\n");
-    schedule_free(my_sched); // This will free strings, tasks, list, and hash table
-    
-    g_print("\n=== All Tests Passed Successfully ===\n");
+    // 2. Inspect Results Array (schedule_results)
+    printf("\n[Results Storage (GArray)]:\n");
+    for (guint i = 0; i < sched->schedule_results->len; i++) {
+        task_result_t *res = &g_array_index(sched->schedule_results, task_result_t, i);
+        // Only print slots that were actually initialized (remaining_runs > 0)
+        if (res->remaining_runs > 0) {
+            printf("  Index [%u]: Remaining Runs: %u, JSON: %s\n", 
+                   i, res->remaining_runs, res->output_data->str);
+        }
+    }
+    printf("--------------------------------------------\n\n");
+}
 
+int main(int argc, char *argv[]) {
+    printf("============================================\n");
+    printf("   SCHEDULE INTERFACE ARCHITECTURE TESTER   \n");
+    printf("============================================\n\n");
+
+    /* TEST 1: Version Comparison Logic */
+    printf("[Test 1] Testing Versioning Logic...\n");
+    const gchar *v1 = "1.2.0";
+    const gchar *v2 = "1.10.2";
+    int cmp = compare_versions(v1, v2);
+    printf("  Comparing %s vs %s: %s\n\n", v1, v2, (cmp < 0) ? "v1 is older" : "v1 is newer");
+
+    /* TEST 2: Schedule Constructor */
+    printf("[Test 2] Initializing new Schedule...\n");
+    schedule_t *my_sched = schedule_new("Industrial_Control_Plan", "2.5.1");
+    if (my_sched) {
+        printf("  Success: '%s' created.\n", my_sched->schedule_name->str);
+    }
+
+    /* TEST 3: Adding Tasks (Checking Queue grouping) */
+    printf("[Test 3] Adding tasks to schedule...\n");
+    
+    // Task A: Starts at 100
+    schedule_add_task(my_sched, 1, "Sensor_Read", SCHED_POLICY_FIFO, 10, 5, NULL, 100, 200, "{\"dev\": \"temp\"}");
+    
+    // Task B: Also starts at 100 (Testing grouping logic in GQueue)
+    schedule_add_task(my_sched, 2, "Voltage_Check", SCHED_POLICY_FIFO, 8, 3, NULL, 100, 150, "{\"dev\": \"volt\"}");
+    
+    // Task C: Starts at 300 (New start_entry_t)
+    schedule_add_task(my_sched, 5, "Data_Sync", SCHED_POLICY_RR, 5, 1, NULL, 300, 500, NULL);
+
+    print_schedule_report(my_sched);
+
+    /* TEST 4: Expiration Mapping (GHashTable) */
+    printf("[Test 4] Testing Expiration Mapping (Lookup by end_time)...\n");
+    gint64 lookup_time = 150;
+    GSList *expiring_tasks = g_hash_table_lookup(my_sched->schedule_end_info, &lookup_time);
+    if (expiring_tasks) {
+        printf("  Tasks expiring at %ld: ", lookup_time);
+        for (GSList *it = expiring_tasks; it != NULL; it = it->next) {
+            expiration_data_t *e = (expiration_data_t *)it->data;
+            printf("[%s (ID:%u)] ", e->task_name->str, e->task_id);
+        }
+        printf("\n");
+    } else {
+        printf("  No tasks found expiring at %ld.\n", lookup_time);
+    }
+
+    /* TEST 5: Boundary Check - Duplicate Start Time at Tail */
+    printf("\n[Test 5] Adding another task at time 300 (checking Tail-Peek optimization)...\n");
+    schedule_add_task(my_sched, 10, "Log_Cleanup", SCHED_POLICY_OTHER, 0, 1, NULL, 300, 400, "");
+    
+    /* TEST 6: Sparse ID in GArray */
+    printf("[Test 6] Adding task with high ID (Sparse Array Check)...\n");
+    schedule_add_task(my_sched, 20, "Emergency_Stop", SCHED_POLICY_FIFO, 12, 1, NULL, 600, 700, "");
+    
+    print_schedule_report(my_sched);
+
+    /* CLEANUP */
+    printf("Terminating and performing Deep Memory Cleanup...\n");
+    // This will trigger all the _free callbacks: 
+    // expiration_list_free, start_entry_free, task_result_free, etc.
+    schedule_free(my_sched);
+
+    printf("Test Suite Finished Successfully.\n");
     return 0;
 }

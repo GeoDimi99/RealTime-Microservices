@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include "task.h"
 
-/* Utils Structures */
+/* --- Utils Structures --- */
 
 typedef struct {
     guint16 task_id;
@@ -18,46 +18,37 @@ typedef struct {
 } activation_data_t;
 
 typedef struct {
-    gint64 start_time;
-    GSList *activation_data;
-} start_entry_t;
-
-typedef struct {
     guint16 task_id;
     GString *task_name;
 } expiration_data_t;
 
+/* Generic structure for a point on the timeline (Start or End) */
+typedef struct {
+    gint64 timestamp;
+    GSList *data_list;
+} timeline_entry_t;
 
-typedef struct{
+typedef struct {
     GString *output_data;
     guint8 remaining_runs;    
 } task_result_t;
 
-/* Utils Structures */
+/* --- Schedule Main Structure --- */
 
-
-
-/* Schedule Structure */
 typedef struct {
     GString *schedule_name;
     GString *schedule_version;
     GQueue *schedule_start_info;
-    GHashTable *schedule_end_info;
+    GQueue *schedule_end_info;
     GArray *schedule_results;
     gint64 schedule_duration;
 } schedule_t;
 
+/* --- Function Prototypes --- */
 
-/* Schedule Constructors */
 schedule_t* schedule_new(const gchar *name, const gchar *version);
-
-/* Schedule Distructor */
 void schedule_free(schedule_t *sched);
 
-/* Schedule Getters */
-
-
-/* Schedule Additional Operation */
 void schedule_add_task(schedule_t *sched, 
                 guint16 id, 
                 const gchar *name, 
@@ -69,8 +60,7 @@ void schedule_add_task(schedule_t *sched,
                 gint64 end_time, 
                 const gchar *input);
 
-/* Schedule Utils Functions */
 int compare_versions(const gchar *v1, const gchar *v2);
-
+void print_schedule(schedule_t *sched);
 
 #endif // SCHEDULE_H

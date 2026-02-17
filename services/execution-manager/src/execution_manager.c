@@ -1,96 +1,107 @@
 #include "execution_manager.h"
+#include "schedule.h"
+#include <glib.h>
 
-int init_execution_manager(execution_manager_t* svc, const char* name, const char* rx_q){
-    if (!svc) return -1;
+/* Struttura per passare più dati alle callback (privata a questo file) */
+typedef struct {
+    gpointer data;       /* La GSList dei task (o la start_entry_t) */
+    GMainLoop *loop;     /* Il riferimento al loop per chiamare quit */
+    gboolean is_last;    /* Flag per sapere se è l'ultimo evento */
+} context_t;
 
-    /* Initialize context strings */
-    strncpy(svc->execution_manager_name, name, MAX_TASK_NAME);
-    strncpy(svc->rx_queue_name, rx_q, MAX_QUEUE_NAME);
+/* Dichiarazioni forward per le callback statiche */
+static gboolean handle_expiration(gpointer user_data);
+static gboolean handle_start_task(gpointer user_data);
 
-    /* Setup RX Queue (Service Input) */
-    /* Destroy the queue if it was left over from a previous crash. This ensures we start with an empty queue. */
-    destroy_queue(svc->rx_queue_name);
-    svc->rx_fd = create_queue(svc->rx_queue_name, O_RDONLY);
+
+/* Callback per la terminazione dei task */
+static gboolean handle_expiration(gpointer user_data) {
+    context_t *ctx = (context_t *)user_data;
+    GSList *tasks = (GSList *)ctx->data;
+
+    g_print("[EXPIRATION] Scadenza timestamp: terminazione di %u task.\n", g_slist_length(tasks));
     
-    log_message(LOG_INFO, svc->execution_manager_name , "RX Queue initialized: %s\n", svc->rx_queue_name);
+    // TODO: Esegui qui la logica di chiusura specifica per i task...
+
+    if (ctx->is_last) {
+        g_print("[SYSTEM] Raggiunta l'ultima deadline. Chiusura MainLoop...\n");
+        g_main_loop_quit(ctx->loop);
+    }
+
+    g_free(ctx); // Liberiamo il contesto temporaneo
+    return G_SOURCE_REMOVE;
+}
+
+/* Callback per l'avvio dei task */
+static gboolean handle_start_task(gpointer user_data) {
+    context_t *ctx = (context_t *)user_data;
+    start_entry_t *entry = (start_entry_t *)ctx->data;
+
+    g_print("[START] Avvio task previsto al tempo relativo %ld ms.\n", entry->start_time);
     
-    return 0;
+    // TODO: Esegui qui la logica di avvio...
+
+    g_free(ctx); // Liberiamo il contesto temporaneo
+    return G_SOURCE_REMOVE;
 }
 
+void em_run_schedule(schedule_t *sched) {
+    g_return_if_fail(sched != NULL);
 
-/**
- * Assigns a schedule to the execution manager and initializes TX queues for all tasks.
- */
-int set_execution_manager_schedule(execution_manager_t* svc, schedule_t* schedule)
-{
-    /* Validate input pointers */
-    if (!svc || !schedule) 
-        return -1;
+    GMainLoop *loop = g_main_loop_new(NULL, FALSE);
+    gint64 time_zero_us = g_get_monotonic_time();
+    gint64 max_offset_ms = -1;
 
-    /* Copy the schedule into the execution manager context */
-    svc->schedule = *schedule;
-
-    /* Initialize TX queues for each task in the schedule */
-    for (int i = 0; i < schedule->num_tasks; i++) {
-
-        /* Set the queue name for this task */
-        snprintf(svc->tx_queues_name[i], MAX_QUEUE_NAME, "/%s", schedule->tasks[i].task_name);
-
-        /* Poll until the TX queue for this task is available */
-        while (1) {
-            svc->tx_fd[i] = open_queue(svc->tx_queues_name[i], O_WRONLY);
-
-            /* Case A: Queue successfully opened */
-            if (svc->tx_fd[i] != (mqd_t)-1) {
-                log_message(LOG_INFO, svc->execution_manager_name, 
-                            "TX Queue initialized: %s\n", svc->tx_queues_name[i]);
-                break; /* Exit polling loop */
-            }
-
-            /* Case B: Queue not created yet, wait and retry */
-            if (errno == ENOENT) {
-                sleep(1);
-            } 
-            /* Case C: Critical failure (permissions, limits, etc.) */
-            else {
-                perror("Fatal error connecting to Execution Manager");
-                return -1;
-            }
-        }
+    /* 1. Trova il timestamp massimo per sapere quando chiudere il loop */
+    GHashTableIter iter;
+    gpointer key, value;
+    g_hash_table_iter_init(&iter, sched->schedule_end_info);
+    while (g_hash_table_iter_next(&iter, &key, &value)) {
+        gint64 offset = *(gint64 *)key;
+        if (offset > max_offset_ms) max_offset_ms = offset;
     }
 
-    return 0; /* All TX queues successfully initialized */
-}
+    /* 2. Pianifica le TERMINAZIONI (Deadlines) */
+    g_hash_table_iter_init(&iter, sched->schedule_end_info);
+    while (g_hash_table_iter_next(&iter, &key, &value)) {
+        gint64 offset_ms = *(gint64 *)key;
+        GSList *tasks_to_expire = (GSList *)value;
 
+        context_t *ctx = g_new0(context_t, 1);
+        ctx->data = tasks_to_expire;
+        ctx->loop = loop;
+        ctx->is_last = (offset_ms == max_offset_ms);
 
-/**
- * Deletes all task queues assigned to the execution manager.
- */
-int delete_execution_manager_schedule(execution_manager_t* svc)
-{
-    /* Validate input pointer */
-    if (!svc) 
-        return -1;
+        gint64 target_mono_us = time_zero_us + (offset_ms * 1000);
 
-    /* Clean up all TX queues */
-    for (int i = 0; i < svc->schedule.num_tasks; i++) {
-        close_queue(svc->tx_fd[i]);
-        destroy_queue(svc->tx_queues_name[i]);
+        GSource *source = g_timeout_source_new(0);
+        g_source_set_ready_time(source, target_mono_us);
+        g_source_set_callback(source, handle_expiration, ctx, NULL);
+        g_source_attach(source, g_main_loop_get_context(loop));
+        g_source_unref(source);
     }
 
-    return 0; /* All TX queues successfully deleted */
-}
+    /* 3. Pianifica gli AVVII (Starts) */
+    for (GList *l = g_queue_peek_head_link(sched->schedule_start_info); l != NULL; l = l->next) {
+        start_entry_t *entry = (start_entry_t *)l->data;
 
+        context_t *ctx = g_new0(context_t, 1);
+        ctx->data = entry;
+        ctx->loop = loop;
+        ctx->is_last = FALSE;
 
-/**
- * Closes the execution manager's RX queue and logs shutdown.
- * Does NOT delete any TX queues or schedules.
- */
-void close_execution_manager(execution_manager_t* svc)
-{
-    if (svc) {
-        log_message(LOG_INFO, svc->execution_manager_name, "Shutting down...\n");
-        delete_execution_manager_schedule(svc);
-        close_queue(svc->rx_fd);
+        gint64 target_mono_us = time_zero_us + (entry->start_time * 1000);
+
+        GSource *source = g_timeout_source_new(0);
+        g_source_set_ready_time(source, target_mono_us);
+        g_source_set_callback(source, handle_start_task, ctx, NULL);
+        g_source_attach(source, g_main_loop_get_context(loop));
+        g_source_unref(source);
     }
+
+    g_print("[SYSTEM] Scheduler partito. In attesa di eventi...\n");
+    g_main_loop_run(loop);
+    
+    g_main_loop_unref(loop);
+    g_print("[SYSTEM] Scheduler terminato correttamente.\n");
 }

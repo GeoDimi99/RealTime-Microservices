@@ -1,42 +1,30 @@
 #include "schedule.h"
+#include <stdio.h>
 
-/* ---- Utils Functions ---- */
+/* ---- Helper & Comparison Functions ---- */
 
-gboolean is_version_valid(const gchar *version) {
+static gboolean is_version_valid(const gchar *version) {
     if (version == NULL) return FALSE;
-
     static GRegex *regex = NULL;
     if (G_UNLIKELY (regex == NULL)) {
         regex = g_regex_new("^([0-9]+)\\.([0-9]+)\\.([0-9]+)$", G_REGEX_OPTIMIZE, 0, NULL);
     }
-
     return g_regex_match(regex, version, 0, NULL);
 }
 
-static void expiration_data_free(expiration_data_t *data) {
-    if (data != NULL) {
-        if (data->task_name != NULL) {
-            g_string_free(data->task_name, TRUE);
-        }
-        g_free(data);
-    }
+/* Comparator for GQueue (Priority Queue logic) */
+static gint compare_timeline_entries(gconstpointer a, gconstpointer b, gpointer user_data) {
+    const timeline_entry_t *entry_a = (const timeline_entry_t *)a;
+    const timeline_entry_t *entry_b = (const timeline_entry_t *)b;
+    
+    if (entry_a->timestamp < entry_b->timestamp) return -1;
+    if (entry_a->timestamp > entry_b->timestamp) return 1;
+    return 0;
 }
 
-void expiration_list_free(gpointer data) {
-    GSList *list = (GSList *)data;
-    g_slist_free_full(list, (GDestroyNotify)expiration_data_free);
-}
-
-void task_result_free(gpointer data) {
-    task_result_t *res = (task_result_t *)data;
-    if (res->output_data != NULL) {
-        g_string_free(res->output_data, TRUE);
-        res->output_data = NULL;
-    }
-}
+/* ---- Destructors ---- */
 
 static void activation_data_free(gpointer data) {
-
     activation_data_t *act = (activation_data_t *)data;
     if (act) {
         g_string_free(act->task_name, TRUE);
@@ -46,178 +34,187 @@ static void activation_data_free(gpointer data) {
     }
 }
 
-static void start_entry_free(gpointer data) {
-    start_entry_t *entry = (start_entry_t *)data;
+static void expiration_data_free(gpointer data) {
+    expiration_data_t *exp = (expiration_data_t *)data;
+    if (exp) {
+        g_string_free(exp->task_name, TRUE);
+        g_free(exp);
+    }
+}
+
+static void timeline_entry_free(gpointer data, GDestroyNotify data_free_func) {
+    timeline_entry_t *entry = (timeline_entry_t *)data;
     if (entry) {
-        g_slist_free_full(entry->activation_data, activation_data_free);
+        g_slist_free_full(entry->data_list, data_free_func);
         g_free(entry);
     }
 }
 
 
-/* ---- Schedule Constructors ---- */
+static void start_entry_free_wrapper(gpointer data) {
+    timeline_entry_free(data, (GDestroyNotify)activation_data_free);
+}
 
-schedule_t* schedule_new(const gchar *name, const gchar *version){
-    /* Validate input */
+static void end_entry_free_wrapper(gpointer data) {
+    timeline_entry_free(data, (GDestroyNotify)expiration_data_free);
+}
+
+void task_result_free(gpointer data) {
+    task_result_t *res = (task_result_t *)data;
+    if (res && res->output_data) {
+        g_string_free(res->output_data, TRUE);
+    }
+}
+
+/* ---- Schedule Lifecycle ---- */
+
+schedule_t* schedule_new(const gchar *name, const gchar *version) {
     g_return_val_if_fail(name != NULL, NULL);
     g_return_val_if_fail(version == NULL || is_version_valid(version), NULL);
 
-    /* Struct memory allocation */
     schedule_t *sched = g_new0(schedule_t, 1);
-
-    /* Setup struct fields */
     sched->schedule_name = g_string_new(name);
     
     const gchar *v = (version == NULL) ? "0.0.0" : version;
     sched->schedule_version = g_string_new(v);
 
-    sched->schedule_duration = 0;
-    
     sched->schedule_start_info = g_queue_new();
-    sched->schedule_end_info = g_hash_table_new_full(
-        g_int64_hash, 
-        g_int64_equal, 
-        g_free, 
-        (GDestroyNotify)expiration_list_free
-    );
+    sched->schedule_end_info = g_queue_new();
+    
     sched->schedule_results = g_array_new(FALSE, TRUE, sizeof(task_result_t));
     g_array_set_clear_func(sched->schedule_results, (GDestroyNotify)task_result_free);
 
-    /* Return the created schedule */
+    sched->schedule_duration = 0;
     return sched;
 }
 
-
-
-/* ---- Schedule Distructor ---- */
 void schedule_free(schedule_t *sched) {
     if (!sched) return;
 
     g_string_free(sched->schedule_name, TRUE);
     g_string_free(sched->schedule_version, TRUE);
 
-    g_queue_free_full(sched->schedule_start_info, (GDestroyNotify) start_entry_free);
-    g_hash_table_destroy(sched->schedule_end_info);
+    g_queue_free_full(sched->schedule_start_info, start_entry_free_wrapper);
+    g_queue_free_full(sched->schedule_end_info, end_entry_free_wrapper);
     g_array_unref(sched->schedule_results);
 
     g_free(sched);
 }
 
-/* ---- Schedule Getters ---- */
+/* ---- Core Operations ---- */
 
-
-
-
-/* ---- Schedule Additional Operation ---- */
 void schedule_add_task(schedule_t *sched, 
-                guint16 id, 
-                const gchar *name, 
-                sched_policy_t policy, 
-                gint8 priority, 
-                guint8 repetition,
-                GSList *depends_on, 
-                gint64 start_time, 
-                gint64 end_time, 
-                const gchar *input){
+                guint16 id, const gchar *name, sched_policy_t policy, 
+                gint8 priority, guint8 repetition, GSList *depends_on, 
+                gint64 start_time, gint64 end_time, const gchar *input) {
 
-                    /* Validate input */
-                    g_return_if_fail(sched != NULL);
-                    g_return_if_fail(name != NULL);
-                    g_return_if_fail(policy >= 0 && policy <= 3);
-                    g_return_if_fail(priority >= MIN_TASK_PRIORITY && priority <= MAX_TASK_PRIORITY);
-                    g_return_if_fail(repetition > 0);
-                    g_return_if_fail(start_time >= 0);
-                    g_return_if_fail(start_time < end_time);
+    g_return_if_fail(sched != NULL && name != NULL);
+    g_return_if_fail(start_time >= 0 && start_time < end_time);
 
-                    /* Create activation data */
-                    activation_data_t *act = g_new0(activation_data_t, 1);
-                    act->task_id = id;
-                    act->task_name = g_string_new(name);
-                    act->policy = policy;
-                    act->priority = priority;
-                    act->repetition = repetition;
-                    act->depends_on = depends_on;
-                    act->input_data = g_string_new(input ? input : "{}");
+    
+    activation_data_t *act = g_new0(activation_data_t, 1);
+    act->task_id = id;
+    act->task_name = g_string_new(name);
+    act->policy = policy;
+    act->priority = priority;
+    act->repetition = repetition;
+    act->depends_on = depends_on;
+    act->input_data = g_string_new(input ? input : "{}");
 
-                    /* Add the activation data to the schedule_start_info queue */
-                    start_entry_t *last_entry = (start_entry_t *)g_queue_peek_tail(sched->schedule_start_info);
-                    
-                    if (last_entry != NULL && last_entry->start_time == start_time) {
-                        last_entry->activation_data = g_slist_append(last_entry->activation_data, act);
-                    } else {
-                        start_entry_t *new_entry = g_new0(start_entry_t, 1);
-                        new_entry->start_time = start_time;
-                        new_entry->activation_data = g_slist_append(NULL, act);
-
-                        g_queue_push_tail(sched->schedule_start_info, new_entry);
-                    }
-
-
-                    /* Add to the expiration data in tha hash table schedule_end_info  */
-                    expiration_data_t *exp = g_new0(expiration_data_t, 1);
-                    exp->task_id = id;
-                    exp->task_name = g_string_new(name);
-
-                    GSList *exp_list = g_hash_table_lookup(sched->schedule_end_info, &end_time);
-
-                    if (exp_list != NULL) {
-                        g_slist_append(exp_list, exp);
-                    } else {
-                        gint64 *key_end = g_new(gint64, 1);
-                        *key_end = end_time;
-                        exp_list = g_slist_append(NULL, exp);
-                        g_hash_table_insert(sched->schedule_end_info, key_end, exp_list);
-                    }
-
-                    /* Initialize the result structure for this task  */
-                    task_result_t res;
-                    res.output_data = g_string_new("{}");
-                    res.remaining_runs = repetition;
-                    
-                    if (id >= sched->schedule_results->len) {
-                        g_array_set_size(sched->schedule_results, id + 1);
-                    }
-                    g_array_index(sched->schedule_results, task_result_t, id) = res;
-
-                    /* Update the schedule duration */
-                    if (end_time > sched->schedule_duration) {
-                        sched->schedule_duration = end_time;
-                    }
-                
-                }
-
-/* ---- Schedule Utils Functions ---- */
-
-int compare_versions(const gchar *v1, const gchar *v2){
-    /*
-    * compare_versions returns:
-    *    0 if v1 == v2
-    *   -1 if v1 < v2
-    *    1 if v1 > v2
-    *   -2 if not valid version string
-    */
-
-    g_return_val_if_fail(is_version_valid(v1), -2);
-    g_return_val_if_fail(is_version_valid(v2), -2);
-
-    gchar **parts1 = g_strsplit(v1, ".", 3);
-    gchar **parts2 = g_strsplit(v2, ".", 3);
-    int result = 0;
-
-    for (int i = 0; i < 3; i++) {
-        int n1 = atoi(parts1[i]);
-        int n2 = atoi(parts2[i]);
-
-        if (n1 > n2) {
-            result = 1;
-            break;
-        } else if (n1 < n2) {
-            result = -1;
-            break;
-        }
+    timeline_entry_t *start_entry = NULL;
+    for (GList *l = sched->schedule_start_info->head; l != NULL; l = l->next) {
+        timeline_entry_t *e = (timeline_entry_t *)l->data;
+        if (e->timestamp == start_time) { start_entry = e; break; }
     }
 
-    g_strfreev(parts1);
-    g_strfreev(parts2);
-    return result;
+    if (start_entry) {
+        start_entry->data_list = g_slist_append(start_entry->data_list, act);
+    } else {
+        timeline_entry_t *new_e = g_new0(timeline_entry_t, 1);
+        new_e->timestamp = start_time;
+        new_e->data_list = g_slist_append(NULL, act);
+        g_queue_insert_sorted(sched->schedule_start_info, new_e, compare_timeline_entries, NULL);
+    }
+
+    
+    expiration_data_t *exp = g_new0(expiration_data_t, 1);
+    exp->task_id = id;
+    exp->task_name = g_string_new(name);
+
+    timeline_entry_t *end_entry = NULL;
+    for (GList *l = sched->schedule_end_info->head; l != NULL; l = l->next) {
+        timeline_entry_t *e = (timeline_entry_t *)l->data;
+        if (e->timestamp == end_time) { end_entry = e; break; }
+    }
+
+    if (end_entry) {
+        end_entry->data_list = g_slist_append(end_entry->data_list, exp);
+    } else {
+        timeline_entry_t *new_e = g_new0(timeline_entry_t, 1);
+        new_e->timestamp = end_time;
+        new_e->data_list = g_slist_append(NULL, exp);
+        g_queue_insert_sorted(sched->schedule_end_info, new_e, compare_timeline_entries, NULL);
+    }
+
+    
+    task_result_t res;
+    res.output_data = g_string_new("{}");
+    res.remaining_runs = repetition;
+    
+    if (id >= sched->schedule_results->len) {
+        g_array_set_size(sched->schedule_results, id + 1);
+    }
+    g_array_index(sched->schedule_results, task_result_t, id) = res;
+
+    if (end_time > sched->schedule_duration) {
+        sched->schedule_duration = end_time;
+    }
+}
+
+/* ---- Utils & Printers ---- */
+
+int compare_versions(const gchar *v1, const gchar *v2) {
+    if (!is_version_valid(v1) || !is_version_valid(v2)) return -2;
+
+    gchar **p1 = g_strsplit(v1, ".", 3);
+    gchar **p2 = g_strsplit(v2, ".", 3);
+    int res = 0;
+
+    for (int i = 0; i < 3; i++) {
+        int n1 = atoi(p1[i]), n2 = atoi(p2[i]);
+        if (n1 > n2) { res = 1; break; }
+        if (n1 < n2) { res = -1; break; }
+    }
+    g_strfreev(p1); g_strfreev(p2);
+    return res;
+}
+
+void print_schedule(schedule_t *sched) {
+    if (!sched) return;
+
+    g_print("\n=== SCHEDULE: %s (v%s) [%ld ms] ===\n", 
+            sched->schedule_name->str, sched->schedule_version->str, (long)sched->schedule_duration);
+
+    g_print("\n--- START TIMELINE (Sorted) ---\n");
+    for (GList *l = sched->schedule_start_info->head; l != NULL; l = l->next) {
+        timeline_entry_t *e = (timeline_entry_t *)l->data;
+        g_print("[%ld ms]:", (long)e->timestamp);
+        for (GSList *s = e->data_list; s != NULL; s = s->next) {
+            activation_data_t *a = (activation_data_t *)s->data;
+            g_print(" [Task %u: %s]", a->task_id, a->task_name->str);
+        }
+        g_print("\n");
+    }
+
+    g_print("\n--- END TIMELINE (Sorted) ---\n");
+    for (GList *l = sched->schedule_end_info->head; l != NULL; l = l->next) {
+        timeline_entry_t *e = (timeline_entry_t *)l->data;
+        g_print("[%ld ms]:", (long)e->timestamp);
+        for (GSList *s = e->data_list; s != NULL; s = s->next) {
+            expiration_data_t *ex = (expiration_data_t *)s->data;
+            g_print(" [Task %u: %s]", ex->task_id, ex->task_name->str);
+        }
+        g_print("\n");
+    }
+    g_print("==========================================\n");
 }

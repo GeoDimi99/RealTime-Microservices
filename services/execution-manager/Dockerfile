@@ -6,7 +6,8 @@ RUN apt-get update && \
         cmake \
         build-essential \
         libglib2.0-dev \
-        libhiredis-dev && \
+        libhiredis-dev \
+        valgrind && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -23,4 +24,8 @@ WORKDIR /app/execution-manager
 RUN cmake -S . -B build
 RUN cmake --build build
 
-ENTRYPOINT ["./build/execution-manager"]
+#ENTRYPOINT ["./build/execution-manager"]
+ENV G_DEBUG=gc-friendly
+ENV G_SLICE=always-malloc
+
+ENTRYPOINT ["valgrind", "--leak-check=full", "--show-leak-kinds=all", "--track-origins=yes", "./build/execution-manager"]
