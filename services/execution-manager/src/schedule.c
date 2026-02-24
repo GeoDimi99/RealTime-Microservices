@@ -1,5 +1,5 @@
 #include "schedule.h"
-#include <stdio.h>
+
 
 /* ---- Helper & Comparison Functions ---- */
 
@@ -29,7 +29,7 @@ static void activation_data_free(gpointer data) {
     if (act) {
         g_string_free(act->task_name, TRUE);
         g_string_free(act->input_data, TRUE);
-        g_slist_free(act->depends_on); 
+        g_slist_free(act->depends_on);
         g_free(act);
     }
 }
@@ -38,6 +38,10 @@ static void expiration_data_free(gpointer data) {
     expiration_data_t *exp = (expiration_data_t *)data;
     if (exp) {
         g_string_free(exp->task_name, TRUE);
+        if (exp->task_queue != (mqd_t)-1) {
+            mq_close(exp->task_queue);
+            exp->task_queue = (mqd_t)-1;
+        }
         g_free(exp);
     }
 }
@@ -121,6 +125,24 @@ void schedule_add_task(schedule_t *sched,
     act->depends_on = depends_on;
     act->input_data = g_string_new(input ? input : "{}");
 
+    GString *q_name = g_string_new(NULL);
+    g_string_printf(q_name, "/%s_queue", act->task_name->str);
+
+    struct mq_attr attr = {
+        .mq_flags = 0,
+        .mq_maxmsg = 10,           
+        .mq_msgsize = sizeof(ipc_msg_t), 
+        .mq_curmsgs = 0
+    };
+    mqd_t qd = mq_open(q_name->str, O_WRONLY | O_CREAT | O_NONBLOCK, 0644, &attr);
+    if (qd == (mqd_t)-1) {
+            g_error("[ERROR] Execution Manager (%s) : mq_open failed.", q_name->str);
+    }
+    act->task_queue = qd;
+    g_string_free(q_name, TRUE);
+
+
+
     timeline_entry_t *start_entry = NULL;
     for (GList *l = sched->schedule_start_info->head; l != NULL; l = l->next) {
         timeline_entry_t *e = (timeline_entry_t *)l->data;
@@ -140,6 +162,8 @@ void schedule_add_task(schedule_t *sched,
     expiration_data_t *exp = g_new0(expiration_data_t, 1);
     exp->task_id = id;
     exp->task_name = g_string_new(name);
+    exp->task_queue = qd;
+
 
     timeline_entry_t *end_entry = NULL;
     for (GList *l = sched->schedule_end_info->head; l != NULL; l = l->next) {

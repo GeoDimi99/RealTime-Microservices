@@ -1,48 +1,41 @@
 #include "execution_manager.h"
-#include "schedule.h"
-#include <glib.h>
-
-/* Struttura per passare più dati alle callback (privata a questo file) */
-typedef struct {
-    gpointer data;       /* La GSList dei task (o la start_entry_t) */
-    GMainLoop *loop;     /* Il riferimento al loop per chiamare quit */
-    gboolean is_last;    /* Flag per sapere se è l'ultimo evento */
-} context_t;
-
-/* Dichiarazioni forward per le callback statiche */
-static gboolean handle_expiration(gpointer user_data);
-static gboolean handle_start_task(gpointer user_data);
 
 
-/* Callback per la terminazione dei task */
-static gboolean handle_expiration(gpointer user_data) {
-    context_t *ctx = (context_t *)user_data;
-    GSList *tasks = (GSList *)ctx->data;
+execution_manager_t* em_new(const gchar *name){
+    g_return_val_if_fail(name != NULL, NULL);
 
-    g_print("[EXPIRATION] Scadenza timestamp: terminazione di %u task.\n", g_slist_length(tasks));
-    
-    // TODO: Esegui qui la logica di chiusura specifica per i task...
+    execution_manager_t *em = g_new0(execution_manager_t, 1);
+    em->em_name = g_string_new(name);
 
-    if (ctx->is_last) {
-        g_print("[SYSTEM] Raggiunta l'ultima deadline. Chiusura MainLoop...\n");
-        g_main_loop_quit(ctx->loop);
+    GString *q_name = g_string_new(NULL);
+    g_string_printf(q_name, "/%s_queue", em->em_name->str);
+
+    struct mq_attr attr = {
+        .mq_flags = 0,
+        .mq_maxmsg = 10,           
+        .mq_msgsize = sizeof(ipc_msg_t), 
+        .mq_curmsgs = 0
+    };
+    mqd_t qd = mq_open(q_name->str, O_RDONLY | O_CREAT | O_NONBLOCK, 0644, &attr);
+    if (qd == (mqd_t)-1) {
+            g_error("[ERROR] Execution Manager (%s) : mq_open failed.", q_name->str);
     }
+    em->em_queue = qd;
+    g_string_free(q_name, TRUE);
 
-    g_free(ctx); // Liberiamo il contesto temporaneo
-    return G_SOURCE_REMOVE;
+    return em;
 }
 
-/* Callback per l'avvio dei task */
-static gboolean handle_start_task(gpointer user_data) {
-    context_t *ctx = (context_t *)user_data;
-    start_entry_t *entry = (start_entry_t *)ctx->data;
 
-    g_print("[START] Avvio task previsto al tempo relativo %ld ms.\n", entry->start_time);
-    
-    // TODO: Esegui qui la logica di avvio...
+void em_free(execution_manager_t *em){
+    if (!em) return;
 
-    g_free(ctx); // Liberiamo il contesto temporaneo
-    return G_SOURCE_REMOVE;
+    g_string_free(em->em_name, TRUE);
+    if (em->em_queue != (mqd_t)-1) {
+        mq_close(em->em_queue);
+        em->em_queue = (mqd_t)-1;
+    }
+    g_free(em);
 }
 
 void em_run_schedule(schedule_t *sched) {
@@ -50,29 +43,19 @@ void em_run_schedule(schedule_t *sched) {
 
     GMainLoop *loop = g_main_loop_new(NULL, FALSE);
     gint64 time_zero_us = g_get_monotonic_time();
-    gint64 max_offset_ms = -1;
 
-    /* 1. Trova il timestamp massimo per sapere quando chiudere il loop */
-    GHashTableIter iter;
-    gpointer key, value;
-    g_hash_table_iter_init(&iter, sched->schedule_end_info);
-    while (g_hash_table_iter_next(&iter, &key, &value)) {
-        gint64 offset = *(gint64 *)key;
-        if (offset > max_offset_ms) max_offset_ms = offset;
-    }
+    /* 1. Pianificazione SCADENZE (Deadlines) */
+    for (GList *l = sched->schedule_end_info->head; l != NULL; l = l->next) {
+        timeline_entry_t *entry = (timeline_entry_t *)l->data;
 
-    /* 2. Pianifica le TERMINAZIONI (Deadlines) */
-    g_hash_table_iter_init(&iter, sched->schedule_end_info);
-    while (g_hash_table_iter_next(&iter, &key, &value)) {
-        gint64 offset_ms = *(gint64 *)key;
-        GSList *tasks_to_expire = (GSList *)value;
-
-        context_t *ctx = g_new0(context_t, 1);
-        ctx->data = tasks_to_expire;
+        /* CORREZIONE: Uso deadline_context_t invece di context_t */
+        deadline_context_t *ctx = g_new0(deadline_context_t, 1);
+        ctx->data = entry->data_list;
         ctx->loop = loop;
-        ctx->is_last = (offset_ms == max_offset_ms);
+        ctx->timestamp = entry->timestamp;
+        ctx->is_last = (l->next == NULL); // Se è l'ultimo nodo della GQueue
 
-        gint64 target_mono_us = time_zero_us + (offset_ms * 1000);
+        gint64 target_mono_us = time_zero_us + (entry->timestamp * 1000);
 
         GSource *source = g_timeout_source_new(0);
         g_source_set_ready_time(source, target_mono_us);
@@ -81,27 +64,26 @@ void em_run_schedule(schedule_t *sched) {
         g_source_unref(source);
     }
 
-    /* 3. Pianifica gli AVVII (Starts) */
-    for (GList *l = g_queue_peek_head_link(sched->schedule_start_info); l != NULL; l = l->next) {
-        start_entry_t *entry = (start_entry_t *)l->data;
+    /* 2. Pianificazione AVVII (Starts) */
+    for (GList *l = sched->schedule_start_info->head; l != NULL; l = l->next) {
+        timeline_entry_t *entry = (timeline_entry_t *)l->data;
 
-        context_t *ctx = g_new0(context_t, 1);
-        ctx->data = entry;
-        ctx->loop = loop;
-        ctx->is_last = FALSE;
+        start_context_t *ctx = g_new0(start_context_t, 1);
+        ctx->data = entry->data_list;
+        ctx->timestamp = entry->timestamp;
 
-        gint64 target_mono_us = time_zero_us + (entry->start_time * 1000);
+        gint64 target_mono_us = time_zero_us + (entry->timestamp * 1000);
 
         GSource *source = g_timeout_source_new(0);
         g_source_set_ready_time(source, target_mono_us);
-        g_source_set_callback(source, handle_start_task, ctx, NULL);
+        g_source_set_callback(source, handle_initialization, ctx, NULL);
         g_source_attach(source, g_main_loop_get_context(loop));
         g_source_unref(source);
     }
 
-    g_print("[SYSTEM] Scheduler partito. In attesa di eventi...\n");
+    g_print("[SYSTEM] Scheduler started. Waiting for events...\n");
     g_main_loop_run(loop);
     
     g_main_loop_unref(loop);
-    g_print("[SYSTEM] Scheduler terminato correttamente.\n");
+    g_print("[SYSTEM] Scheduler terminated successfully.\n");
 }

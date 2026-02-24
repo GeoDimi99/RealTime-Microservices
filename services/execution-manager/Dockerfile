@@ -6,6 +6,7 @@ RUN apt-get update && \
         cmake \
         build-essential \
         libglib2.0-dev \
+        libjson-glib-dev \
         libhiredis-dev \
         valgrind && \
     rm -rf /var/lib/apt/lists/*

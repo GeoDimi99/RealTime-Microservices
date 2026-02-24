@@ -2,7 +2,10 @@
 #define SCHEDULE_H
 
 #include <glib.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <mqueue.h>
+#include "task_ipc.h"
 #include "task.h"
 
 /* --- Utils Structures --- */
@@ -14,12 +17,14 @@ typedef struct {
     gint8 priority;
     guint8 repetition;
     GSList *depends_on; 
-    GString *input_data;        
+    GString *input_data;
+    mqd_t task_queue;       
 } activation_data_t;
 
 typedef struct {
     guint16 task_id;
     GString *task_name;
+    mqd_t task_queue;
 } expiration_data_t;
 
 /* Generic structure for a point on the timeline (Start or End) */

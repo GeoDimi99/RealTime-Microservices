@@ -3,8 +3,11 @@ FROM ubuntu:24.04
 # Install build tools
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+        cmake \
         build-essential \
-        cmake  &&\
+        libglib2.0-dev  \
+        libjson-glib-dev \
+        valgrind&&\
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -18,13 +21,17 @@ COPY common/src/ ./task-wrapper/src/
 
 
 
-#WORKDIR /app/task-wrapper
+WORKDIR /app/task-wrapper
 
 # Configure and build
-#RUN cmake -S . -B build
-#RUN cmake --build build
+RUN cmake -S . -B build
+RUN cmake --build build
 
 #ENV TASK_NAME=sum
 #ENV TASK_QUEUE_NAME=sum
 
-#ENTRYPOINT ["./build/task-wrapper"]
+ENV G_DEBUG=gc-friendly
+ENV G_SLICE=always-malloc
+
+ENTRYPOINT ["valgrind", "--leak-check=full", "--show-leak-kinds=all", "--track-origins=yes", "./build/task-wrapper"]
+

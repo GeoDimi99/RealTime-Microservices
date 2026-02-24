@@ -1,66 +1,49 @@
 #include "task_wrapper.h"
 
 
+task_wrapper_t* task_wrapper_new(const gchar *task_name, const gchar *task_queue_name, const gchar *em_queue_name){
+    g_return_val_if_fail(task_name != NULL, NULL);
+    g_return_val_if_fail(task_queue_name != NULL, NULL);
+    g_return_val_if_fail(em_queue_name != NULL, NULL);
 
-/**
- * Initializes the task wrapper context and queues.
- * 1. Sets up the wrapper name and queue names.
- * 2. Creates/Resets the RX queue (Input).
- * 3. Polls/Waits for the TX queue (Output/Manager) to become available.
- */
-int init_task_wrapper(task_wrapper_t* svc, const char* name, const char* rx_q, const char* tx_q) {
-    if (!svc) return -1;
+    task_wrapper_t *tw = g_new0(task_wrapper_t, 1);
+    tw->task_name = g_string_new(task_name);
 
-    /* Initialize context strings and state */
-    snprintf(svc->task_name, MAX_TASK_NAME, "%s", name);
-    snprintf(svc->rx_queue_name, MAX_QUEUE_NAME, "%s", rx_q);
-    snprintf(svc->tx_queue_name, MAX_QUEUE_NAME, "%s", tx_q);
-
-    /* Setup RX Queue (Wrapper Input) */
-    /* Destroy the queue if it was left over from a previous crash. This ensures we start with an empty queue. */
-    destroy_queue(svc->rx_queue_name);
-    svc->rx_fd = create_queue(svc->rx_queue_name, O_RDONLY); 
-
-    log_message(LOG_INFO, svc->task_name , "RX Queue initialized: %s\n", svc->rx_queue_name);
-
-
-    /* Setup TX Queue (Connection to Execution Manager) */
-    /* Polling Loop: Wait until the Manager creates its queue */
-    while (1) {
-        /* Attempt to open the queue using the new helper (No O_CREAT) */
-        svc->tx_fd = open_queue(svc->tx_queue_name, O_WRONLY);
-
-        /* Case A: Success - Connection established */
-        if (svc->tx_fd != (mqd_t)-1) {
-            log_message(LOG_INFO, svc->task_name , "TX Queue initialized: %s\n", svc->tx_queue_name);
-            break; /* Exit the loop */
-        }
-
-        /* Case B: Queue not found yet (Manager is not ready) */
-        if (errno == ENOENT) {
-            /* Wait 1 second before retrying */
-            sleep(1); 
-        } 
-        /* Case C: Critical failure (Permission denied, limit reached, etc.) */
-        else {
-            perror("Fatal error connecting to Execution Manager");
-            return -1; /* Return failure code */
-        }
+    struct mq_attr attr = {
+        .mq_flags = 0,
+        .mq_maxmsg = 10,           
+        .mq_msgsize = sizeof(ipc_msg_t), 
+        .mq_curmsgs = 0
+    };
+    tw->task_queue = mq_open(task_queue_name, O_RDONLY | O_CREAT | O_NONBLOCK, 0644, &attr);
+    if (tw->task_queue == (mqd_t)-1) {
+            g_error("[ERROR] %s (%s) : mq_open failed.", task_name, task_queue_name);
     }
 
-    return 0; /* Initialization successful */
+    tw->em_queue = mq_open(em_queue_name, O_WRONLY | O_CREAT | O_NONBLOCK, 0644, &attr);
+    if (tw->em_queue == (mqd_t)-1) {
+            g_error("[ERROR] Execution Manager (%s) : mq_open failed.", em_queue_name);
+    }; 
+
+    return tw;
 }
 
+/* To implement the free*/
+void task_wrapper_free(task_wrapper_t *tw) {
+    if (tw == NULL) return;
 
-
-/**
- * Cleanups resources.
- */
-void close_task_wrapper(task_wrapper_t* svc) {
-    if (svc) {
-        log_message(LOG_INFO, svc->task_name , "Shutting down...\n");
-        close_queue(svc->rx_fd);
-        close_queue(svc->tx_fd);
-        destroy_queue(svc->rx_queue_name);
+    if (tw->task_queue != (mqd_t)-1) {
+        mq_close(tw->task_queue);
     }
+    if (tw->em_queue != (mqd_t)-1) {
+        mq_close(tw->em_queue);
+    }
+
+    if (tw->task_name) {
+        g_string_free(tw->task_name, TRUE);
+    }
+
+    g_free(tw);
+    
+    g_print("[INFO] Task wrapper rimosso correttamente.\n");
 }

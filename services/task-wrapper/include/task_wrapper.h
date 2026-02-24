@@ -7,32 +7,27 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <glib.h>
+#include <mqueue.h>
+
 #include "task.h"
-#include "logger.h"
 #include "task_ipc.h"
 
-#define DEFAULT_TASK_NAME "task-wrapper"
+#define DEFAULT_TASK_NAME "task_wrapper"
 
 
 
 /* Task descriptor */
 typedef struct {
     /* Static configuration */
-    char task_name[MAX_TASK_NAME];
-    char rx_queue_name[MAX_QUEUE_NAME];     // Listening queue (Task Queue)
-    char tx_queue_name[MAX_QUEUE_NAME];     // Response queue (EM Queue) 
-
-    /* Runtime state */
-    mqd_t rx_fd;                            // Input queue descriptor
-    mqd_t tx_fd;                            // Output queue descriptor
+    GString *task_name;
+    mqd_t task_queue;
+    mqd_t em_queue; 
 
 } task_wrapper_t;
 
-
-
-int init_task_wrapper(task_wrapper_t* svc, const char* name, const char* rx_q, const char* tx_q);
-void run_task_wrapper(task_wrapper_t* svc);
-void close_task_wrapper(task_wrapper_t* svc);
+task_wrapper_t* task_wrapper_new(const gchar *task_name, const gchar *task_queue_name, const gchar *em_name);
+void task_wrapper_free(task_wrapper_t *task);
 
 
 
