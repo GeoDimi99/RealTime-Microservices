@@ -1,19 +1,32 @@
 #define _GNU_SOURCE
+#include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <glib.h>
-#include <stdio.h>
-
-
-#include "task_wrapper_message_event.h"
 
 #include "task_wrapper.h"
+#include "task_wrapper_message_event.h"
+
 
 
 
 
 int main(int argc, char *argv[]) {
     int exit_code = 0;
+
+    //const gchar *json_test = "[ {\"a\":2, \"b\":3}, {\"a\":3, \"b\":9} ]";
+    //GSList *list = parse_input_list(json_test);
+
+    //GSList *node;
+    //for (node = list; node != NULL; node = node->next) {
+        //input_t *elem = (input_t*) node->data;
+        //print_input(elem);  // usa la funzione che hai definito
+    //}
+    //free_input_list(list);
+
+    //return 0;
+    //parse_and_print_input(json_test);
+    //return 0;
 
     /* Memory Locking per Real-Time */
     if (mlockall(MCL_CURRENT | MCL_FUTURE) == -1) {
@@ -26,13 +39,13 @@ int main(int argc, char *argv[]) {
     char *env_queue = getenv("TASK_QUEUE_NAME");
     
     
-    gchar *q_path = g_strdup_printf("/%s_queue", env_queue ? env_queue : DEFAULT_TASK_QUEUE);
+    gchar *q_path = g_strdup_printf("/%s_q", env_queue ? env_queue : DEFAULT_TASK_QUEUE);
 
     
     task_wrapper_t *tw = task_wrapper_new(
         env_task ? env_task : DEFAULT_TASK_NAME, 
         q_path, 
-        DEFAULT_EM_QUEUE
+        "/execution_manager_q"
     );
     g_free(q_path);
 
@@ -47,7 +60,7 @@ int main(int argc, char *argv[]) {
     g_io_channel_set_buffered(channel, FALSE);
 
     // Colleghiamo la coda al loop. Passiamo 'tw' per averlo nella callback.
-    g_io_add_watch(channel, G_IO_IN, (GIOFunc)on_mqueue_message, tw);
+    g_io_add_watch(channel, G_IO_IN, (GIOFunc)handle_input_message, tw);
 
     g_print("[INFO] Task Wrapper (%s): It's ready. Waiting for messages ...\n", tw->task_name->str);
 

@@ -8,6 +8,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -g -O0 -Wno-unused-parameter")
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLIB2 REQUIRED IMPORTED_TARGET glib-2.0)
 pkg_check_modules(GIO REQUIRED IMPORTED_TARGET gio-2.0)
+pkg_check_modules(JSON_GLIB REQUIRED IMPORTED_TARGET json-glib-1.0)
 
 add_compile_definitions(_GNU_SOURCE)
 
@@ -17,6 +18,7 @@ add_executable(task-wrapper
     src/task_wrapper.c
     src/task_wrapper_message_event.c
     src/task.c
+    src/app_task.c
 )
 
 # Include only your local headers
@@ -30,4 +32,5 @@ target_link_libraries(task-wrapper PRIVATE
     Threads::Threads
     PkgConfig::GLIB2
     PkgConfig::GIO
+    PkgConfig::JSON_GLIB
 )

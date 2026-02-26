@@ -29,4 +29,5 @@ RUN cmake --build build
 ENV G_DEBUG=gc-friendly
 ENV G_SLICE=always-malloc
 
-ENTRYPOINT ["valgrind", "--leak-check=full", "--show-leak-kinds=all", "--track-origins=yes", "./build/execution-manager"]
+#ENTRYPOINT ["valgrind", "--leak-check=full", "--show-leak-kinds=all", "--track-origins=yes", "./build/execution-manager"]
+ENTRYPOINT ["./build/execution-manager"]

@@ -32,9 +32,6 @@ add_executable(execution-manager
 target_include_directories(execution-manager PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/../common/include
-    ${GLIB2_INCLUDE_DIRS}
-    ${GIO_INCLUDE_DIRS}
-    ${HIREDIS_INCLUDE_DIRS}
 )
 
 # Find Threading support (pthread)

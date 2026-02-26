@@ -2,6 +2,7 @@
 #define TASK_H
 
 #include <glib.h>
+#include <sched.h>
 
 
 #define MIN_TASK_PRIORITY -20

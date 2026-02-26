@@ -9,7 +9,7 @@
 #define DEFAULT_EXECUTION_MANAGER_NAME "execution_manager"
 
 
-typedef struct {
+typedef struct execution_manager_t{
     /* Static configuration */
     GString *em_name;
     mqd_t em_queue;
@@ -21,6 +21,6 @@ void em_free(execution_manager_t *em);
 
 /*  */
 
-void em_run_schedule(schedule_t *sched);
+void em_run_schedule(execution_manager_t *em, schedule_t *sched);
 
 #endif // EXECUTION_MANAGER_H

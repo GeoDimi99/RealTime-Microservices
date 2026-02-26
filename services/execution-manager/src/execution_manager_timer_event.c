@@ -1,4 +1,8 @@
 #include "execution_manager_timer_event.h"
+#include "schedule.h"
+#include "execution_manager.h"
+#include <stdio.h>
+#include <errno.h>
 
 gboolean handle_initialization(gpointer user_data) {
     start_context_t *ctx = (start_context_t *)user_data;
@@ -41,6 +45,33 @@ gboolean handle_initialization(gpointer user_data) {
     return G_SOURCE_REMOVE;
 }
 
+gboolean handle_result_message(GIOChannel *source, GIOCondition condition, gpointer data) {
+    result_context_t *ctx = (result_context_t *)data;
+    ipc_msg_t msg;
+    unsigned int priority;
+
+    if (condition & G_IO_IN) {
+        ssize_t bytes_read = mq_receive(ctx->em->em_queue, (char *)&msg, sizeof(ipc_msg_t), &priority);
+
+        if (bytes_read < 0) {
+            if (errno != EAGAIN) {
+                perror("[ERROR] mq_receive (RESULT) failed");
+            }
+            return TRUE;
+        }
+
+        if (bytes_read > 0) {
+            if (msg.type == MSG_TASK_RESULT) {
+                g_print("[INFO] Execution Manager (handle_result_message): Received RESULT for Task ID %u\n", msg.task_id);
+                schedule_set_result(ctx->sched, msg.task_id, msg.data.result);
+            } else {
+                g_print("[WARN] Execution Manager (handle_result_message): Received unexpected message type %d\n", msg.type);
+            }
+        }
+    }
+    return TRUE;
+}
+
 gboolean handle_expiration(gpointer user_data) {
     deadline_context_t *ctx = (deadline_context_t *)user_data;
     GSList *tasks = (GSList *)ctx->data;
@@ -51,6 +82,12 @@ gboolean handle_expiration(gpointer user_data) {
         for (GSList *l = tasks; l != NULL; l = l->next) {
             expiration_data_t *exp = (expiration_data_t *)l->data;
             
+            // Controlla se il task è già stato completato
+            if (schedule_is_task_completed(ctx->sched, exp->task_id)) {
+                g_print("[INFO] Execution Manager (handle_expiration): Task %u already completed. No ABORT sent.\n", exp->task_id);
+                continue; // Salta all'iterazione successiva
+            }
+
             ipc_msg_t msg;
             memset(&msg, 0, sizeof(ipc_msg_t));
 

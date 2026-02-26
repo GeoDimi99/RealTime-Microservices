@@ -13,7 +13,7 @@
 
 
 /* Queue names */
-#define DEFAULT_EM_QUEUE    "/execution_manager_queue"
+#define DEFAULT_EM_QUEUE    "/execution_manager_q"
 #define DEFAULT_TASK_QUEUE  "/task_service_queue"
 
 /* --- Data Structures & Enums --- */

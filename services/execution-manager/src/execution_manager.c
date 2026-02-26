@@ -8,7 +8,7 @@ execution_manager_t* em_new(const gchar *name){
     em->em_name = g_string_new(name);
 
     GString *q_name = g_string_new(NULL);
-    g_string_printf(q_name, "/%s_queue", em->em_name->str);
+    g_string_printf(q_name, "/%s_q", em->em_name->str);
 
     struct mq_attr attr = {
         .mq_flags = 0,
@@ -38,13 +38,26 @@ void em_free(execution_manager_t *em){
     g_free(em);
 }
 
-void em_run_schedule(schedule_t *sched) {
+void em_run_schedule(execution_manager_t *em, schedule_t *sched) {
+    g_return_if_fail(em != NULL);
     g_return_if_fail(sched != NULL);
 
     GMainLoop *loop = g_main_loop_new(NULL, FALSE);
     gint64 time_zero_us = g_get_monotonic_time();
 
-    /* 1. Pianificazione SCADENZE (Deadlines) */
+    /* 1. Listen for incoming results from Task Wrappers */
+    GIOChannel *channel = g_io_channel_unix_new(em->em_queue);
+    g_io_channel_set_encoding(channel, NULL, NULL); // Binary messages
+    g_io_channel_set_buffered(channel, FALSE);
+
+    result_context_t *result_ctx = g_new0(result_context_t, 1);
+    result_ctx->em = em;
+    result_ctx->sched = sched;
+
+    g_io_add_watch(channel, G_IO_IN, (GIOFunc)handle_result_message, result_ctx);
+
+
+    /* 2. Pianificazione SCADENZE (Deadlines) */
     for (GList *l = sched->schedule_end_info->head; l != NULL; l = l->next) {
         timeline_entry_t *entry = (timeline_entry_t *)l->data;
 
@@ -54,6 +67,7 @@ void em_run_schedule(schedule_t *sched) {
         ctx->loop = loop;
         ctx->timestamp = entry->timestamp;
         ctx->is_last = (l->next == NULL); // Se è l'ultimo nodo della GQueue
+        ctx->sched = sched;
 
         gint64 target_mono_us = time_zero_us + (entry->timestamp * 1000);
 
@@ -64,7 +78,7 @@ void em_run_schedule(schedule_t *sched) {
         g_source_unref(source);
     }
 
-    /* 2. Pianificazione AVVII (Starts) */
+    /* 3. Pianificazione AVVII (Starts) */
     for (GList *l = sched->schedule_start_info->head; l != NULL; l = l->next) {
         timeline_entry_t *entry = (timeline_entry_t *)l->data;
 
