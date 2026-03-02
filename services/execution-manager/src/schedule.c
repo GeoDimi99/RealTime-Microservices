@@ -33,7 +33,7 @@ static void activation_data_free(gpointer data) {
         g_string_free(act->task_name, TRUE);
         g_string_free(act->input_data, TRUE);
         g_slist_free(act->depends_on);
-        // Nota: non chiudiamo la coda qui perché è condivisa con expiration_data
+        /* Note: we close here the queue that is shared with expiration data */
         g_free(act);
     }
 }
@@ -86,7 +86,6 @@ schedule_t* schedule_new(const gchar *name, const gchar *version) {
     sched->schedule_start_info = g_queue_new();
     sched->schedule_end_info = g_queue_new();
     
-    // Inizializzazione GHashTable: ID task come chiave diretta
     sched->schedule_results = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, task_result_free);
 
     sched->schedule_duration = 0;
@@ -113,12 +112,12 @@ void schedule_add_task(schedule_t *sched,
     g_return_if_fail(sched != NULL && name != NULL);
     g_return_if_fail(start_time >= 0 && start_time < end_time);
 
-    // 1. Apertura coda POSIX (Polling)
+    /* 1. Open Queue POSIX (Polling) */
     gchar *q_name = g_strdup_printf("/%s_q", name);
     mqd_t qd = (mqd_t)-1;
 
     /* Polling Loop: Wait until the Task Wrapper creates its queue.
-     * Questo previene una race condition in cui l'EM parte prima che il TW sia pronto. */
+     * this avoid a race condition where the EM run befor that TW is ready. */
     while (TRUE) {
         qd = mq_open(q_name, O_WRONLY | O_NONBLOCK);
         if (qd != (mqd_t)-1) {
@@ -126,22 +125,22 @@ void schedule_add_task(schedule_t *sched,
         }
         if (errno == ENOENT) {
             g_print("[INFO] Execution Manager: Waiting for task queue '%s'...\n", q_name);
-            g_usleep(500000); // Attendi e riprova
+            g_usleep(500000); // Wait and retry
         } else {
-            g_printerr("[ERROR] mq_open failed for %s: %s\n", q_name, g_strerror(errno));
+            g_printerr("[ERROR] Execution manager: mq_open failed for %s: %s\n", q_name, g_strerror(errno));
             g_free(q_name);
-            return; // Errore fatale
+            return; // Fatal error
         }
     }
 
     if (qd == (mqd_t)-1) {
-        g_printerr("[ERROR] mq_open fallito per %s: %s\n", q_name, g_strerror(errno));
+        g_printerr("[ERROR] Execution Manager: mq_open failed for %s: %s\n", q_name, g_strerror(errno));
         g_free(q_name);
         return;
     }
     g_free(q_name);
 
-    // 2. Creazione Activation Data
+    /* 2. Create Activation Data */
     activation_data_t *act = g_new0(activation_data_t, 1);
     act->task_id = id;
     act->task_name = g_string_new(name);
@@ -149,10 +148,10 @@ void schedule_add_task(schedule_t *sched,
     act->priority = priority;
     act->repetition = repetition;
     act->depends_on = g_slist_copy(depends_on);
-    act->input_data = g_string_new(input ? input : "{}");
+    act->input_data = g_string_new(input ? input : "[{}]");
     act->task_queue = qd;
 
-    // 3. Inserimento in Start Timeline
+    /* 3. Insert in timeline queue */
     timeline_entry_t *st_entry = NULL;
     for (GList *l = sched->schedule_start_info->head; l; l = l->next) {
         timeline_entry_t *e = l->data;
@@ -167,13 +166,13 @@ void schedule_add_task(schedule_t *sched,
         g_queue_insert_sorted(sched->schedule_start_info, new_e, compare_timeline_entries, NULL);
     }
 
-    // 4. Creazione Expiration Data
+    /* 4. Create Expiration Data */
     expiration_data_t *exp = g_new0(expiration_data_t, 1);
     exp->task_id = id;
     exp->task_name = g_string_new(name);
     exp->task_queue = qd;
 
-    // 5. Inserimento in End Timeline
+    /* 5. Insert in timeline queue */
     timeline_entry_t *end_entry = NULL;
     for (GList *l = sched->schedule_end_info->head; l; l = l->next) {
         timeline_entry_t *e = l->data;
@@ -188,7 +187,7 @@ void schedule_add_task(schedule_t *sched,
         g_queue_insert_sorted(sched->schedule_end_info, new_e, compare_timeline_entries, NULL);
     }
 
-    // 6. Inizializzazione Risultato in HashTable
+    /* 6. Init results in HashTable */
     task_result_t *res = g_new0(task_result_t, 1);
     res->remaining_runs = repetition;
     res->output_list = NULL;
@@ -198,19 +197,12 @@ void schedule_add_task(schedule_t *sched,
         sched->schedule_duration = end_time;
 }
 
-/**
- * schedule_set_result:
- * @sched: Lo schedule di riferimento.
- * @id: L'ID del task che ha prodotto il risultato.
- * @output: Stringa (JSON o testo) del risultato prodotto.
- * * Cerca il task nella HashTable, aggiunge il nuovo output alla lista
- * e decrementa il numero di esecuzioni rimanenti.
- */
+
 void schedule_set_result(schedule_t *sched, guint16 id, const gchar *output) {
     g_return_if_fail(sched != NULL);
     g_return_if_fail(output != NULL);
 
-    /* Cerchiamo il risultato associato all'ID nella HashTable */
+    /* Find the result associated to the ID in the HashTable */
     task_result_t *res = g_hash_table_lookup(sched->schedule_results, GINT_TO_POINTER((gint)id));
 
     if (res == NULL) {
@@ -218,17 +210,18 @@ void schedule_set_result(schedule_t *sched, guint16 id, const gchar *output) {
         return;
     }
 
-    /* 1. Aggiungiamo il nuovo output alla lista */
-    /* Creiamo un nuovo GString per l'output corrente */
+    
+    /* 1. Add the new output in the list */
     GString *new_output = g_string_new(output);
     res->output_list = g_slist_append(res->output_list, new_output);
 
-    /* 2. Decrementiamo i cicli rimanenti (se maggiori di 0) */
+    /* 2. Decrement the remainning runs (if greather than 0) */
+
     if (res->remaining_runs > 0) {
         res->remaining_runs--;
     }
 
-    g_print("[INFO] Task %u updated: %u runs left.\n", id, res->remaining_runs);
+    g_print("[INFO] Execution Manager: Task %u updated: %u runs left.\n", id, res->remaining_runs);
 }
 
 gboolean schedule_is_task_completed(schedule_t *sched, guint16 id)
@@ -272,23 +265,21 @@ void schedule_reset(schedule_t *sched) {
     gpointer key, value;
 
 
-    /* Iteriamo su tutti i risultati salvati nella HashTable */
+    /* Iterate on all the results that are stored in the HashTable */
     g_hash_table_iter_init(&iter, sched->schedule_results);
     while (g_hash_table_iter_next(&iter, &key, &value)) {
         guint16 task_id = (guint16)GPOINTER_TO_INT(key);
         task_result_t *res = (task_result_t *)value;
 
-        /* 1. Pulizia della lista degli output */
+        /* 1. Clean the list of the outputs */
         if (res->output_list) {
             g_slist_free_full(res->output_list, g_string_free_wrapper);
             res->output_list = NULL;
         }
         
-        /* 2. Reinserimento del valore iniziale di default */
         res->output_list = NULL;
 
-        /* 3. Ripristino dei remaining_runs */
-        /* Cerchiamo il valore originale di 'repetition' nei dati di attivazione */
+        /* 2. Restore the remaining_runs */
         gboolean found = FALSE;
         for (GList *l = sched->schedule_start_info->head; l && !found; l = l->next) {
             timeline_entry_t *entry = l->data;

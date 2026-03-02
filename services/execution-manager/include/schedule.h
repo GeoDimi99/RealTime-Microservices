@@ -14,7 +14,7 @@ typedef struct {
     gint policy;
     gint8 priority;
     guint8 repetition;
-    GSList *depends_on;  /* Lista di ID (guint16 convertiti a puntatori) */
+    GSList *depends_on;  /* List of Call ID */
     GString *input_data;
     mqd_t task_queue;       
 } activation_data_t;
@@ -27,11 +27,11 @@ typedef struct {
 
 typedef struct {
     gint64 timestamp;
-    GSList *data_list; /* Lista di activation_data_t* o expiration_data_t* */
+    GSList *data_list; /* List of activation_data_t* or expiration_data_t* */
 } timeline_entry_t;
 
 typedef struct {
-    GSList *output_list;   /* Lista di GString* */
+    GSList *output_list;   /* List of GString* */
     guint8 remaining_runs;
 } task_result_t;
 
@@ -42,7 +42,7 @@ typedef struct {
     GString *schedule_version;
     GQueue *schedule_start_info;
     GQueue *schedule_end_info;
-    GHashTable *schedule_results; /* Mappa: Task ID (guint16) -> task_result_t* */
+    GHashTable *schedule_results; /* Map: Task ID (guint16) -> task_result_t* */
     gint64 schedule_duration;
 } schedule_t;
 

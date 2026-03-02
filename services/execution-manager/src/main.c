@@ -1,24 +1,26 @@
 #include <stdio.h>
 #include <glib.h>
-#include <signal.h> // Per la gestione dei segnali
-#include <unistd.h> // Per sleep()
+#include <signal.h> // For signals
+#include <unistd.h> // For sleep()
 #include "schedule.h"
 #include "execution_manager.h"
 
-// Flag globale per controllare il ciclo principale
+
+/* Gloabal flag for check the main loop */
 static volatile gboolean keep_running = TRUE;
 
-// Gestore di segnali per SIGINT (Ctrl+C)
+
+/* Signal Handler for SIGINT (Ctrl+C) */
 void int_handler(int dummy) {
-    (void)dummy; // Parametro non utilizzato
-    g_print("\n[SYSTEM] SIGINT ricevuto. Chiusura pulita dopo questo ciclo...\n");
+    (void)dummy; 
+    g_print("\n[SYSTEM] Execution Manager: SIGINT received.\n");
     keep_running = FALSE;
 }
 
 int main(int argc, char *argv[]) {
-    (void)argc; (void)argv; // Parametri non utilizzati
+    (void)argc; (void)argv; 
 
-    /* Registra il gestore di segnali per una chiusura pulita */
+    /* Registre the signal handler for a clean clousure */
     signal(SIGINT, int_handler);
 
     /* ------ Init Execution Manager ------ */
@@ -29,20 +31,21 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
-    schedule_t *sched = NULL; // Inizializza a NULL
+    schedule_t *sched = NULL; // Init to NULL
 
     g_print("=== Execution Manager Initialized ===\n");
-    g_print("Premi Ctrl+C per uscire in modo pulito.\n\n");
+    g_print("Click Ctrl+C for a clean exit.\n\n");
 
-    /* ------ Ciclo di Esecuzione Principale ------ */
+
+    /* -------------- Main Loop Execution -------------- */
     while (keep_running) {
-        /* Libera la pianificazione precedente, se esiste */
+        
         if (sched != NULL) {
             schedule_free(sched);
-            sched = NULL; // Evita double-free all'uscita
+            sched = NULL;   // Avoid double-free at exit 
         }
 
-        /* Crea e popola una nuova pianificazione. */
+        /* Create a schedule */
         gchar *schedule_name = "schedule";
         sched = schedule_new(schedule_name, "0.0.1");
         if (!sched) {
@@ -64,20 +67,20 @@ int main(int argc, char *argv[]) {
         em_run_schedule(em, sched);
 
         if (keep_running) {
-            g_print("\n[SYSTEM] Pianificazione completata. Riavvio in 5 secondi (o premi Ctrl+C per uscire)...\n\n");
+            g_print("\n[INFO] Execution Manager: Schedule Completed. Reboot in 5 seconds... (or push Ctrl+C for exit)...\n\n");
             
-            // Dormi per 5 secondi, ma controlla il flag ogni secondo
+            /* Slee for 5 second, but check flag each second */
             for (int i = 0; i < 5 && keep_running; i++) {
                 sleep(1);
             }
         }
     }
 
-    g_print("\n[SYSTEM] Uscita dal ciclo principale. Pulizia delle risorse...\n");
+    g_print("\n[SYSTEM] Execution Manager: Exit from the main loop. Cleanup ...\n");
 
     if (em) em_free(em);
     if (sched) schedule_free(sched);
     
-    g_print("[SYSTEM] Pulizia completata. Uscita.\n");
+    g_print("[SYSTEM] Execution Manager: Cleanup completed.\n");
     return exit_code;
 }
