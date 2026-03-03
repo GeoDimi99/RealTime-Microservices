@@ -1,14 +1,15 @@
 #ifndef EXECUTION_MANAGER_H
 #define EXECUTION_MANAGER_H
 
+#define _GNU_SOURCE
 #include <glib.h>
 #include <stdio.h>
 #include <errno.h>
-#include <mqueue.h>
+#include <pthread.h>
+#include <sched.h>
 
 #include "schedule.h"
 #include "execution_manager.h"
-#include "task_ipc.h"
 
 
 
@@ -17,22 +18,21 @@
 
 /* Execution Manager Stucture */
 typedef struct execution_manager_t{
-    GString *em_name;
-    mqd_t em_queue;
+    GString *em_name;               // Execution Manager Name
 } execution_manager_t;
 
 
 
 typedef struct {
-    gpointer data;      /* GSList di activation_data_t */
-    gint64 timestamp;   /* Per logging */
+    gpointer data;      // GList of activation_data_t
+    gint64 timestamp;   
 } start_context_t;
 
 typedef struct {
-    gpointer data;       /* GSList di expiration_data_t */
-    GMainLoop *loop;     /* Riferimento per terminare il programma */
-    gboolean is_last;    /* Flag per l'ultimo evento della timeline */
-    gint64 timestamp;    /* Per logging */
+    gpointer data;       // GSList of expiration_data_t 
+    GMainLoop *loop;     // Reference to end the process 
+    gboolean is_last;    // Flag that indicat if is the last event 
+    gint64 timestamp;    
     schedule_t *sched;
 } deadline_context_t;
 
@@ -62,8 +62,5 @@ void em_run_schedule(execution_manager_t *em, schedule_t *sched);
 /* Execution Manager Event Handlers */
 gboolean handle_initialization(gpointer user_data);
 gboolean handle_expiration(gpointer user_data);
-gboolean handle_result_message(GIOChannel *source, GIOCondition condition, gpointer user_data);
-gboolean check_completion(gpointer user_data);
-
 
 #endif // EXECUTION_MANAGER_H

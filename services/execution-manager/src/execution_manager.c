@@ -1,27 +1,13 @@
 #include "execution_manager.h"
 
 
+
+
 execution_manager_t* em_new(const gchar *name){
     g_return_val_if_fail(name != NULL, NULL);
 
     execution_manager_t *em = g_new0(execution_manager_t, 1);
     em->em_name = g_string_new(name);
-
-    GString *q_name = g_string_new(NULL);
-    g_string_printf(q_name, "/%s_q", em->em_name->str);
-
-    struct mq_attr attr = {
-        .mq_flags = 0,
-        .mq_maxmsg = 10,           
-        .mq_msgsize = sizeof(ipc_msg_t), 
-        .mq_curmsgs = 0
-    };
-    mqd_t qd = mq_open(q_name->str, O_RDONLY | O_CREAT | O_NONBLOCK, 0644, &attr);
-    if (qd == (mqd_t)-1) {
-            g_error("[ERROR] Execution Manager (%s) : mq_open failed.", q_name->str);
-    }
-    em->em_queue = qd;
-    g_string_free(q_name, TRUE);
 
     return em;
 }
@@ -31,12 +17,10 @@ void em_free(execution_manager_t *em){
     if (!em) return;
 
     g_string_free(em->em_name, TRUE);
-    if (em->em_queue != (mqd_t)-1) {
-        mq_close(em->em_queue);
-        em->em_queue = (mqd_t)-1;
-    }
     g_free(em);
 }
+
+
 
 void em_run_schedule(execution_manager_t *em, schedule_t *sched) {
     g_return_if_fail(em != NULL);
@@ -45,19 +29,7 @@ void em_run_schedule(execution_manager_t *em, schedule_t *sched) {
     GMainLoop *loop = g_main_loop_new(NULL, FALSE);
     gint64 time_zero_us = g_get_monotonic_time();
 
-    /* 1. Listen for incoming results from Task Wrappers */
-    GIOChannel *channel = g_io_channel_unix_new(em->em_queue);
-    g_io_channel_set_encoding(channel, NULL, NULL); // Binary messages
-    g_io_channel_set_buffered(channel, FALSE);
-
-    result_context_t *result_ctx = g_new0(result_context_t, 1);
-    result_ctx->em = em;
-    result_ctx->sched = sched;
-
-    g_io_add_watch(channel, G_IO_IN, (GIOFunc)handle_result_message, result_ctx);
-
-
-    /* 2. Pianificazione SCADENZE (Deadlines) */
+    /* 1. Plan the scheudle DEADLINES */
     for (GList *l = sched->schedule_end_info->head; l != NULL; l = l->next) {
         timeline_entry_t *entry = (timeline_entry_t *)l->data;
 
@@ -78,7 +50,7 @@ void em_run_schedule(execution_manager_t *em, schedule_t *sched) {
         g_source_unref(source);
     }
 
-    /* 3. Pianificazione AVVII (Starts) */
+    /* 2. Plan the schedule STARTS */
     for (GList *l = sched->schedule_start_info->head; l != NULL; l = l->next) {
         timeline_entry_t *entry = (timeline_entry_t *)l->data;
 
@@ -95,11 +67,11 @@ void em_run_schedule(execution_manager_t *em, schedule_t *sched) {
         g_source_unref(source);
     }
 
-    g_print("[SYSTEM] Scheduler started. Waiting for events...\n");
+    g_print("[INFO] Execution Manager: Scheduler started! Waiting for events...\n");
     g_main_loop_run(loop);
     
     g_main_loop_unref(loop);
-    g_print("[SYSTEM] Scheduler terminated successfully.\n");
+    g_print("[INFO] Execution Manager: Scheduler terminated successfully.\n");
 }
 
 
@@ -109,99 +81,84 @@ gboolean handle_initialization(gpointer user_data) {
     GSList *tasks = (GSList *)ctx->data;
 
     if (tasks == NULL) {
-        g_print("[ERROR] Execution Manager (handle_initialization): No tasks\n");
+        g_print("[ERROR] Execution Manager: No tasks\n");
         g_free(ctx);
         return G_SOURCE_REMOVE;
     }
 
     for (GSList *l = tasks; l != NULL; l = l->next) {
         activation_data_t *task = (activation_data_t *)l->data;
-        ipc_msg_t msg;
         
-        // Pulizia memoria del messaggio per evitare dati sporchi
-        memset(&msg, 0, sizeof(ipc_msg_t));
-
-        msg.task_id = task->task_id;
-        msg.type = MSG_TASK_REQUEST;
-        msg.data.task_request.policy = task->policy;
-        msg.data.task_request.priority = task->priority;
-        msg.data.task_request.repetition = task->repetition;
-
-        if (task->input_data && task->input_data->str) {
-            g_strlcpy(msg.data.task_request.input_data, 
-                      task->input_data->str, 
-                      MAX_TASK_JSON_IN);
-        }
-
-        // Assicurati che task->task_queue sia stato aperto correttamente in precedenza
-        if (mq_send(task->task_queue, (const char *)&msg, sizeof(ipc_msg_t), 0) == -1) {
-            perror("[ERROR] mq_send (REQUEST) failed");
-        }
+        g_print("--------------------------------------------------\n");
+        g_print("[INFO] Task ID: %u\n", task->task_id);
+        g_print("[INFO] Task Name: %s\n", task->task_name ? task->task_name->str : "(null)");
+        g_print("[INFO] Policy: %d | Priority: %d | Repetition: %u\n", 
+                task->policy, (gint)task->priority, (guint)task->repetition);
         
-        g_print("[INFO] Execution Manager (handle_initialization): Sent REQUEST for Task ID %u\n", task->task_id);
+        /* Set CPU Affinity core */
+        cpu_set_t set;
+        CPU_ZERO(&set);
+        CPU_SET(task->cpu_affinity, &set);                  // Set CPU 0
+        sched_setaffinity(0, sizeof(cpu_set_t), &set);      // 0 is the calling process
+
+        /* Setting scheduler policy and priority */
+        struct sched_param param;
+        param.sched_priority = task->priority;
+
+
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
+        pthread_attr_setschedpolicy(&attr, task->policy);
+        pthread_attr_setschedparam(&attr, &param);
+        pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+
+        pthread_t thread;
+        pthread_create(&thread, &attr, task->task_exec, task->input_data);
+        //pthread_detach(thread);
+
+
+        
+
+        // Iterate through GSList of dependencies
+        if (task->depends_on) {
+            g_print("[INFO] Depends On (IDs): ");
+            for (GSList *dep = task->depends_on; dep != NULL; dep = dep->next) {
+                // Assuming the list stores integers cast to pointers, or pointers to guint
+                // If they are pointers to uint: *(guint*)dep->data
+                // If they are IDs stored directly in the pointer: GPOINTER_TO_UINT(dep->data)
+                g_print("%u ", GPOINTER_TO_UINT(dep->data));
+            }
+            g_print("\n");
+        } else {
+            g_print("[INFO] Depends On: None\n");
+        }
     }
+    g_print("--------------------------------------------------\n");
 
     g_free(ctx); 
     return G_SOURCE_REMOVE;
 }
 
-gboolean handle_result_message(GIOChannel *source, GIOCondition condition, gpointer data) {
-    result_context_t *ctx = (result_context_t *)data;
-    ipc_msg_t msg;
-    unsigned int priority;
 
-    if (condition & G_IO_IN) {
-        ssize_t bytes_read = mq_receive(ctx->em->em_queue, (char *)&msg, sizeof(ipc_msg_t), &priority);
-
-        if (bytes_read < 0) {
-            if (errno != EAGAIN) {
-                perror("[ERROR] mq_receive (RESULT) failed");
-            }
-            return TRUE;
-        }
-
-        if (bytes_read > 0) {
-            if (msg.type == MSG_TASK_RESULT) {
-                g_print("[INFO] Execution Manager (handle_result_message): Received RESULT for Task ID %u\n", msg.task_id);
-                schedule_set_result(ctx->sched, msg.task_id, msg.data.result);
-            } else {
-                g_print("[WARN] Execution Manager (handle_result_message): Received unexpected message type %d\n", msg.type);
-            }
-        }
-    }
-    return TRUE;
-}
 
 gboolean handle_expiration(gpointer user_data) {
     deadline_context_t *ctx = (deadline_context_t *)user_data;
     GSList *tasks = (GSList *)ctx->data;
 
     if (tasks == NULL) {
-        g_print("[INFO] Execution Manager (handle_expiration): No tasks to expire\n");
+        g_print("[INFO] Execution Manager: No tasks to expire\n");
     } else {
         for (GSList *l = tasks; l != NULL; l = l->next) {
             expiration_data_t *exp = (expiration_data_t *)l->data;
             
-            // Controlla se il task è già stato completato
+            /* Check if the task is jet completed*/
             if (schedule_is_task_completed(ctx->sched, exp->task_id)) {
-                g_print("[INFO] Execution Manager (handle_expiration): Task %u already completed. No ABORT sent.\n", exp->task_id);
-                continue; // Salta all'iterazione successiva
+                g_print("[INFO] Execution Manager: Task %u already completed. No ABORT sent.\n", exp->task_id);
+                continue;
             }
 
-            ipc_msg_t msg;
-            memset(&msg, 0, sizeof(ipc_msg_t));
-
-            msg.task_id = exp->task_id; // FIX: Usato exp invece di task
-            msg.type = MSG_TASK_ABORT;
-
-            /* ATTENZIONE: exp deve avere il campo task_queue. 
-               Se non ce l'ha, questo mq_send darà errore di compilazione.
-            */
-            if (mq_send(exp->task_queue, (const char *)&msg, sizeof(ipc_msg_t), 0) == -1) {
-                perror("[ERROR] mq_send (ABORT) failed");
-            }
-
-            g_print("[INFO] Execution Manager (handle_expiration): Sent ABORT for Task ID %u\n", exp->task_id);
+            g_print("[INFO] Execution Manager: Sent ABORT for Task ID %u\n", exp->task_id);
         }
     }
 

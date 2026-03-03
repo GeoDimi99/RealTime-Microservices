@@ -16,20 +16,20 @@ find_package(PkgConfig REQUIRED)
 # This automatically handles include paths and library linking
 pkg_check_modules(GLIB2 REQUIRED IMPORTED_TARGET glib-2.0)
 pkg_check_modules(GIO REQUIRED IMPORTED_TARGET gio-2.0)
-pkg_check_modules(HIREDIS REQUIRED IMPORTED_TARGET hiredis)
 
 # Define the executable and its source files
 add_executable(execution-manager
     src/main.c
     src/execution_manager.c
     src/schedule.c
+    src/app_task.c
 )
 
 # Set include directories for the target
 # Using PRIVATE scope to avoid leaking these paths to other potential targets
 target_include_directories(execution-manager PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/../common/include
+    #${CMAKE_SOURCE_DIR}/../common/include
 )
 
 # Find Threading support (pthread)
@@ -42,7 +42,6 @@ target_link_libraries(execution-manager
     Threads::Threads 
     PkgConfig::GLIB2
     PkgConfig::GIO
-    PkgConfig::HIREDIS
 )
 
 # Apply additional compiler definitions from PkgConfig (if any)

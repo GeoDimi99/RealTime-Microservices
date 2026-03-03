@@ -1,13 +1,18 @@
-#include <stdio.h>
 #include <glib.h>
 #include <signal.h> // For signals
 #include <unistd.h> // For sleep()
+#include <sched.h>
+#include <sys/mman.h>
+
 #include "schedule.h"
 #include "execution_manager.h"
+#include "app_task.h"
+
+
 
 
 /* Gloabal flag for check the main loop */
-static volatile gboolean keep_running = TRUE;
+volatile gboolean keep_running = TRUE;
 
 
 /* Signal Handler for SIGINT (Ctrl+C) */
@@ -18,7 +23,14 @@ void int_handler(int dummy) {
 }
 
 int main(int argc, char *argv[]) {
-    (void)argc; (void)argv; 
+    (void)argc; (void)argv;
+
+
+    /* Lock memory */
+    if(mlockall(MCL_CURRENT|MCL_FUTURE) == -1) {
+        g_error("[ERROR] Execution Manager: mlockall failed: %m\n");
+        return 1;
+    }
 
     /* Registre the signal handler for a clean clousure */
     signal(SIGINT, int_handler);
@@ -52,16 +64,18 @@ int main(int argc, char *argv[]) {
             g_error("[ERROR] Execution Manager (%s) : scheduler creation failed.", schedule_name);
         }
 
-        schedule_add_task(sched, 1, "sum", SCHED_POLICY_FIFO, 10, 1, NULL,
-                          1 * 1000, 2 * 1000, "[{\"a\":10, \"b\":5}]");
+        input_t *sum_input = g_new0(input_t, 1);
+        sum_input->a = 10;
+        sum_input->b = 5;
 
-        schedule_add_task(sched, 2, "subtract", SCHED_POLICY_FIFO, 8, 1, NULL,
-                          1 * 1000, 7 * 1000, "[{\"a\":20, \"b\":8}]");
 
-        schedule_add_task(sched, 3, "multiply", SCHED_POLICY_FIFO, 6, 1, NULL,
-                          2 * 1000, 7 * 1000, "[{\"a\":4, \"b\":7}]");
+        schedule_add_task(sched, 1, "sum", task_main, SCHED_FIFO, 1, 10, 1, NULL, 1 * 1000, 2 * 1000, sum_input);
 
-        print_schedule(sched);
+        //schedule_add_task(sched, 2, "subtract", SCHED_FIFO, 8, 1, NULL, 1 * 1000, 7 * 1000, "[{\"a\":20, \"b\":8}]");
+
+        //schedule_add_task(sched, 3, "multiply", SCHED_FIFO, 6, 1, NULL, 2 * 1000, 7 * 1000, "[{\"a\":4, \"b\":7}]");
+
+        schedule_print(sched);
 
         /* Run the schedule */
         em_run_schedule(em, sched);
