@@ -101,7 +101,6 @@ void* task_wrapper_func(void* data){
 
 
     /* Cleanup */
-    g_free(input);
     g_free(res);
     g_free(tw_input);
     return NULL;

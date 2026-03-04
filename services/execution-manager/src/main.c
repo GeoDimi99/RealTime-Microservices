@@ -18,7 +18,7 @@ volatile gboolean keep_running = TRUE;
 /* Signal Handler for SIGINT (Ctrl+C) */
 void int_handler(int dummy) {
     (void)dummy; 
-    g_print("\n[SYSTEM] Execution Manager: SIGINT received.\n");
+    g_print("\n[INFO] Execution Manager: SIGINT received.\n");
     keep_running = FALSE;
 }
 
@@ -90,11 +90,11 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    g_print("\n[SYSTEM] Execution Manager: Exit from the main loop. Cleanup ...\n");
+    g_print("\n[INFO] Execution Manager: Exit from the main loop. Cleanup ...\n");
 
     if (em) em_free(em);
     if (sched) schedule_free(sched);
     
-    g_print("[SYSTEM] Execution Manager: Cleanup completed.\n");
+    g_print("[INFO] Execution Manager: Cleanup completed.\n");
     return exit_code;
 }
