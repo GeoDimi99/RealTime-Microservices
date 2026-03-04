@@ -1,96 +1,217 @@
 #include "execution_manager.h"
 
-int init_execution_manager(execution_manager_t* svc, const char* name, const char* rx_q){
-    if (!svc) return -1;
 
-    /* Initialize context strings */
-    strncpy(svc->execution_manager_name, name, MAX_TASK_NAME);
-    strncpy(svc->rx_queue_name, rx_q, MAX_QUEUE_NAME);
 
-    /* Setup RX Queue (Service Input) */
-    /* Destroy the queue if it was left over from a previous crash. This ensures we start with an empty queue. */
-    destroy_queue(svc->rx_queue_name);
-    svc->rx_fd = create_queue(svc->rx_queue_name, O_RDONLY);
-    
-    log_message(LOG_INFO, svc->execution_manager_name , "RX Queue initialized: %s\n", svc->rx_queue_name);
-    
-    return 0;
+
+execution_manager_t* em_new(const gchar *name){
+    g_return_val_if_fail(name != NULL, NULL);
+
+    execution_manager_t *em = g_new0(execution_manager_t, 1);
+    em->em_name = g_string_new(name);
+
+    return em;
 }
 
 
-/**
- * Assigns a schedule to the execution manager and initializes TX queues for all tasks.
- */
-int set_execution_manager_schedule(execution_manager_t* svc, schedule_t* schedule)
-{
-    /* Validate input pointers */
-    if (!svc || !schedule) 
-        return -1;
+void em_free(execution_manager_t *em){
+    if (!em) return;
 
-    /* Copy the schedule into the execution manager context */
-    svc->schedule = *schedule;
+    g_string_free(em->em_name, TRUE);
+    g_free(em);
+}
 
-    /* Initialize TX queues for each task in the schedule */
-    for (int i = 0; i < schedule->num_tasks; i++) {
 
-        /* Set the queue name for this task */
-        snprintf(svc->tx_queues_name[i], MAX_QUEUE_NAME, "/%s", schedule->tasks[i].task_name);
 
-        /* Poll until the TX queue for this task is available */
-        while (1) {
-            svc->tx_fd[i] = open_queue(svc->tx_queues_name[i], O_WRONLY);
+void em_run_schedule(execution_manager_t *em, schedule_t *sched) {
+    g_return_if_fail(em != NULL);
+    g_return_if_fail(sched != NULL);
 
-            /* Case A: Queue successfully opened */
-            if (svc->tx_fd[i] != (mqd_t)-1) {
-                log_message(LOG_INFO, svc->execution_manager_name, 
-                            "TX Queue initialized: %s\n", svc->tx_queues_name[i]);
-                break; /* Exit polling loop */
+
+    GMainLoop *loop = g_main_loop_new(NULL, FALSE);
+    gint64 time_zero_us = g_get_monotonic_time();
+
+    
+
+    /* 1. Plan the scheudle DEADLINES */
+    for (GList *l = sched->schedule_end_info->head; l != NULL; l = l->next) {
+        timeline_entry_t *entry = (timeline_entry_t *)l->data;
+
+        /* CORREZIONE: Uso deadline_context_t invece di context_t */
+        deadline_context_t *ctx = g_new0(deadline_context_t, 1);
+        ctx->data = entry->data_list;
+        ctx->loop = loop;
+        ctx->timestamp = entry->timestamp;
+        ctx->is_last = (l->next == NULL); // Se è l'ultimo nodo della GQueue
+        ctx->sched = sched;
+
+        gint64 target_mono_us = time_zero_us + (entry->timestamp * 1000);
+
+        GSource *source = g_timeout_source_new(0);
+        g_source_set_ready_time(source, target_mono_us);
+        g_source_set_callback(source, handle_expiration, ctx, NULL);
+        g_source_attach(source, g_main_loop_get_context(loop));
+        g_source_unref(source);
+    }
+
+    /* 2. Plan the schedule STARTS */
+    for (GList *l = sched->schedule_start_info->head; l != NULL; l = l->next) {
+        timeline_entry_t *entry = (timeline_entry_t *)l->data;
+
+        start_context_t *ctx = g_new0(start_context_t, 1);
+        ctx->data = entry->data_list;
+        ctx->timestamp = entry->timestamp;
+        ctx->sched = sched;
+
+        
+
+        gint64 target_mono_us = time_zero_us + (entry->timestamp * 1000);
+
+        GSource *source = g_timeout_source_new(0);
+        g_source_set_ready_time(source, target_mono_us);
+        g_source_set_callback(source, handle_initialization, ctx, NULL);
+        g_source_attach(source, g_main_loop_get_context(loop));
+        g_source_unref(source);
+    }
+
+    g_print("[INFO] Execution Manager: Scheduler started! Waiting for events...\n");
+    g_main_loop_run(loop);
+    
+    g_main_loop_unref(loop);
+    g_print("[INFO] Execution Manager: Scheduler terminated successfully.\n");
+}
+
+void* task_wrapper_func(void* data){
+    
+    task_wrapper_input_t* tw_input = (task_wrapper_input_t*)data;
+    
+    /* Read the thread context arguments */
+    guint16 task_id = tw_input->task_id;
+    gpointer input = tw_input->data;
+    GThreadFunc thread_func = tw_input->thread_func;
+    schedule_t* sched = tw_input->sched;
+
+    g_print("[INFO] ThreadCall %u: start thread function.\n", task_id);
+    /* Run the thread function */
+    gpointer res = thread_func(input);
+
+    g_print("[INFO] ThreadCall %u: termination thread function. \n", task_id);
+
+    /* Write the result */
+    schedule_set_result(sched, task_id, "{}");
+
+
+    /* Cleanup */
+    g_free(input);
+    g_free(res);
+    g_free(tw_input);
+    return NULL;
+
+}
+
+
+
+gboolean handle_initialization(gpointer user_data) {
+    start_context_t *ctx = (start_context_t *)user_data;
+    GSList *tasks = (GSList *)ctx->data;
+    schedule_t* sched = ctx->sched;
+
+
+    if (tasks == NULL) {
+        g_print("[ERROR] Execution Manager: No tasks\n");
+        g_free(ctx);
+        return G_SOURCE_REMOVE;
+    }
+
+    for (GSList *l = tasks; l != NULL; l = l->next) {
+        
+        /* Read the current task information */
+        activation_data_t *task = (activation_data_t *)l->data;
+
+        /* Prepare the thread (wrapper) input */
+        task_wrapper_input_t* tw_input = g_new0(task_wrapper_input_t, 1);
+        tw_input->task_id = task->task_id;
+        tw_input->data = task->input_data;
+        tw_input->thread_func = task->task_exec;
+        tw_input->sched = sched;
+
+
+        
+        /* Prepare the thread */
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+
+        /* Set CPU Affinity core */
+        cpu_set_t set;
+        CPU_ZERO(&set);
+        CPU_SET(task->cpu_affinity, &set);
+        gint affinity_err = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &set);
+        if (affinity_err != 0) {
+            g_warning("[WARNING] Execution Manager: Failed to set CPU affinity for Task ID %u. Error: %d (%s)", task->task_id, affinity_err, g_strerror(affinity_err));
+        }
+
+        /* Setting scheduler policy and priority */
+        struct sched_param param;
+        param.sched_priority = task->priority;
+
+        pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
+        pthread_attr_setschedpolicy(&attr, task->policy);
+        pthread_attr_setschedparam(&attr, &param);
+        pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+
+        pthread_t thread;
+        gint rc = pthread_create(&thread, &attr, task_wrapper_func, tw_input);
+        pthread_attr_destroy(&attr); // Clean up attributes
+        if (rc) {
+            g_printerr("[ERROR] Execution Manager: pthread_create failed with code %d (%s) for Task ID %u\n", rc, g_strerror(rc), task->task_id);
+            continue;
+        }
+        pthread_detach(thread);
+
+        // Iterate through GSList of dependencies
+        if (task->depends_on) {
+            g_print("[INFO] Depends On (IDs): ");
+            for (GSList *dep = task->depends_on; dep != NULL; dep = dep->next) {
+                // Assuming the list stores integers cast to pointers, or pointers to guint
+                // If they are pointers to uint: *(guint*)dep->data
+                // If they are IDs stored directly in the pointer: GPOINTER_TO_UINT(dep->data)
+                g_print("%u ", GPOINTER_TO_UINT(dep->data));
             }
-
-            /* Case B: Queue not created yet, wait and retry */
-            if (errno == ENOENT) {
-                sleep(1);
-            } 
-            /* Case C: Critical failure (permissions, limits, etc.) */
-            else {
-                perror("Fatal error connecting to Execution Manager");
-                return -1;
-            }
+            g_print("\n");
+        } else {
+            g_print("[INFO] Depends On: None\n");
         }
     }
 
-    return 0; /* All TX queues successfully initialized */
+    g_free(ctx); 
+    return G_SOURCE_REMOVE;
 }
 
 
-/**
- * Deletes all task queues assigned to the execution manager.
- */
-int delete_execution_manager_schedule(execution_manager_t* svc)
-{
-    /* Validate input pointer */
-    if (!svc) 
-        return -1;
 
-    /* Clean up all TX queues */
-    for (int i = 0; i < svc->schedule.num_tasks; i++) {
-        close_queue(svc->tx_fd[i]);
-        destroy_queue(svc->tx_queues_name[i]);
+gboolean handle_expiration(gpointer user_data) {
+    deadline_context_t *ctx = (deadline_context_t *)user_data;
+    GSList *tasks = (GSList *)ctx->data;
+
+    if (tasks == NULL) {
+        g_print("[INFO] Execution Manager: No tasks to expire\n");
+    } else {
+        for (GSList *l = tasks; l != NULL; l = l->next) {
+            expiration_data_t *exp = (expiration_data_t *)l->data;
+            
+            /* Check if the task is jet completed*/
+            if (schedule_is_task_completed(ctx->sched, exp->task_id)) {
+                g_print("[INFO] Execution Manager: Task %u already completed.\n", exp->task_id);
+                continue;
+            }
+            g_print("[INFO] Execution Manager: Sent ABORT for Task ID %u\n", exp->task_id);
+        }
     }
 
-    return 0; /* All TX queues successfully deleted */
-}
-
-
-/**
- * Closes the execution manager's RX queue and logs shutdown.
- * Does NOT delete any TX queues or schedules.
- */
-void close_execution_manager(execution_manager_t* svc)
-{
-    if (svc) {
-        log_message(LOG_INFO, svc->execution_manager_name, "Shutting down...\n");
-        delete_execution_manager_schedule(svc);
-        close_queue(svc->rx_fd);
+    if (ctx->is_last) {
+        g_print("[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...\n");
+        g_main_loop_quit(ctx->loop);
     }
+
+    g_free(ctx); 
+    return G_SOURCE_REMOVE;
 }

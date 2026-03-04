@@ -1,34 +1,67 @@
 #ifndef EXECUTION_MANAGER_H
 #define EXECUTION_MANAGER_H
 
-#include <string.h>
-#include "logger.h"
-#include "task_ipc.h"
+#define _GNU_SOURCE
+#include <glib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <pthread.h>
+#include <sched.h>
+
+
 #include "schedule.h"
+#include "execution_manager.h"
 
 
-#define MAX_EXEXECUTION_MANAGER_NAME 64
-#define DEFAULT_EXECUTION_MANAGER_NAME "execution-manager"
 
-/* Execution Manager Descriptor */
-typedef struct {
-    /* Static configuration */
-    char execution_manager_name[MAX_EXEXECUTION_MANAGER_NAME];
-    char rx_queue_name[MAX_QUEUE_NAME];     // Listening queue (EM Queue)
+#define DEFAULT_EXECUTION_MANAGER_NAME "execution_manager"
 
-    /* Runtime state */
-    schedule_t schedule;                                            // Current schedule
-    char tx_queues_name[MAX_TASKS_PER_SCHEDULE][MAX_QUEUE_NAME];    // Sending queues (Tasks Queues)
-    mqd_t rx_fd;                                                    // Input queue descriptor
-    mqd_t tx_fd[MAX_TASKS_PER_SCHEDULE];                            // Output queues descriptors  
 
+/* Execution Manager Stucture */
+typedef struct execution_manager_t{
+    GString *em_name;               // Execution Manager Name
 } execution_manager_t;
 
 
-int init_execution_manager(execution_manager_t* svc, const char* name, const char* rx_q);
-int set_execution_manager_schedule(execution_manager_t* svc, schedule_t* schedule);
-int delete_execution_manager_schedule(execution_manager_t* svc);
-void close_execution_manager(execution_manager_t* svc);
 
+typedef struct {
+    gpointer data;      // GList of activation_data_t
+    gint64 timestamp;   
+    schedule_t *sched;
+} start_context_t;
+
+typedef struct {
+    gpointer data;       // GSList of expiration_data_t 
+    GMainLoop *loop;     // Reference to end the process 
+    gboolean is_last;    // Flag that indicat if is the last event 
+    gint64 timestamp;    
+    schedule_t *sched;
+} deadline_context_t;
+
+
+typedef struct {
+    guint16 task_id;    // Task ID 
+    gpointer data;      // Task input
+    GThreadFunc thread_func; 
+    schedule_t *sched;  // Reference to the schedule for store the result
+} task_wrapper_input_t; 
+
+
+
+
+/* Executor Manager Constructor/Distructors */
+execution_manager_t* em_new(const gchar *name);
+void em_free(execution_manager_t *em);
+
+
+/* Exection Manager Activities*/
+void em_run_schedule(execution_manager_t *em, schedule_t *sched);
+
+/* Exectuion Manager Usefull Functions  */
+void* task_wrapper_func(void* data);
+
+/* Execution Manager Event Handlers */
+gboolean handle_initialization(gpointer user_data);
+gboolean handle_expiration(gpointer user_data);
 
 #endif // EXECUTION_MANAGER_H
