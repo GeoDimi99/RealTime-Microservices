@@ -76,13 +76,23 @@ schedule_t* schedule_new(const gchar *name, const gchar *version) {
     g_return_val_if_fail(name != NULL, NULL);
     g_return_val_if_fail(version == NULL || is_version_valid(version), NULL);
 
+    /* Struct memory allocation */
     schedule_t *sched = g_new0(schedule_t, 1);
     sched->schedule_name = g_string_new(name);
     sched->schedule_version = g_string_new(version ? version : "0.0.0");
 
+    /* Timeline Start/End Queue Initialization */
     sched->schedule_start_info = g_queue_new();
     sched->schedule_end_info = g_queue_new();
+
+    /* Mutex Initializzations */
+    pthread_mutexattr_t attr;
+    pthread_mutexattr_init(&attr);
+    pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT);
+    pthread_mutex_init(&sched->schedule_results_mutex, &attr);
+    pthread_mutexattr_destroy(&attr);
     
+    /* HashTable Initialization */
     sched->schedule_results = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, task_result_free);
 
     sched->schedule_duration = 0;
@@ -91,6 +101,10 @@ schedule_t* schedule_new(const gchar *name, const gchar *version) {
 
 void schedule_free(schedule_t *sched) {
     if (!sched) return;
+    /* Destroy Mutex */
+    pthread_mutex_destroy(&sched->schedule_results_mutex);
+
+    /* Destroy the other datas structures */
     g_string_free(sched->schedule_name, TRUE);
     g_string_free(sched->schedule_version, TRUE);
     g_queue_free_full(sched->schedule_start_info, start_entry_free_wrapper);
@@ -102,24 +116,29 @@ void schedule_free(schedule_t *sched) {
 /* ----------------- Schedule Getters/Setters ----------------- */
 GSList *schedule_get_results(schedule_t *sched, guint16 id)
 {
-    if (!sched)
-        return NULL;
+    if (!sched) return NULL;
+
+    pthread_mutex_lock(&sched->schedule_results_mutex);     // LOCK MUTEX
 
     task_result_t *res = g_hash_table_lookup(
         sched->schedule_results,
         GINT_TO_POINTER(id)
     );
 
-    if (!res)
-        return NULL;
+    GSList *results = res ? res->output_list : NULL;
 
-    return res->output_list;
+    pthread_mutex_unlock(&sched->schedule_results_mutex);   // UNLOCK MUTEX
+
+
+    return results;
 }
 
 
 void schedule_set_result(schedule_t *sched, guint16 id, const gchar *output) {
     g_return_if_fail(sched != NULL);
     g_return_if_fail(output != NULL);
+
+    pthread_mutex_lock(&sched->schedule_results_mutex);     // LOCK MUTEX
 
     /* Find the result associated to the ID in the HashTable */
     task_result_t *res = g_hash_table_lookup(sched->schedule_results, GINT_TO_POINTER((gint)id));
@@ -139,6 +158,8 @@ void schedule_set_result(schedule_t *sched, guint16 id, const gchar *output) {
     if (res->remaining_runs > 0) {
         res->remaining_runs--;
     }
+
+    pthread_mutex_unlock(&sched->schedule_results_mutex);   // UNLOCK MUTEX
 
     g_print("[INFO] Execution Manager: Task %u updated: %u runs left.\n", id, res->remaining_runs);
 }
@@ -202,18 +223,24 @@ void schedule_add_task(schedule_t *sched,
         g_queue_insert_sorted(sched->schedule_end_info, new_e, compare_timeline_entries, NULL);
     }
 
+
     /* 6. Init results in HashTable */
     task_result_t *res = g_new0(task_result_t, 1);
     res->remaining_runs = repetition;
     res->output_list = NULL;
+    pthread_mutex_lock(&sched->schedule_results_mutex);     // LOCK MUTEX     
     g_hash_table_insert(sched->schedule_results, GINT_TO_POINTER((gint)id), res);
+    pthread_mutex_unlock(&sched->schedule_results_mutex);   // UNLOCK MUTEX
 
+    /* 7. Update schedule duration */
     if (end_time > sched->schedule_duration)
         sched->schedule_duration = end_time;
 }
 
 void schedule_reset(schedule_t *sched) {
     g_return_if_fail(sched != NULL);
+
+    pthread_mutex_lock(&sched->schedule_results_mutex); // LOCK
 
     GHashTableIter iter;
     gpointer key, value;
@@ -247,6 +274,8 @@ void schedule_reset(schedule_t *sched) {
             }
         }
     }
+
+    pthread_mutex_unlock(&sched->schedule_results_mutex); // UNLOCK
 }
 
 
@@ -255,18 +284,17 @@ void schedule_reset(schedule_t *sched) {
 
 gboolean schedule_is_task_completed(schedule_t *sched, guint16 id)
 {
-    if (!sched)
-        return FALSE;
+    if (!sched) return FALSE;
 
+    pthread_mutex_lock(&sched->schedule_results_mutex);     // LOCK MUTEX
     task_result_t *res = g_hash_table_lookup(
         sched->schedule_results,
         GINT_TO_POINTER(id)
     );
+    gboolean completed = (res && res->remaining_runs == 0);
+    pthread_mutex_unlock(&sched->schedule_results_mutex);   // UNLOCK MUTEX
 
-    if (!res)
-        return FALSE;
-
-    return (res->remaining_runs == 0);
+    return completed;
 }
 
 

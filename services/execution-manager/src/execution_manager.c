@@ -26,8 +26,11 @@ void em_run_schedule(execution_manager_t *em, schedule_t *sched) {
     g_return_if_fail(em != NULL);
     g_return_if_fail(sched != NULL);
 
+
     GMainLoop *loop = g_main_loop_new(NULL, FALSE);
     gint64 time_zero_us = g_get_monotonic_time();
+
+    
 
     /* 1. Plan the scheudle DEADLINES */
     for (GList *l = sched->schedule_end_info->head; l != NULL; l = l->next) {
@@ -57,6 +60,9 @@ void em_run_schedule(execution_manager_t *em, schedule_t *sched) {
         start_context_t *ctx = g_new0(start_context_t, 1);
         ctx->data = entry->data_list;
         ctx->timestamp = entry->timestamp;
+        ctx->sched = sched;
+
+        
 
         gint64 target_mono_us = time_zero_us + (entry->timestamp * 1000);
 
@@ -74,11 +80,41 @@ void em_run_schedule(execution_manager_t *em, schedule_t *sched) {
     g_print("[INFO] Execution Manager: Scheduler terminated successfully.\n");
 }
 
+void* task_wrapper_func(void* data){
+    
+    task_wrapper_input_t* tw_input = (task_wrapper_input_t*)data;
+    
+    /* Read the thread context arguments */
+    guint16 task_id = tw_input->task_id;
+    gpointer input = tw_input->data;
+    GThreadFunc thread_func = tw_input->thread_func;
+    schedule_t* sched = tw_input->sched;
+
+    g_print("[INFO] ThreadCall %u: start thread function.\n", task_id);
+    /* Run the thread function */
+    gpointer res = thread_func(input);
+
+    g_print("[INFO] ThreadCall %u: termination thread function. \n", task_id);
+
+    /* Write the result */
+    schedule_set_result(sched, task_id, "{}");
+
+
+    /* Cleanup */
+    g_free(input);
+    g_free(res);
+    g_free(tw_input);
+    return NULL;
+
+}
+
 
 
 gboolean handle_initialization(gpointer user_data) {
     start_context_t *ctx = (start_context_t *)user_data;
     GSList *tasks = (GSList *)ctx->data;
+    schedule_t* sched = ctx->sched;
+
 
     if (tasks == NULL) {
         g_print("[ERROR] Execution Manager: No tasks\n");
@@ -87,38 +123,49 @@ gboolean handle_initialization(gpointer user_data) {
     }
 
     for (GSList *l = tasks; l != NULL; l = l->next) {
+        
+        /* Read the current task information */
         activation_data_t *task = (activation_data_t *)l->data;
+
+        /* Prepare the thread (wrapper) input */
+        task_wrapper_input_t* tw_input = g_new0(task_wrapper_input_t, 1);
+        tw_input->task_id = task->task_id;
+        tw_input->data = task->input_data;
+        tw_input->thread_func = task->task_exec;
+        tw_input->sched = sched;
+
+
         
-        g_print("--------------------------------------------------\n");
-        g_print("[INFO] Task ID: %u\n", task->task_id);
-        g_print("[INFO] Task Name: %s\n", task->task_name ? task->task_name->str : "(null)");
-        g_print("[INFO] Policy: %d | Priority: %d | Repetition: %u\n", 
-                task->policy, (gint)task->priority, (guint)task->repetition);
-        
+        /* Prepare the thread */
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+
         /* Set CPU Affinity core */
         cpu_set_t set;
         CPU_ZERO(&set);
-        CPU_SET(task->cpu_affinity, &set);                  // Set CPU 0
-        sched_setaffinity(0, sizeof(cpu_set_t), &set);      // 0 is the calling process
+        CPU_SET(task->cpu_affinity, &set);
+        gint affinity_err = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &set);
+        if (affinity_err != 0) {
+            g_warning("[WARNING] Execution Manager: Failed to set CPU affinity for Task ID %u. Error: %d (%s)", task->task_id, affinity_err, g_strerror(affinity_err));
+        }
 
         /* Setting scheduler policy and priority */
         struct sched_param param;
         param.sched_priority = task->priority;
 
-
-        pthread_attr_t attr;
-        pthread_attr_init(&attr);
         pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
         pthread_attr_setschedpolicy(&attr, task->policy);
         pthread_attr_setschedparam(&attr, &param);
         pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
 
         pthread_t thread;
-        pthread_create(&thread, &attr, task->task_exec, task->input_data);
-        //pthread_detach(thread);
-
-
-        
+        gint rc = pthread_create(&thread, &attr, task_wrapper_func, tw_input);
+        pthread_attr_destroy(&attr); // Clean up attributes
+        if (rc) {
+            g_printerr("[ERROR] Execution Manager: pthread_create failed with code %d (%s) for Task ID %u\n", rc, g_strerror(rc), task->task_id);
+            continue;
+        }
+        pthread_detach(thread);
 
         // Iterate through GSList of dependencies
         if (task->depends_on) {
@@ -134,7 +181,6 @@ gboolean handle_initialization(gpointer user_data) {
             g_print("[INFO] Depends On: None\n");
         }
     }
-    g_print("--------------------------------------------------\n");
 
     g_free(ctx); 
     return G_SOURCE_REMOVE;
@@ -154,10 +200,9 @@ gboolean handle_expiration(gpointer user_data) {
             
             /* Check if the task is jet completed*/
             if (schedule_is_task_completed(ctx->sched, exp->task_id)) {
-                g_print("[INFO] Execution Manager: Task %u already completed. No ABORT sent.\n", exp->task_id);
+                g_print("[INFO] Execution Manager: Task %u already completed.\n", exp->task_id);
                 continue;
             }
-
             g_print("[INFO] Execution Manager: Sent ABORT for Task ID %u\n", exp->task_id);
         }
     }

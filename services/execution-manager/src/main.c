@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
         sum_input->b = 5;
 
 
-        schedule_add_task(sched, 1, "sum", task_main, SCHED_FIFO, 1, 10, 1, NULL, 1 * 1000, 2 * 1000, sum_input);
+        schedule_add_task(sched, 1, "sum", task_main, SCHED_FIFO, 1, 0, 1, NULL, 1 * 1000, 2 * 1000, sum_input);
 
         //schedule_add_task(sched, 2, "subtract", SCHED_FIFO, 8, 1, NULL, 1 * 1000, 7 * 1000, "[{\"a\":20, \"b\":8}]");
 

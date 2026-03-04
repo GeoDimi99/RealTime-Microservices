@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include <sched.h>
 
+
 #include "schedule.h"
 #include "execution_manager.h"
 
@@ -26,6 +27,7 @@ typedef struct execution_manager_t{
 typedef struct {
     gpointer data;      // GList of activation_data_t
     gint64 timestamp;   
+    schedule_t *sched;
 } start_context_t;
 
 typedef struct {
@@ -36,15 +38,13 @@ typedef struct {
     schedule_t *sched;
 } deadline_context_t;
 
-typedef struct {
-    execution_manager_t *em;
-    schedule_t *sched;
-} result_context_t;
 
 typedef struct {
-    schedule_t *sched;
-    GMainLoop *loop;
-} completion_context_t;
+    guint16 task_id;    // Task ID 
+    gpointer data;      // Task input
+    GThreadFunc thread_func; 
+    schedule_t *sched;  // Reference to the schedule for store the result
+} task_wrapper_input_t; 
 
 
 
@@ -57,7 +57,8 @@ void em_free(execution_manager_t *em);
 /* Exection Manager Activities*/
 void em_run_schedule(execution_manager_t *em, schedule_t *sched);
 
-
+/* Exectuion Manager Usefull Functions  */
+void* task_wrapper_func(void* data);
 
 /* Execution Manager Event Handlers */
 gboolean handle_initialization(gpointer user_data);

@@ -3,6 +3,7 @@
 
 #include <glib.h>
 #include <sched.h>
+#include <pthread.h>        // Mutex manager
 
 /* --- Utils Structures --- */
 
@@ -40,7 +41,8 @@ typedef struct {
     GString *schedule_version;
     GQueue *schedule_start_info;
     GQueue *schedule_end_info;
-    GHashTable *schedule_results; /* Map: Task ID (guint16) -> task_result_t* */
+    GHashTable *schedule_results;   // Map: Task ID (guint16) -> task_result_t* 
+    pthread_mutex_t schedule_results_mutex;
     gint64 schedule_duration;
 } schedule_t;
 
