@@ -4,7 +4,7 @@
 #include <fcntl.h>
 #include <errno.h>
 
-/* ---- Helper Functions ---- */
+/* -----------------Helper Functions ----------------- */
 
 static gboolean is_version_valid(const gchar *version) {
     if (version == NULL) return FALSE;
@@ -21,7 +21,6 @@ static gint compare_timeline_entries(gconstpointer a, gconstpointer b, gpointer 
     return (entry_a->timestamp < entry_b->timestamp) ? -1 : (entry_a->timestamp > entry_b->timestamp) ? 1 : 0;
 }
 
-/* ---- Destructors & Wrappers ---- */
 
 static void g_string_free_wrapper(gpointer data) {
     if (data) g_string_free((GString *)data, TRUE);
@@ -33,7 +32,6 @@ static void activation_data_free(gpointer data) {
         g_string_free(act->task_name, TRUE);
         g_string_free(act->input_data, TRUE);
         g_slist_free(act->depends_on);
-        /* Note: we close here the queue that is shared with expiration data */
         g_free(act);
     }
 }
@@ -42,6 +40,7 @@ static void expiration_data_free(gpointer data) {
     expiration_data_t *exp = (expiration_data_t *)data;
     if (exp) {
         g_string_free(exp->task_name, TRUE);
+        /* Note: we close only here the queue that is shared with activation data, for avoid double close */
         if (exp->task_queue != (mqd_t)-1) {
             mq_close(exp->task_queue);
         }
@@ -73,19 +72,22 @@ static void task_result_free(gpointer data) {
     }
 }
 
-/* ---- Schedule Lifecycle ---- */
+/* ----------------- Schedule Constructor/Destructor ----------------- */
 
 schedule_t* schedule_new(const gchar *name, const gchar *version) {
     g_return_val_if_fail(name != NULL, NULL);
     g_return_val_if_fail(version == NULL || is_version_valid(version), NULL);
 
+    /* Struct memory allocation */
     schedule_t *sched = g_new0(schedule_t, 1);
     sched->schedule_name = g_string_new(name);
     sched->schedule_version = g_string_new(version ? version : "0.0.0");
 
+    /* Timeline Start/End Queue Initialization */
     sched->schedule_start_info = g_queue_new();
     sched->schedule_end_info = g_queue_new();
     
+    /* HashTable Initialization */
     sched->schedule_results = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, task_result_free);
 
     sched->schedule_duration = 0;
@@ -102,7 +104,53 @@ void schedule_free(schedule_t *sched) {
     g_free(sched);
 }
 
-/* ---- Core Operations ---- */
+
+/* ----------------- Schedule Getters/Setters ----------------- */
+
+GSList *schedule_get_results(schedule_t *sched, guint16 id)
+{
+    if (!sched) return NULL;
+
+    task_result_t *res = g_hash_table_lookup(
+        sched->schedule_results,
+        GINT_TO_POINTER(id)
+    );
+
+    GSList *results = res ? res->output_list : NULL;
+
+    return results;
+}
+
+
+
+void schedule_set_result(schedule_t *sched, guint16 id, const gchar *output) {
+    g_return_if_fail(sched != NULL);
+    g_return_if_fail(output != NULL);
+
+    /* Find the result associated to the ID in the HashTable */
+    task_result_t *res = g_hash_table_lookup(sched->schedule_results, GINT_TO_POINTER((gint)id));
+
+    if (res == NULL) {
+        g_printerr("[WARNING] Execution Manager: in schedule_set_result Task ID %u not found.\n", id);
+        return;
+    }
+
+    
+    /* 1. Add the new output in the list */
+    GString *new_output = g_string_new(output);
+    res->output_list = g_slist_append(res->output_list, new_output);
+
+    /* 2. Decrement the remainning runs (if greather than 0) */
+
+    if (res->remaining_runs > 0) {
+        res->remaining_runs--;
+    }
+
+    g_print("[INFO] Execution Manager: Task %u updated: %u runs left.\n", id, res->remaining_runs);
+}
+
+
+/* ----------------- Schedule Methods ----------------- */
 
 void schedule_add_task(schedule_t *sched, 
                 guint16 id, const gchar *name, gint policy, 
@@ -197,67 +245,6 @@ void schedule_add_task(schedule_t *sched,
         sched->schedule_duration = end_time;
 }
 
-
-void schedule_set_result(schedule_t *sched, guint16 id, const gchar *output) {
-    g_return_if_fail(sched != NULL);
-    g_return_if_fail(output != NULL);
-
-    /* Find the result associated to the ID in the HashTable */
-    task_result_t *res = g_hash_table_lookup(sched->schedule_results, GINT_TO_POINTER((gint)id));
-
-    if (res == NULL) {
-        g_printerr("[WARNING] schedule_set_result: Task ID %u non trovato.\n", id);
-        return;
-    }
-
-    
-    /* 1. Add the new output in the list */
-    GString *new_output = g_string_new(output);
-    res->output_list = g_slist_append(res->output_list, new_output);
-
-    /* 2. Decrement the remainning runs (if greather than 0) */
-
-    if (res->remaining_runs > 0) {
-        res->remaining_runs--;
-    }
-
-    g_print("[INFO] Execution Manager: Task %u updated: %u runs left.\n", id, res->remaining_runs);
-}
-
-gboolean schedule_is_task_completed(schedule_t *sched, guint16 id)
-{
-    if (!sched)
-        return FALSE;
-
-    task_result_t *res = g_hash_table_lookup(
-        sched->schedule_results,
-        GINT_TO_POINTER(id)
-    );
-
-    if (!res)
-        return FALSE;
-
-    return (res->remaining_runs == 0);
-}
-
-GSList *schedule_get_results(schedule_t *sched, guint16 id)
-{
-    if (!sched)
-        return NULL;
-
-    task_result_t *res = g_hash_table_lookup(
-        sched->schedule_results,
-        GINT_TO_POINTER(id)
-    );
-
-    if (!res)
-        return NULL;
-
-    return res->output_list;
-}
-
-
-
 void schedule_reset(schedule_t *sched) {
     g_return_if_fail(sched != NULL);
 
@@ -295,23 +282,25 @@ void schedule_reset(schedule_t *sched) {
     }
 }
 
-/* ---- Utils & Printers ---- */
 
-int compare_versions(const gchar *v1, const gchar *v2) {
-    if (!is_version_valid(v1) || !is_version_valid(v2)) return -2;
-    gchar **p1 = g_strsplit(v1, ".", 3);
-    gchar **p2 = g_strsplit(v2, ".", 3);
-    int res = 0;
-    for (int i = 0; i < 3; i++) {
-        int n1 = atoi(p1[i]), n2 = atoi(p2[i]);
-        if (n1 > n2) { res = 1; break; }
-        if (n1 < n2) { res = -1; break; }
-    }
-    g_strfreev(p1); g_strfreev(p2);
-    return res;
+/* ----------------- Other Methods -----------------*/
+
+gboolean schedule_is_task_completed(schedule_t *sched, guint16 id)
+{
+    if (!sched) return FALSE;
+
+    task_result_t *res = g_hash_table_lookup(
+        sched->schedule_results,
+        GINT_TO_POINTER(id)
+    );
+
+    if (!res) return FALSE;
+
+    return (res->remaining_runs == 0);
 }
 
-void print_schedule(schedule_t *sched) {
+
+void schedule_print(schedule_t *sched) {
     if (!sched) return;
 
     g_print("\n=== SCHEDULE: %s (v%s) [%ld ms] ===\n", 
@@ -340,3 +329,23 @@ void print_schedule(schedule_t *sched) {
     }
     g_print("==========================================\n");
 }
+
+
+
+
+/* ----------------- Usefull functions ----------------- */
+
+int compare_versions(const gchar *v1, const gchar *v2) {
+    if (!is_version_valid(v1) || !is_version_valid(v2)) return -2;
+    gchar **p1 = g_strsplit(v1, ".", 3);
+    gchar **p2 = g_strsplit(v2, ".", 3);
+    int res = 0;
+    for (int i = 0; i < 3; i++) {
+        int n1 = atoi(p1[i]), n2 = atoi(p2[i]);
+        if (n1 > n2) { res = 1; break; }
+        if (n1 < n2) { res = -1; break; }
+    }
+    g_strfreev(p1); g_strfreev(p2);
+    return res;
+}
+

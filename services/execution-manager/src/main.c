@@ -13,7 +13,7 @@ static volatile gboolean keep_running = TRUE;
 /* Signal Handler for SIGINT (Ctrl+C) */
 void int_handler(int dummy) {
     (void)dummy; 
-    g_print("\n[SYSTEM] Execution Manager: SIGINT received.\n");
+    g_print("[INFO] Execution Manager: SIGINT received.\n");
     keep_running = FALSE;
 }
 
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
         schedule_add_task(sched, 3, "multiply", SCHED_POLICY_FIFO, 6, 1, NULL,
                           2 * 1000, 7 * 1000, "[{\"a\":4, \"b\":7}]");
 
-        print_schedule(sched);
+        schedule_print(sched);
 
         /* Run the schedule */
         em_run_schedule(em, sched);
@@ -76,11 +76,11 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    g_print("\n[SYSTEM] Execution Manager: Exit from the main loop. Cleanup ...\n");
+    g_print("[INFO] Execution Manager: Exit from the main loop. Cleanup ...\n");
 
     if (em) em_free(em);
     if (sched) schedule_free(sched);
     
-    g_print("[SYSTEM] Execution Manager: Cleanup completed.\n");
+    g_print("[INFO] Execution Manager: Cleanup completed.\n");
     return exit_code;
 }

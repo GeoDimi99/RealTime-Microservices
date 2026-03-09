@@ -17,28 +17,28 @@
 
 /* Execution Manager Stucture */
 typedef struct execution_manager_t{
-    GString *em_name;
-    mqd_t em_queue;
+    GString *em_name;       // Execution Manager Name (Debug)
+    mqd_t em_queue;         // Execution Manager Queue (Receive)
 } execution_manager_t;
 
 
 
 typedef struct {
-    gpointer data;      /* GSList di activation_data_t */
-    gint64 timestamp;   /* Per logging */
+    gpointer data;      // GSList di activation_data_t
+    gint64 timestamp;   // For logging (Debug)
 } start_context_t;
 
 typedef struct {
-    gpointer data;       /* GSList di expiration_data_t */
-    GMainLoop *loop;     /* Riferimento per terminare il programma */
-    gboolean is_last;    /* Flag per l'ultimo evento della timeline */
-    gint64 timestamp;    /* Per logging */
-    schedule_t *sched;
+    gpointer data;       // GSList of expiration_data_t
+    GMainLoop *loop;     // Reference for end the loop
+    gboolean is_last;    // Flag that indicate the last event of the loop
+    gint64 timestamp;    // For logging (Debug)
+    schedule_t *sched;   // Reference to the schedule
 } deadline_context_t;
 
 typedef struct {
-    execution_manager_t *em;
-    schedule_t *sched;
+    execution_manager_t *em;    //
+    schedule_t *sched;          //
 } result_context_t;
 
 typedef struct {

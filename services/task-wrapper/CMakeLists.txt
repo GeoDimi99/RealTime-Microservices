@@ -16,8 +16,6 @@ add_compile_definitions(_GNU_SOURCE)
 add_executable(task-wrapper
     src/main.c
     src/task_wrapper.c
-    src/task_wrapper_message_event.c
-    src/task.c
     src/app_task.c
 )
 

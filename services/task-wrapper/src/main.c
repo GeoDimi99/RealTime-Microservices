@@ -3,9 +3,7 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <glib.h>
-
 #include "task_wrapper.h"
-#include "task_wrapper_message_event.h"
 
 
 
@@ -14,19 +12,6 @@
 int main(int argc, char *argv[]) {
     int exit_code = 0;
 
-    //const gchar *json_test = "[ {\"a\":2, \"b\":3}, {\"a\":3, \"b\":9} ]";
-    //GSList *list = parse_input_list(json_test);
-
-    //GSList *node;
-    //for (node = list; node != NULL; node = node->next) {
-        //input_t *elem = (input_t*) node->data;
-        //print_input(elem);  // usa la funzione che hai definito
-    //}
-    //free_input_list(list);
-
-    //return 0;
-    //parse_and_print_input(json_test);
-    //return 0;
 
     /* Memory Locking per Real-Time */
     if (mlockall(MCL_CURRENT | MCL_FUTURE) == -1) {

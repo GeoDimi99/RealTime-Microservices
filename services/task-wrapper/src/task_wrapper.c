@@ -1,14 +1,9 @@
 #include "task_wrapper.h"
-#include <errno.h>
-#include <fcntl.h>
 
-/* ---- Private Helper Functions ---- */
 
-/**
- * task_session_list_free:
- * Function to free the GSList of pthread_t* stored in the hash table.
- * Used as a GDestroyNotify callback.
- */
+/* ----------------- Helper Functions ----------------- */
+
+
 static void task_session_list_free(gpointer data) {
     GSList *list = (GSList *)data;
     if (list) {
@@ -16,13 +11,15 @@ static void task_session_list_free(gpointer data) {
     }
 }
 
-/* ---- Lifecycle Management ---- */
+/* ----------------- Constructor/Distructor ----------------- */
 
 task_wrapper_t* task_wrapper_new(const gchar *task_name, const gchar *task_queue_name, const gchar *em_queue_name) {
     g_return_val_if_fail(task_name != NULL, NULL);
     g_return_val_if_fail(task_queue_name != NULL, NULL);
     g_return_val_if_fail(em_queue_name != NULL, NULL);
 
+
+    /* Create the task wrapper structure */
     task_wrapper_t *tw = g_new0(task_wrapper_t, 1);
     tw->task_name = g_string_new(task_name);
 
@@ -83,7 +80,7 @@ void task_wrapper_free(task_wrapper_t *tw) {
     g_free(tw);
 }
 
-/* ---- Session & Thread Management ---- */
+/* ----------------- Manager Threads/Sessions ----------------- */
 
 void task_wrapper_add_thread(task_wrapper_t *tw, guint16 session_id, pthread_t thread_id) {
     g_return_if_fail(tw != NULL);
@@ -95,8 +92,10 @@ void task_wrapper_add_thread(task_wrapper_t *tw, guint16 session_id, pthread_t t
     *p_tid = thread_id;
 
     if (list != NULL) {
-        /* We "steal" the pointer to update the list without triggering the destructor */
+        // Steal the list from the hash table to modify it.
         g_hash_table_steal(tw->task_session_table, key);
+
+        // Insert the list element 
         list = g_slist_prepend(list, p_tid);
     } else {
         list = g_slist_prepend(NULL, p_tid);
@@ -113,28 +112,25 @@ void task_wrapper_remove_thread(task_wrapper_t *tw, guint16 session_id, pthread_
     gpointer key = GINT_TO_POINTER(session_id);
     GSList *list = g_hash_table_lookup(tw->task_session_table, key);
 
-    if (!list) return; // Protezione: sessione già rimossa
+    if (!list) return; 
 
     GSList *iterator = list;
     while (iterator != NULL) {
         pthread_t *stored_tid = (pthread_t *)iterator->data;
         if (pthread_equal(*stored_tid, thread_id)) {
-            /* BUG FIX: The data pointed to by the list element ('stored_tid') was being freed
-             * before the element was removed from the list. This is a use-after-free.
-             * The fix is to remove the element from the list first, then free the data. */
             
-            // 1. Steal the list from the hash table to modify it.
+            // Steal the list from the hash table to modify it.
             g_hash_table_steal(tw->task_session_table, key);
             
-            // 2. Remove the list element. g_slist_delete_link is O(1) since we have the iterator.
+            // Remove the list element. g_slist_delete_link is O(1) since we have the iterator.
             list = g_slist_delete_link(list, iterator);
             
-            // 3. If the list is not empty, put it back in the hash table.
+            // If the list is not empty, put it back in the hash table.
             if (list != NULL) {
                 g_hash_table_insert(tw->task_session_table, key, list);
             }
             
-            // 4. Now that the data is no longer referenced by the list, it's safe to free it.
+            // Now that the data is no longer referenced by the list, it's safe to free it.
             g_free(stored_tid);
             
             return;
@@ -148,15 +144,13 @@ GSList* task_wrapper_get_threads(task_wrapper_t *tw, guint16 session_id) {
     g_return_val_if_fail(tw != NULL, NULL);
     g_return_val_if_fail(tw->task_session_table != NULL, NULL);
 
-    /* Cerchiamo la lista originale nella tabella */
+    /* Search the original list in the table */
     GSList *original_list = g_hash_table_lookup(tw->task_session_table, GINT_TO_POINTER(session_id));
 
     if (original_list == NULL) {
         return NULL;
     }
 
-    /* Restituiamo una copia superficiale (shallow copy) della lista.
-     * I puntatori pthread_t* restano gli stessi, ma la struttura GSList è nuova. */
     return g_slist_copy(original_list);
 }
 
@@ -166,10 +160,10 @@ void * task_wrapper_run_thread(void *arg){
     guint16 sid = input_data->session_id;
     pthread_t self = pthread_self();
     
-    /* 1. Esecuzione del Task Reale */
+    /* Execution of the real task */
     output_t *output = task_main(input_data->input);
 
-    /* 2. Invio del risultato alla em_queue */
+    /* Send the result to the em_queue */
     if (output != NULL) {
         ipc_msg_t msg_out;
         memset(&msg_out, 0, sizeof(ipc_msg_t));
@@ -177,34 +171,35 @@ void * task_wrapper_run_thread(void *arg){
         msg_out.type = MSG_TASK_RESULT;
         msg_out.task_id = sid;
 
-        // Convertiamo l'output_t in una stringa JSON
-        // Nota: convert_output_to_json deve restituire una stringa allocata (gchar*)
+        
+        /* Convert the output in a JSON string*/
         gchar *json_res = convert_output_to_json(output);
 
         if (json_res != NULL) {
-            // Copiamo la stringa nel payload del messaggio (union data.result)
+
+            /* Copy the string inside the payload of the message */
             g_strlcpy(msg_out.data.result, json_res, MAX_TASK_JSON_OUT);
             g_free(json_res);
 
-            // Invio del messaggio sulla coda EM
+            /* Send the message on the EM queue */
             if (mq_send(tw->em_queue, (const char *)&msg_out, sizeof(ipc_msg_t), 0) == -1) {
-                g_warning("[ERROR] mq_send result failed: %s", g_strerror(errno));
+                g_warning("[ERROR] thread %lu : mq_send result failed: %s", self, g_strerror(errno));
             } else {
-                g_print("[INFO] Result sent to EM for Session ID: %u\n", sid);
+                g_print("[INFO] thread %lu : Result sent to EM for Session ID: %u\n", self, sid);
             }
         }
     }
 
-    /* 3. Preparazione dati per il cleanup nel thread principale */
+    /* Prepare the data for the cleanup inside the main thread */
     thread_cleanup_data_t *cleanup = g_new0(thread_cleanup_data_t, 1);
     cleanup->tw = tw;
     cleanup->session_id = sid;
     cleanup->thread_id = self;
 
-    /* 4. Invia la richiesta di rimozione dalla tabella al GMainLoop */
+    /* Send the remove request from the table to the GMainLoop */
     g_main_context_invoke(NULL, (GSourceFunc)handle_end_thread, cleanup);
 
-    /* 5. Cleanup locale al thread */
+    /* Local cleanup  thread */
     g_free(output);
     g_free(input_data->input);
     g_free(input_data);
@@ -220,7 +215,7 @@ GSList* parse_input_list(const gchar *input_data) {
     GError *error = NULL;
 
     if (!json_parser_load_from_data(parser, input_data, -1, &error)) {
-        g_printerr("[ERROR] JSON Load: %s\n", error->message);
+        g_printerr("[ERROR] JSON Parser: JSON Load %s\n", error->message);
         g_error_free(error);
         g_object_unref(parser);
         return NULL;
@@ -228,7 +223,7 @@ GSList* parse_input_list(const gchar *input_data) {
 
     JsonNode *root = json_parser_get_root(parser);
     if (!JSON_NODE_HOLDS_ARRAY(root)) {
-        g_printerr("[ERROR] JSON root is not an array.\n");
+        g_printerr("[ERROR] JSON Parser: JSON root is not an array.\n");
         g_object_unref(parser);
         return NULL;
     }
@@ -259,4 +254,111 @@ GSList* parse_input_list(const gchar *input_data) {
 void free_input_list(GSList *list) {
     /* Assuming input_t is a flat structure, otherwise use a custom free wrapper */
     g_slist_free_full(list, g_free);
+}
+
+
+
+
+
+/* ----------------- Message Event Handlers ----------------- */
+gboolean handle_input_message(GIOChannel *source, GIOCondition condition, gpointer user_data) {
+    task_wrapper_t *tw = (task_wrapper_t *)user_data;
+    ipc_msg_t msg;
+    unsigned int priority;
+
+    if (condition & G_IO_IN) {
+        ssize_t bytes_read = mq_receive(tw->task_queue, (char *)&msg, sizeof(ipc_msg_t), &priority);
+
+        if (bytes_read >= 0) {
+            g_print("[INFO] Message for Session ID: %u\n", msg.task_id);
+
+            switch (msg.type) {
+                case MSG_TASK_REQUEST: {
+                    
+                    sched_policy_t policy = msg.data.task_request.policy;
+                    gint8 priority = msg.data.task_request.priority;
+                    guint8 repetition = msg.data.task_request.repetition;
+                    GSList *inputs = parse_input_list(msg.data.task_request.input_data);
+                    
+                    if (!inputs) break;
+
+                    for (GSList *l = inputs; l != NULL; l = l->next) {
+
+                        task_input_t *t_in = g_new0(task_input_t, 1);
+                        t_in->session_id = msg.task_id;
+                        t_in->tw = tw;
+                        t_in->input = (input_t *)l->data;
+
+                        /* ---- Prepare the thread ---- */
+                        pthread_attr_t attr;
+                        pthread_attr_init(&attr);
+
+                        cpu_set_t set;
+                        CPU_ZERO(&set);
+                        CPU_SET(1, &set);
+                        gint affinity_err = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &set);
+                        if (affinity_err != 0) {
+                            g_warning("[WARNING] %s: Failed to set CPU affinity for Task ID %u. Error: %d (%s)", tw->task_name->str, t_in->session_id, affinity_err, g_strerror(affinity_err));
+                        }
+                        
+                        struct sched_param param;
+                        param.sched_priority = priority;
+                        pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
+                        pthread_attr_setschedpolicy(&attr, policy);
+                        pthread_attr_setschedparam(&attr, &param);
+                        pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+
+                        pthread_t tid;
+                        gint rc = pthread_create(&tid, &attr, task_wrapper_run_thread, t_in);
+                        pthread_attr_destroy(&attr); // Clean up attributes
+                        if (rc) {
+                            g_printerr("[ERROR] %s: pthread_create failed with code %d (%s) for Task ID %u\n", tw->task_name->str, rc, g_strerror(rc), t_in->session_id);
+                            continue;
+                        }
+                        pthread_detach(tid);
+
+                        task_wrapper_add_thread(tw, t_in->session_id, tid);
+
+                        /* ---------------------------- */
+
+                    }
+                    
+                    g_slist_free(inputs);
+                    break;
+                }
+
+                case MSG_TASK_ABORT: {
+                    g_print("  Action: FORCED ABORT for Session ID: %u\n", msg.task_id);
+                    
+                    GSList *threads = task_wrapper_get_threads(tw, msg.task_id);
+                    if (!threads) {
+                        g_print("  [WARN] No active threads found for session %u\n", msg.task_id);
+                        break;
+                    }
+
+                    for (GSList *l = threads; l != NULL; l = l->next) {
+                        pthread_t *tid_ptr = (pthread_t *)l->data;
+                        g_print("  [KILL] Cancelling thread %lu\n", (unsigned long)*tid_ptr);
+                        
+                        pthread_cancel(*tid_ptr);
+                        task_wrapper_remove_thread(tw, msg.task_id, *tid_ptr);
+                    }
+                    
+                    g_slist_free(threads);
+                    break;
+                }
+
+                default:
+                    break;
+            }
+        }
+    }
+    return TRUE;
+}
+
+gboolean handle_end_thread(gpointer data) {
+    thread_cleanup_data_t *cleanup = (thread_cleanup_data_t *)data;
+    task_wrapper_remove_thread(cleanup->tw, cleanup->session_id, cleanup->thread_id);
+    g_free(cleanup);
+    return G_SOURCE_REMOVE;
 }
