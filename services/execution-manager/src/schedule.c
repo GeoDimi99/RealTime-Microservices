@@ -154,7 +154,7 @@ void schedule_set_result(schedule_t *sched, guint16 id, const gchar *output) {
 
 void schedule_add_task(schedule_t *sched, 
                 guint16 id, const gchar *name, gint policy, 
-                gint8 priority, guint8 repetition, GSList *depends_on, 
+                gint8 priority, gint cpu_affinity, guint8 repetition, GSList *depends_on, 
                 gint64 start_time, gint64 end_time, const gchar *input) {
 
     g_return_if_fail(sched != NULL && name != NULL);
@@ -194,6 +194,7 @@ void schedule_add_task(schedule_t *sched,
     act->task_name = g_string_new(name);
     act->policy = policy;
     act->priority = priority;
+    act->cpu_affinity = cpu_affinity;
     act->repetition = repetition;
     act->depends_on = g_slist_copy(depends_on);
     act->input_data = g_string_new(input ? input : "[{}]");

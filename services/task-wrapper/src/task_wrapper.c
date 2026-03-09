@@ -277,6 +277,7 @@ gboolean handle_input_message(GIOChannel *source, GIOCondition condition, gpoint
                     
                     sched_policy_t policy = msg.data.task_request.policy;
                     gint8 priority = msg.data.task_request.priority;
+                    gint8 cpu_affinity = msg.data.task_request.cpu_affinity;
                     guint8 repetition = msg.data.task_request.repetition;
                     GSList *inputs = parse_input_list(msg.data.task_request.input_data);
                     
@@ -295,7 +296,7 @@ gboolean handle_input_message(GIOChannel *source, GIOCondition condition, gpoint
 
                         cpu_set_t set;
                         CPU_ZERO(&set);
-                        CPU_SET(1, &set);
+                        CPU_SET(cpu_affinity, &set);
                         gint affinity_err = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &set);
                         if (affinity_err != 0) {
                             g_warning("[WARNING] %s: Failed to set CPU affinity for Task ID %u. Error: %d (%s)", tw->task_name->str, t_in->session_id, affinity_err, g_strerror(affinity_err));

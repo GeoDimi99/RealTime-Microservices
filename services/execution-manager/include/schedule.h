@@ -13,6 +13,7 @@ typedef struct {
     GString *task_name;     // Image Task Name
     gint policy;            // Task Policy
     gint8 priority;         // Task Priority
+    gint cpu_affinity;      // CPU Affinity
     guint8 repetition;      // Task Repetition
     GSList *depends_on;     // List of Call ID
     GString *input_data;    // List of array input (JSON)
@@ -56,7 +57,7 @@ void schedule_set_result(schedule_t *sched, guint16 id, const gchar *output);
 
 
 /* Schedule Methods */
-void schedule_add_task(schedule_t *sched, guint16 id, const gchar *name, gint policy, gint8 priority, guint8 repetition,GSList *depends_on, gint64 start_time, gint64 end_time, const gchar *input);
+void schedule_add_task(schedule_t *sched, guint16 id, const gchar *name, gint policy, gint8 priority, gint cpu_affinity, guint8 repetition,GSList *depends_on, gint64 start_time, gint64 end_time, const gchar *input);
 void schedule_reset(schedule_t *sched);               
 
 /* Other Methods */

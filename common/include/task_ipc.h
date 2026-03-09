@@ -28,6 +28,7 @@ typedef enum {
 typedef struct {
     sched_policy_t policy;
     gint8 priority;
+    gint cpu_affinity;
     guint8 repetition;
     gchar input_data[MAX_TASK_JSON_IN];
 } task_request_t;

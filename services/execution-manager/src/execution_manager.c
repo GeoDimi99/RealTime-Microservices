@@ -125,6 +125,7 @@ gboolean handle_initialization(gpointer user_data) {
         msg.type = MSG_TASK_REQUEST;
         msg.data.task_request.policy = task->policy;
         msg.data.task_request.priority = task->priority;
+        msg.data.task_request.cpu_affinity = task->cpu_affinity;
         msg.data.task_request.repetition = task->repetition;
 
         if (task->input_data && task->input_data->str) {

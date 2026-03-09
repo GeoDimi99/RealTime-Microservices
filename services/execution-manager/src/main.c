@@ -52,13 +52,13 @@ int main(int argc, char *argv[]) {
             g_error("[ERROR] Execution Manager (%s) : scheduler creation failed.", schedule_name);
         }
 
-        schedule_add_task(sched, 1, "sum", SCHED_POLICY_FIFO, 10, 1, NULL,
+        schedule_add_task(sched, 1, "sum", SCHED_POLICY_FIFO, 10, 1, 1, NULL,
                           1 * 1000, 2 * 1000, "[{\"a\":10, \"b\":5}]");
 
-        schedule_add_task(sched, 2, "subtract", SCHED_POLICY_FIFO, 8, 1, NULL,
+        schedule_add_task(sched, 2, "subtract", SCHED_POLICY_FIFO, 8, 1, 1, NULL,
                           1 * 1000, 7 * 1000, "[{\"a\":20, \"b\":8}]");
 
-        schedule_add_task(sched, 3, "multiply", SCHED_POLICY_FIFO, 6, 1, NULL,
+        schedule_add_task(sched, 3, "multiply", SCHED_POLICY_FIFO, 6, 1, 1, NULL,
                           2 * 1000, 7 * 1000, "[{\"a\":4, \"b\":7}]");
 
         schedule_print(sched);
