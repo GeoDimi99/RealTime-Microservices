@@ -127,6 +127,12 @@ void schedule_set_result(schedule_t *sched, guint16 id, const gchar *output) {
     g_return_if_fail(sched != NULL);
     g_return_if_fail(output != NULL);
 
+    /* Defensive check to prevent crashes on use-after-free scenarios. */
+    if (G_UNLIKELY(sched->schedule_results == NULL)) {
+        g_printerr("[CRITICAL] Execution Manager: in schedule_set_result, the schedule's result table is NULL. This indicates a severe memory issue (e.g., use-after-free) for task ID %u.\n", id);
+        return;
+    }
+
     /* Find the result associated to the ID in the HashTable */
     task_result_t *res = g_hash_table_lookup(sched->schedule_results, GINT_TO_POINTER((gint)id));
 
@@ -349,4 +355,3 @@ int compare_versions(const gchar *v1, const gchar *v2) {
     g_strfreev(p1); g_strfreev(p2);
     return res;
 }
-

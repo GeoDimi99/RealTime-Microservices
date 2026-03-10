@@ -50,13 +50,14 @@ void em_run_schedule(execution_manager_t *em, schedule_t *sched) {
     GIOChannel *channel = g_io_channel_unix_new(em->em_queue);
     g_io_channel_set_encoding(channel, NULL, NULL); // Binary messages
     g_io_channel_set_buffered(channel, FALSE);
-
+ 
     result_context_t *result_ctx = g_new0(result_context_t, 1);
     result_ctx->em = em;
     result_ctx->sched = sched;
-
-    g_io_add_watch(channel, G_IO_IN, (GIOFunc)handle_result_message, result_ctx);
-
+ 
+    // Store the ID of the watch to remove it later
+    guint result_watch_id = g_io_add_watch(channel, G_IO_IN, (GIOFunc)handle_result_message, result_ctx);
+ 
 
     /* 2. Plan the Deadlines */
     for (GList *l = sched->schedule_end_info->head; l != NULL; l = l->next) {
@@ -98,6 +99,12 @@ void em_run_schedule(execution_manager_t *em, schedule_t *sched) {
     g_print("[INFO] Execution Manager: Scheduler started. Waiting for events...\n");
     g_main_loop_run(loop);
     
+    /* --- Cleanup of event sources --- */
+    // This is crucial to prevent dangling pointers and race conditions in the next main loop iteration
+    g_source_remove(result_watch_id);
+    g_io_channel_unref(channel);
+    g_free(result_ctx);
+
     g_main_loop_unref(loop);
     g_print("[INFO] Execution Manager: Scheduler terminated successfully.\n");
 }

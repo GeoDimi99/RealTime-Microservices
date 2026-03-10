@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
         
         
         if (is_set_new_schedule) {
-            is_set_new_schedule = FALSE;
+            //is_set_new_schedule = FALSE;
 
             if (sched != NULL) {
                 schedule_free(sched);
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        schedule_reset(sched);
+        // schedule_reset(sched); // DO NOT reset a schedule that is about to be freed. This causes memory corruption.
     }
 
     g_print("[INFO] Execution Manager: Exit from the main loop. Cleanup ...\n");
