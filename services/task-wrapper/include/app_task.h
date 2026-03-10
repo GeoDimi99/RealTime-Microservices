@@ -1,7 +1,6 @@
 #ifndef APP_TASK_H
 #define APP_TASK_H
 
-#define _GNU_SOURCE
 #include <sched.h> // Necessario per sched_getcpu()
 
 #include <stdlib.h>

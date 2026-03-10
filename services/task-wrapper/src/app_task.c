@@ -60,7 +60,7 @@ output_t *task_main(input_t *arg) {
     // invece che durante la g_print
     pthread_testcancel(); 
     
-    //g_usleep(500000); 
-    g_usleep(5000000);
+    g_usleep(500000); 
+    //g_usleep(5000000);
     return output;
 }

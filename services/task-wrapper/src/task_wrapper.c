@@ -22,6 +22,7 @@ task_wrapper_t* task_wrapper_new(const gchar *task_name, const gchar *task_queue
     /* Create the task wrapper structure */
     task_wrapper_t *tw = g_new0(task_wrapper_t, 1);
     tw->task_name = g_string_new(task_name);
+    tw->task_queue_name = g_string_new(task_queue_name);
 
     struct mq_attr attr = {
         .mq_flags = 0,
@@ -31,9 +32,9 @@ task_wrapper_t* task_wrapper_new(const gchar *task_name, const gchar *task_queue
     };
 
     /* Open the incoming task queue (Receiver) */
-    tw->task_queue = mq_open(task_queue_name, O_RDONLY | O_CREAT | O_NONBLOCK, 0644, &attr);
+    tw->task_queue = mq_open(tw->task_queue_name->str, O_RDONLY | O_CREAT | O_NONBLOCK, 0644, &attr);
     if (tw->task_queue == (mqd_t)-1) {
-        g_error("[ERROR] %s: mq_open failed for %s", task_name, task_queue_name);
+        g_error("[ERROR] %s: mq_open failed for %s", task_name, tw->task_queue_name->str);
     }
 
     /* Setup TX Queue (Connection to Execution Manager) */
@@ -71,7 +72,12 @@ void task_wrapper_free(task_wrapper_t *tw) {
     if (!tw) return;
 
     g_string_free(tw->task_name, TRUE);
-    if (tw->task_queue != (mqd_t)-1) mq_close(tw->task_queue);
+    if (tw->task_queue != (mqd_t)-1) {
+        mq_close(tw->task_queue);
+        /* Unlink the message queue to remove it from the system */
+        mq_unlink(tw->task_queue_name->str);
+    }
+    g_string_free(tw->task_queue_name, TRUE);
     if (tw->em_queue != (mqd_t)-1) mq_close(tw->em_queue);
 
     /* This will recursively call task_session_list_free on all remaining sessions */
@@ -154,55 +160,75 @@ GSList* task_wrapper_get_threads(task_wrapper_t *tw, guint16 session_id) {
     return g_slist_copy(original_list);
 }
 
+/**
+ * @brief Cleanup handler for worker threads.
+ * 
+ * This function is registered with pthread_cleanup_push and is guaranteed to be
+ * called when a thread is cancelled or exits. It frees all resources
+ * associated with a task's execution.
+ */
+static void thread_resource_cleanup_handler(void* arg) {
+    task_input_t *input_data = (task_input_t *)arg;
+    if (!input_data) return;
+
+    g_print("[INFO] thread %lu: Running cleanup for Session ID %u\n", pthread_self(), input_data->session_id);
+    
+    // Free resources owned by the thread's context
+    g_free(input_data->output); // It's safe to call g_free on NULL
+    g_free(input_data->input);
+    g_free(input_data);
+}
+
 void * task_wrapper_run_thread(void *arg){
     task_input_t *input_data = (task_input_t *)arg;
     task_wrapper_t *tw = input_data->tw;
     guint16 sid = input_data->session_id;
     pthread_t self = pthread_self();
     
+    // Register the cleanup handler. It will be called if the thread is cancelled
+    // or when pthread_cleanup_pop(1) is called on normal exit.
+    pthread_cleanup_push(thread_resource_cleanup_handler, input_data);
+    
     /* Execution of the real task */
-    output_t *output = task_main(input_data->input);
+    input_data->output = task_main(input_data->input);
 
     /* Send the result to the em_queue */
-    if (output != NULL) {
+    if (input_data->output != NULL) {
         ipc_msg_t msg_out;
         memset(&msg_out, 0, sizeof(ipc_msg_t));
 
         msg_out.type = MSG_TASK_RESULT;
         msg_out.task_id = sid;
-
         
         /* Convert the output in a JSON string*/
-        gchar *json_res = convert_output_to_json(output);
+        gchar *json_res = convert_output_to_json(input_data->output);
 
         if (json_res != NULL) {
-
             /* Copy the string inside the payload of the message */
             g_strlcpy(msg_out.data.result, json_res, MAX_TASK_JSON_OUT);
             g_free(json_res);
 
             /* Send the message on the EM queue */
             if (mq_send(tw->em_queue, (const char *)&msg_out, sizeof(ipc_msg_t), 0) == -1) {
-                g_warning("[ERROR] thread %lu : mq_send result failed: %s", self, g_strerror(errno));
+                g_warning("[WARNING] thread %lu : mq_send result failed: %s", self, g_strerror(errno));
             } else {
                 g_print("[INFO] thread %lu : Result sent to EM for Session ID: %u\n", self, sid);
             }
         }
     }
 
-    /* Prepare the data for the cleanup inside the main thread */
+    // We are exiting normally. Pop the cleanup handler and execute it to free all thread resources.
+    pthread_cleanup_pop(1);
+
+    /*
+     * After a thread has finished its work (either normally or by cancellation),
+     * we must still inform the main thread to remove the thread ID from its tracking table.
+     */
     thread_cleanup_data_t *cleanup = g_new0(thread_cleanup_data_t, 1);
     cleanup->tw = tw;
     cleanup->session_id = sid;
     cleanup->thread_id = self;
-
-    /* Send the remove request from the table to the GMainLoop */
     g_main_context_invoke(NULL, (GSourceFunc)handle_end_thread, cleanup);
-
-    /* Local cleanup  thread */
-    g_free(output);
-    g_free(input_data->input);
-    g_free(input_data);
 
     return NULL;
 }
@@ -279,6 +305,7 @@ gboolean handle_input_message(GIOChannel *source, GIOCondition condition, gpoint
                     gint8 priority = msg.data.task_request.priority;
                     gint8 cpu_affinity = msg.data.task_request.cpu_affinity;
                     guint8 repetition = msg.data.task_request.repetition;
+                    (void)repetition; // Mark as unused to prevent compiler warnings.
                     GSList *inputs = parse_input_list(msg.data.task_request.input_data);
                     
                     if (!inputs) break;
@@ -313,6 +340,8 @@ gboolean handle_input_message(GIOChannel *source, GIOCondition condition, gpoint
                         gint rc = pthread_create(&tid, &attr, task_wrapper_run_thread, t_in);
                         pthread_attr_destroy(&attr); // Clean up attributes
                         if (rc) {
+                            g_free(t_in->input);
+                            g_free(t_in);
                             g_printerr("[ERROR] %s: pthread_create failed with code %d (%s) for Task ID %u\n", tw->task_name->str, rc, g_strerror(rc), t_in->session_id);
                             continue;
                         }
@@ -341,8 +370,9 @@ gboolean handle_input_message(GIOChannel *source, GIOCondition condition, gpoint
                         pthread_t *tid_ptr = (pthread_t *)l->data;
                         g_print("[INFO] %s: Cancelling thread %lu\n", tw->task_name->str, (unsigned long)*tid_ptr);
                         
+                        // Request cancellation. The thread is responsible for its own cleanup,
+                        // including removal from the tracking table, via its cleanup handlers.
                         pthread_cancel(*tid_ptr);
-                        task_wrapper_remove_thread(tw, msg.task_id, *tid_ptr);
                     }
                     
                     g_slist_free(threads);

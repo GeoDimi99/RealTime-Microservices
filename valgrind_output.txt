@@ -1,0 +1,14 @@
+
+======= Task Wrapper Init =========
+[INFO] sum: Waiting for Execution Manager queue '/execution_manager_q'...
+[INFO] sum: Connected to Execution Manager queue.
+
+=== Task Wrapper (sum) Initialized ===
+Click Ctrl+C for a clean exit.
+
+[INFO] Task Wrapper (sum): It's ready. Waiting for messages ...
+[INFO] Message for Session ID: 1
+input_t { a = 10, b = 5 }
+[THREAD] sum_task: Running on Core 1 | Calculation: 10 + 5 = 15
+[INFO] thread 90374336 : Result sent to EM for Session ID: 1
+[INFO] thread 90374336: Running cleanup for Session ID 1

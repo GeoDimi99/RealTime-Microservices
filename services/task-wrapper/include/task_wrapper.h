@@ -23,6 +23,7 @@
 /* Main Structures for Task Wrapper */
 typedef struct {
     GString *task_name;                 // Task Image Name (Debug)
+    GString *task_queue_name;           // The name of the task queue for unlink
     mqd_t task_queue;                   // Task Queue
     mqd_t em_queue;                     // Event Manager Queue   
     GHashTable* task_session_table;     // Map: Call Task ID (guint16) -> GSList pointer to pthread_t* 
@@ -34,6 +35,7 @@ typedef struct {
     guint16 session_id;                 // Call Task ID
     task_wrapper_t *tw;                 // Task Wrapper Struct
     input_t *input;                     // Input Data
+    output_t *output;                   // Output Data
 } task_input_t;
 
 typedef struct {

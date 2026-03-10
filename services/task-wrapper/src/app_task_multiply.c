@@ -25,13 +25,14 @@ gchar* convert_output_to_json(const output_t* output) {
 
     JsonNode *root = json_node_new(JSON_NODE_OBJECT);
     json_node_set_object(root, obj);
+    g_object_unref(obj); // The node now owns the object, so we can release our reference
 
     JsonGenerator *gen = json_generator_new();
     json_generator_set_root(gen, root);
     gchar *res = json_generator_to_data(gen, NULL);
 
+    /* The generator owns the root node, so unreffing the generator cleans up everything. */
     g_object_unref(gen);
-    json_node_free(root);
     return res;
 }
 

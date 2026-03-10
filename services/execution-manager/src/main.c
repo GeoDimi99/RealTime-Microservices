@@ -24,6 +24,7 @@ int main(int argc, char *argv[]) {
     signal(SIGINT, int_handler);
 
     /* ------ Init Execution Manager ------ */
+    g_print("=========== Execution Manager Init ========\n");
     int exit_code = 0;
     execution_manager_t *em = em_new(DEFAULT_EXECUTION_MANAGER_NAME);
     if (!em) {
@@ -35,7 +36,8 @@ int main(int argc, char *argv[]) {
     gboolean is_set_new_schedule = TRUE;
 
 
-    g_print("=== Execution Manager Initialized ===\n");
+    g_print("====== Execution Manager Initialized ======\n");
+    g_print("==== Execution Manager Start Main Loop ====\n");
     g_print("Click Ctrl+C for a clean exit.\n\n");
 
 
@@ -87,11 +89,14 @@ int main(int argc, char *argv[]) {
         // schedule_reset(sched); // DO NOT reset a schedule that is about to be freed. This causes memory corruption.
     }
 
+    
+    g_print("==== Execution Manager Exit Main Loop ====\n");
     g_print("[INFO] Execution Manager: Exit from the main loop. Cleanup ...\n");
 
     if (em) em_free(em);
     if (sched) schedule_free(sched);
     
     g_print("[INFO] Execution Manager: Cleanup completed.\n");
+    g_print("==== Execution Manager Fish ====\n");
     return exit_code;
 }
