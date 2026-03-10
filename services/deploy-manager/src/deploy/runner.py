@@ -41,6 +41,7 @@ class DockerContainerRunner:
                 tty=True,
                 ipc_mode="host",
                 cap_add=["SYS_NICE"],
+                network="realtime-microservices_default",
                 environment={
                     "TASK_NAME": image_tag,
                     "TASK_QUEUE_NAME": image_tag,

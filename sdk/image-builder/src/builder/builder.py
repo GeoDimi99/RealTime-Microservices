@@ -4,9 +4,10 @@ from string import Template
 
 class Builder:
 
-    def __init__(self, base_dir, context_path, base_image):
+    def __init__(self, base_dir, context_path, base_image, no_cache=False):
         self.context_path = context_path
         self.base_image = base_image
+        self.no_cache = no_cache
         self.template_path = os.path.join(base_dir, "builder", "template", "Dockerfile.j2")
         
         try:
@@ -55,7 +56,8 @@ class Builder:
                 tag=image_tag,
                 decode=True,
                 rm=True,  # Automatically remove intermediate containers
-                pull=True
+                pull=False,  # Use local images instead of pulling from registry
+                nocache=self.no_cache  # Use --no-cache if specified
             )
 
             for chunk in generator:

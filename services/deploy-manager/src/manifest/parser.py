@@ -38,20 +38,23 @@ class ManifestParser:
         tasks: List[Task] = []
         for t in tasks_data:
             try:
+                # Map the new manifest format to Task domain object
                 task = Task(
-                    name=t["name"],
-                    policy=t["policy"].lower(),
-                    priority=int(t["priority"]),
-
+                    name=t["image"],  # Use image name as task name
+                    policy=t.get("policy", "fifo").lower(),  # Default to fifo if not specified
+                    priority=int(t.get("priority", 50)),  # Default priority 50
+                    start=t.get("start"),  # Start time in seconds (optional)
+                    deadline=t.get("deadline"),  # Absolute deadline in seconds (optional)
+                    depends_on=t.get("depends_on", []),
                     inputs=t.get("inputs", {}),
-
+                    outputs=t.get("outputs", {}),
                 )
             except KeyError as e:
                 raise DeployManagerError(f"Task missing required field: {e}")
 
             # Validate policy
             if task.policy not in self.VALID_POLICIES:
-                raise DeployManagerError(f"Invalid policy '{task.policy}' in task {task.id}")
+                raise DeployManagerError(f"Invalid policy '{task.policy}' in task {task.name}")
 
             tasks.append(task)
 

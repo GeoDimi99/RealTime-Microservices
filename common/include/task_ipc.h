@@ -9,8 +9,10 @@
 #include <stdlib.h>
 #include "task.h"
 
-/* Max Queue names */
-#define MAX_QUEUE_NAME   64
+/* Max sizes */
+#define MAX_QUEUE_NAME      64
+#define MAX_TASK_NAME       64
+#define MAX_TASK_JSON_OUT   4096
 
 /* Queue names */
 #define DEFAULT_EM_QUEUE    "/execution_manager"

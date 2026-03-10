@@ -20,14 +20,17 @@ services:
       - redis
     
 
-  exection-manager:
+  execution-manager:
     build:
       context: . 
       dockerfile: ./services/execution-manager/Dockerfile
     cpuset: "1"
     container_name: execution-manager
+    cap_add:
+      - SYS_NICE  # Allows real-time scheduling (SCHED_FIFO/SCHED_RR)
     depends_on:
      - redis
-     - deploy-manager
+     # Note: deploy-manager is not a dependency because we only need Redis data,
+     # not a running deploy-manager process. This prevents container recreation.
   
 

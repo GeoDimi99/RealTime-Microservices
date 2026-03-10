@@ -1,0 +1,276 @@
+
+images:
+  base: "geodimi99/realtime-microservices:task-wrapper"
+  repo: "geodimi99/realtime-microservices"
+  tasks:
+    - alias: "sum"
+      src: "sum"  
+
+
+schedule:
+  name: "Hybrid CPU/IO Benchmark - Scaling Test"
+  version: "1.0.0"
+  description: "Test workload scaling from 0% to 100% IO operations"
+  
+  tasks:
+  
+    # Pure CPU (0% IO)
+    - id: 1
+      image: "sum"  
+      start: 0
+      deadline: 20
+      policy: "fifo"
+      priority: 50
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+        io_percentage:
+          type: int
+          value: 0
+      outputs:
+        result:
+          type: int
+        cpu_iterations:
+          type: int
+        io_operations:
+          type: int
+    
+    # 10% IO
+    - id: 2
+      image: "sum"  
+      start: 1
+      deadline: 20
+      policy: "fifo"
+      priority: 50
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+        io_percentage:
+          type: int
+          value: 10
+      outputs:
+        result:
+          type: int
+        cpu_iterations:
+          type: int
+        io_operations:
+          type: int
+    
+    # 25% IO
+    - id: 3
+      image: "sum"  
+      start: 2
+      deadline: 25
+      policy: "fifo"
+      priority: 50
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+        io_percentage:
+          type: int
+          value: 25
+      outputs:
+        result:
+          type: int
+        cpu_iterations:
+          type: int
+        io_operations:
+          type: int
+    
+    # 50% IO (Balanced)
+    - id: 4
+      image: "sum"  
+      start: 3
+      deadline: 30
+      policy: "fifo"
+      priority: 50
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+        io_percentage:
+          type: int
+          value: 50
+      outputs:
+        result:
+          type: int
+        cpu_iterations:
+          type: int
+        io_operations:
+          type: int
+    
+    # 75% IO
+    - id: 5
+      image: "sum"  
+      start: 4
+      deadline: 40
+      policy: "fifo"
+      priority: 50
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+        io_percentage:
+          type: int
+          value: 75
+      outputs:
+        result:
+          type: int
+        cpu_iterations:
+          type: int
+        io_operations:
+          type: int
+    
+    # 90% IO
+    - id: 6
+      image: "sum"  
+      start: 5
+      deadline: 50
+      policy: "fifo"
+      priority: 50
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+        io_percentage:
+          type: int
+          value: 90
+      outputs:
+        result:
+          type: int
+        cpu_iterations:
+          type: int
+        io_operations:
+          type: int
+    
+    # Pure IO (100% IO)
+    - id: 7
+      image: "sum"  
+      start: 6
+      deadline: 60
+      policy: "fifo"
+      priority: 50
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+        io_percentage:
+          type: int
+          value: 100
+      outputs:
+        result:
+          type: int
+        cpu_iterations:
+          type: int
+        io_operations:
+          type: int
+    
+    # Parallel workloads test - Multiple tasks with different IO%
+    # Task 8: High CPU
+    - id: 8
+      image: "sum"  
+      start: 10
+      deadline: 30
+      policy: "fifo"
+      priority: 100
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 20
+        b:
+          type: int
+          value: 10
+        io_percentage:
+          type: int
+          value: 10
+      outputs:
+        result:
+          type: int
+        cpu_iterations:
+          type: int
+        io_operations:
+          type: int
+    
+    # Task 9: High IO (concurrent with task 8)
+    - id: 9
+      image: "sum"  
+      start: 10
+      deadline: 40
+      policy: "fifo"
+      priority: 50
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 20
+        b:
+          type: int
+          value: 10
+        io_percentage:
+          type: int
+          value: 80
+      outputs:
+        result:
+          type: int
+        cpu_iterations:
+          type: int
+        io_operations:
+          type: int
+    
+    # Task 10: Balanced (concurrent with 8, 9)
+    - id: 10
+      image: "sum"  
+      start: 10
+      deadline: 35
+      policy: "fifo"
+      priority: 75
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 20
+        b:
+          type: int
+          value: 10
+        io_percentage:
+          type: int
+          value: 50
+      outputs:
+        result:
+          type: int
+        cpu_iterations:
+          type: int
+        io_operations:
+          type: int

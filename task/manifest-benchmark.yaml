@@ -1,0 +1,211 @@
+
+images:
+  base: "geodimi99/realtime-microservices:task-wrapper"
+  repo: "geodimi99/realtime-microservices"
+  tasks:
+    - alias: "sum"
+      src: "sum"  
+
+
+schedule:
+  name: "Mathematical Benchmark - 20 iterations"
+  version: "1.0.0"
+  description: "Benchmark schedule to measure average execution time over 20 runs"
+  
+  tasks:
+  
+    - id: 1
+      image: "sum"  
+      start: 10
+      deadline: 30
+      policy: "fifo"
+      priority: 50
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+      outputs:
+        result:
+          type: int
+
+    - id: 2
+      image: "sum"  
+      start: 20
+      deadline: 40
+      policy: "fifo"
+      priority: 50
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+      outputs:
+        result:
+          type: int
+  
+
+    - id: 3
+      image: "sum"  
+      start: 30
+      deadline: 50
+      policy: "fifo"
+      priority: 50
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+      outputs:
+        result:
+          type: int
+
+
+
+
+    - id: 4
+      image: "sum"  
+      start: 40
+      deadline: 60
+      policy: "fifo"
+      priority: 50
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+      outputs:
+        result:
+          type: int
+
+
+
+
+    - id: 5
+      image: "sum"  
+      start: 50
+      deadline: 70
+      policy: "fifo"
+      priority: 50
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+      outputs:
+        result:
+          type: int
+
+
+    - id: 6
+      image: "sum"  
+      start: 60
+      deadline: 80
+      policy: "fifo"
+      priority: 50
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+      outputs:
+        result:
+          type: int
+
+    - id: 7
+      image: "sum"  
+      start: 70
+      deadline: 90
+      policy: "fifo"
+      priority: 50
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+      outputs:
+        result:
+          type: int
+  
+
+    - id: 8
+      image: "sum"  
+      start: 80
+      deadline: 100
+      policy: "fifo"
+      priority: 50
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+      outputs:
+        result:
+          type: int
+
+
+
+
+    - id: 9
+      image: "sum"  
+      start: 90
+      deadline: 110
+      policy: "fifo"
+      priority: 50
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+      outputs:
+        result:
+          type: int
+
+
+
+
+    - id: 10
+      image: "sum"  
+      start: 100
+      deadline: 120
+      policy: "fifo"
+      priority: 50
+      depends_on: []        
+      inputs:
+        a: 
+          type: int
+          value: 10
+        b:
+          type: int
+          value: 5
+      outputs:
+        result:
+          type: int
+    

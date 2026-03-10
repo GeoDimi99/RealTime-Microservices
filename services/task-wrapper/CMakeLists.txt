@@ -1,27 +1,55 @@
 cmake_minimum_required(VERSION 3.20)
-project(task_wrapper C)
-
+project(task_wrapper C CXX)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -O2")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -O2")
 
 add_compile_definitions(_GNU_SOURCE)
 
-# Include directories
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+# Find pkg-config
+find_package(PkgConfig REQUIRED)
 
-# Add executable
+# Find GLib and hiredis
+pkg_check_modules(GLIB2 REQUIRED IMPORTED_TARGET glib-2.0)
+pkg_check_modules(HIREDIS REQUIRED IMPORTED_TARGET hiredis)
+
+# Find gRPC and Protobuf
+find_package(Protobuf REQUIRED)
+find_package(gRPC REQUIRED)
+
+# Include directories
+include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/proto
+    ${GLIB2_INCLUDE_DIRS}
+    ${HIREDIS_INCLUDE_DIRS}
+)
+
+# Add gRPC server executable
 add_executable(task-wrapper
-    src/main.c
-    src/logger.c  # directly add logger.c to build
-    src/task_ipc.c
-    src/task_wrapper.c
+    src/grpc_server.cpp
+    proto/proto/task_service.pb.cc
+    proto/proto/task_service.grpc.pb.cc
+    src/logger.c
     src/task.c
 )
 
 # Threads
 find_package(Threads REQUIRED)
-target_link_libraries(task-wrapper PRIVATE Threads::Threads)
+
+# Link libraries
+target_link_libraries(task-wrapper 
+    PRIVATE 
+    Threads::Threads
+    PkgConfig::GLIB2
+    PkgConfig::HIREDIS
+    protobuf::libprotobuf
+    gRPC::grpc++
+    gRPC::grpc++_reflection
+)
 
 

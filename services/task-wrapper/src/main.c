@@ -38,6 +38,18 @@ int main(int argc, char *argv[]){
         goto exit_program;
     }
 
+    /* Set Real-Time Scheduling: SCHED_FIFO with priority 85 */
+    struct sched_param param;
+    param.sched_priority = 85;  // High priority (lower than execution-manager at 90)
+    
+    if (sched_setscheduler(0, SCHED_FIFO, &param) != 0) {
+        perror("Warning: Failed to set RT scheduling for task wrapper (need root or CAP_SYS_NICE)");
+        printf("⚠️  Task Wrapper will run with SCHED_OTHER\n");
+    } else {
+        printf("✅ Task Wrapper running with SCHED_FIFO priority 85\n");
+        printf("   This ensures low-latency gRPC responses and reduces preemption\n\n");
+    }
+
     /* Set Task and Queues Names */
     const char* env_task_name = getenv("TASK_NAME");
     char task_name[MAX_TASK_NAME];

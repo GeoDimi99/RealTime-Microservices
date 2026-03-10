@@ -3,7 +3,7 @@ import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
-from publisher.publisher import Publisher
+# from publisher.publisher import Publisher  # DISABLED: No automatic push
 from dslparser.parser import DSL_Parser
 from dslparser.exceptions import ParserError
 from builder.builder import Builder
@@ -30,6 +30,12 @@ def main():
         default=".", 
         metavar="PATH",
         help="Directory context containing the source code for each microservice (default: current directory)"
+    )
+
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Build images without using cache (forces a clean build)"
     )
 
     args = parser.parse_args()
@@ -78,15 +84,16 @@ def main():
     
     # --- Building phase ---
     print(f"Starting build process for {len(images)} services...")
+    if args.no_cache:
+        print("⚠️  Building without cache (--no-cache enabled)")
     
-    image_builder = Builder(base_dir=base_dir, context_path=args.context, base_image=base_image)
+    image_builder = Builder(base_dir=base_dir, context_path=args.context, base_image=base_image, no_cache=args.no_cache)
 
     for img in tasks:
         alias = img['alias']  
         src_dir = img['src']  
         
         try:
-
             dockerfile_path = image_builder.generate_dockerfile(alias, src_dir)
             image_builder.run_build(image_tag=alias, dockerfile_path=dockerfile_path)
             
@@ -95,18 +102,19 @@ def main():
             continue
     
     # --- Publishing phase ---
-    publisher = Publisher()
+    # DISABLED: No automatic push to DockerHub
+    # publisher = Publisher()
 
-    for img in tasks:
-        alias = img['alias']
-        try:
-            # Push using the DockerHub username
-            publisher.publish(
-                repository_url=repository_url, 
-                local_image_name=alias
-            )
-        except Exception as e:
-            print(f"Skipping push for {alias} due to error.")
+    # for img in tasks:
+    #     alias = img['alias']
+    #     try:
+    #         # Push using the DockerHub username
+    #         publisher.publish(
+    #             repository_url=repository_url, 
+    #             local_image_name=alias
+    #         )
+    #     except Exception as e:
+    #         print(f"Skipping push for {alias} due to error.")
 
 
     

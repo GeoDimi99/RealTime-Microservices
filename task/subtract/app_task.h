@@ -131,13 +131,13 @@ void *task_main(void *arg){
     ctx->status = RUNNING; 
     pthread_mutex_unlock(&ctx->lock);
 
-    printf("[THREAD] Processing: %d + %d\n", ctx->input.a, ctx->input.b);
+    printf("[THREAD] Processing: %d - %d\n", ctx->input.a, ctx->input.b);
 
     /* 2. Real-Time Logic (Calculations) */
     /* * Accessing ctx->input is thread-safe here because 
      * the Main thread does not modify it after creation.
      */
-    int res = ctx->input.a / ctx->input.b;
+    int res = ctx->input.a - ctx->input.b;
 
     // Simulate heavy workload if needed
     // usleep(1000); 

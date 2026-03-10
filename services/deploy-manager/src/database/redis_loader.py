@@ -27,14 +27,23 @@ class RedisLoader:
 
         for i, task in enumerate(schedule.tasks, start=1):
             task_key = f"scheduletask:{i}"
-            self.client.hset(task_key, mapping={
+            task_data = {
                 "name": task.name,
                 "policy": task.policy,
                 "priority": str(task.priority),
                 "depends_on": json.dumps(task.depends_on),
                 "inputs": json.dumps(task.inputs),
                 "outputs": json.dumps(task.outputs),
-            })
+            }
+            # Add start time if present
+            if task.start is not None:
+                task_data["start"] = str(task.start)
+            
+            # Add deadline if present
+            if task.deadline is not None:
+                task_data["deadline"] = str(task.deadline)
+            
+            self.client.hset(task_key, mapping=task_data)
 
 
         logger.info(f"Loaded {len(schedule.tasks)} tasks into Redis.")
