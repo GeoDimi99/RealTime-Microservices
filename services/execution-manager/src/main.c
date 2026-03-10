@@ -32,6 +32,8 @@ int main(int argc, char *argv[]) {
     }
     
     schedule_t *sched = NULL; // Init to NULL
+    gboolean is_set_new_schedule = TRUE;
+
 
     g_print("=== Execution Manager Initialized ===\n");
     g_print("Click Ctrl+C for a clean exit.\n\n");
@@ -40,31 +42,38 @@ int main(int argc, char *argv[]) {
     /* -------------- Main Loop Execution -------------- */
     while (keep_running) {
         
-        if (sched != NULL) {
-            schedule_free(sched);
-            sched = NULL;   // Avoid double-free at exit 
+        
+        if (is_set_new_schedule) {
+            is_set_new_schedule = FALSE;
+
+            if (sched != NULL) {
+                schedule_free(sched);
+                sched = NULL;   // Avoid double-free at exit 
+            }
+        
+            /* Create a schedule */
+            gchar *schedule_name = "schedule";
+            sched = schedule_new(schedule_name, "0.0.1");
+            if (!sched) {
+                g_error("[ERROR] Execution Manager (%s) : scheduler creation failed.", schedule_name);
+            }
+
+            schedule_add_task(sched, 1, "sum", SCHED_POLICY_FIFO, 10, 1, 1, NULL,
+                            1 * 1000, 2 * 1000, "[{\"a\":10, \"b\":5}]");
+
+            //schedule_add_task(sched, 2, "subtract", SCHED_POLICY_FIFO, 8, 1, 1, NULL,
+            //                  1 * 1000, 7 * 1000, "[{\"a\":20, \"b\":8}]");
+
+            //schedule_add_task(sched, 3, "multiply", SCHED_POLICY_FIFO, 6, 1, 1, NULL,
+            //                  2 * 1000, 7 * 1000, "[{\"a\":4, \"b\":7}]");
+
+            schedule_print(sched);
         }
-
-        /* Create a schedule */
-        gchar *schedule_name = "schedule";
-        sched = schedule_new(schedule_name, "0.0.1");
-        if (!sched) {
-            g_error("[ERROR] Execution Manager (%s) : scheduler creation failed.", schedule_name);
-        }
-
-        schedule_add_task(sched, 1, "sum", SCHED_POLICY_FIFO, 10, 1, 1, NULL,
-                          1 * 1000, 2 * 1000, "[{\"a\":10, \"b\":5}]");
-
-        schedule_add_task(sched, 2, "subtract", SCHED_POLICY_FIFO, 8, 1, 1, NULL,
-                          1 * 1000, 7 * 1000, "[{\"a\":20, \"b\":8}]");
-
-        schedule_add_task(sched, 3, "multiply", SCHED_POLICY_FIFO, 6, 1, 1, NULL,
-                          2 * 1000, 7 * 1000, "[{\"a\":4, \"b\":7}]");
-
-        schedule_print(sched);
 
         /* Run the schedule */
         em_run_schedule(em, sched);
+        
+
 
         if (keep_running) {
             g_print("\n[INFO] Execution Manager: Schedule Completed. Reboot in 5 seconds... (or push Ctrl+C for exit)...\n\n");
@@ -74,6 +83,8 @@ int main(int argc, char *argv[]) {
                 sleep(1);
             }
         }
+
+        schedule_reset(sched);
     }
 
     g_print("[INFO] Execution Manager: Exit from the main loop. Cleanup ...\n");
