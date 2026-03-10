@@ -80,6 +80,18 @@ void em_run_schedule(execution_manager_t *em, schedule_t *sched) {
     g_print("[INFO] Execution Manager: Scheduler terminated successfully.\n");
 }
 
+
+/* Function for print and compute the performanc e*/
+static void print_performance_metrics(guint16 task_id, glong start_req, glong end_req, glong start_res, glong end_res) {
+    double q_em_tw = (end_req - start_req) / 1e6;
+    double t_in_tw  = (start_res - end_req) / 1e6;
+    double q_tw_em = (end_res - start_res) / 1e6;
+    double total   = (end_res - start_req) / 1e6;
+
+    g_print("[METRICS] Execution Manager: Task %u | EM->TW: %.3f ms | Task: %.3f ms | TW->EM: %.3f ms | Total: %.3f ms\n",
+            task_id, q_em_tw, t_in_tw, q_tw_em, total);
+}
+
 void* task_wrapper_func(void* data){
     
     task_wrapper_input_t* tw_input = (task_wrapper_input_t*)data;
@@ -88,16 +100,36 @@ void* task_wrapper_func(void* data){
     guint16 task_id = tw_input->task_id;
     gpointer input = tw_input->data;
     GThreadFunc thread_func = tw_input->thread_func;
+    glong start_time_request = tw_input->start_time_request; // for performance 
     schedule_t* sched = tw_input->sched;
+
+    /* Part for measure the performance */
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    glong end_time_request = ts.tv_sec * 1000000000L + ts.tv_nsec;
+    /* ------------------------------- */
 
     g_print("[INFO] ThreadCall %u: start thread function.\n", task_id);
     /* Run the thread function */
     gpointer res = thread_func(input);
 
+    /* Measure the start_time_result (for the performance) */
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    glong start_time_result = ts.tv_sec * 1000000000L + ts.tv_nsec;
+
     g_print("[INFO] ThreadCall %u: termination thread function. \n", task_id);
+
 
     /* Write the result */
     schedule_set_result(sched, task_id, "{}");
+
+    /* Measure the end_time_result (for the performance) */
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    glong end_time_result = ts.tv_sec * 1000000000L + ts.tv_nsec;
+
+    /* Print the performance metrics */
+    print_performance_metrics(task_id, start_time_request, end_time_request, start_time_result, end_time_result);
+
 
 
     /* Cleanup */
@@ -126,11 +158,17 @@ gboolean handle_initialization(gpointer user_data) {
         /* Read the current task information */
         activation_data_t *task = (activation_data_t *)l->data;
 
+        /* Measure the start_time_request (for the performance) */
+        struct timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        glong start_time_request = ts.tv_sec * 1000000000L + ts.tv_nsec;
+
         /* Prepare the thread (wrapper) input */
         task_wrapper_input_t* tw_input = g_new0(task_wrapper_input_t, 1);
         tw_input->task_id = task->task_id;
         tw_input->data = task->input_data;
         tw_input->thread_func = task->task_exec;
+        tw_input->start_time_request = start_time_request;
         tw_input->sched = sched;
 
 
