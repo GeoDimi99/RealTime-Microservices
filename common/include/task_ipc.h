@@ -41,7 +41,11 @@ typedef gchar task_outcome_t;
 typedef struct {
     msg_type_t type;
     guint16  task_id;
-
+    /* Timestamps for measures the performance */
+    glong start_time_request;
+    glong end_time_request;
+    glong start_time_result; 
+    /*-----------------------------------------*/
     union {
         task_request_t task_request;                /* Payload for TASK_REQUEST */
         task_outcome_t result[MAX_TASK_JSON_OUT];    /* Payload for TASK_RESULT */

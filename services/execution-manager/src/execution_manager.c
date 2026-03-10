@@ -140,8 +140,16 @@ gboolean handle_initialization(gpointer user_data) {
         /* Clean the memory for avoid dirty messages */
         memset(&msg, 0, sizeof(ipc_msg_t));
 
+        /* Measure the start_time_request (for the performance) */
+        struct timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        glong start_time_request = ts.tv_sec * 1000000000L + ts.tv_nsec;
+
+
+        /* Prepare the message */
         msg.task_id = task->task_id;
         msg.type = MSG_TASK_REQUEST;
+        msg.start_time_request = start_time_request;
         msg.data.task_request.policy = task->policy;
         msg.data.task_request.priority = task->priority;
         msg.data.task_request.cpu_affinity = task->cpu_affinity;
@@ -165,31 +173,64 @@ gboolean handle_initialization(gpointer user_data) {
     return G_SOURCE_REMOVE;
 }
 
-gboolean handle_result_message(GIOChannel *source, GIOCondition condition, gpointer data) {
-    result_context_t *ctx = (result_context_t *)data;
+
+/* Function for print and compute the performanc e*/
+static void print_performance_metrics(guint16 task_id, glong start_req, glong end_req, glong start_res, glong end_res) {
+    double q_em_tw = (end_req - start_req) / 1e6;
+    double t_in_tw  = (start_res - end_req) / 1e6;
+    double q_tw_em = (end_res - start_res) / 1e6;
+    double total   = (end_res - start_req) / 1e6;
+
+    g_print("[METRICS] Execution Manager: Task %u | EM->TW: %.3f ms | Task: %.3f ms | TW->EM: %.3f ms | Total: %.3f ms\n",
+            task_id, q_em_tw, t_in_tw, q_tw_em, total);
+}
+
+
+gboolean handle_result_message(GIOChannel *source, GIOCondition condition, gpointer user_data) {
+    result_context_t *ctx = (result_context_t *)user_data;
+    execution_manager_t *em = ctx->em;
     ipc_msg_t msg;
     unsigned int priority;
 
+    (void)source; // Non utilizzato
+
     if (condition & G_IO_IN) {
-        /* Loop to drain all available messages in a single callback invocation */
-        while (mq_receive(ctx->em->em_queue, (char *)&msg, sizeof(ipc_msg_t), &priority) != -1) {
-            /* A message was successfully received, process it */
+        /* Legge tutti i messaggi disponibili per svuotare la coda in un unico callback */
+        while (mq_receive(em->em_queue, (char *)&msg, sizeof(ipc_msg_t), &priority) != -1) {
+            
             if (msg.type == MSG_TASK_RESULT) {
-                g_print("[INFO] Execution Manager: Received RESULT for Task ID %u\n", msg.task_id);
-                schedule_set_result(ctx->sched, msg.task_id, msg.data.result);
+                // 1. Ottieni il timestamp finale non appena il messaggio viene ricevuto.
+                struct timespec ts;
+                clock_gettime(CLOCK_MONOTONIC, &ts);
+                glong end_time_result = ts.tv_sec * 1000000000L + ts.tv_nsec;
+
+                // 2. Stampa le metriche di performance.
+                print_performance_metrics(
+                    msg.task_id,
+                    msg.start_time_request,
+                    msg.end_time_request,
+                    msg.start_time_result,
+                    end_time_result
+                );
+
+                g_print("[INFO] EM: Ricevuto risultato per Task ID %u: %s\n", msg.task_id, msg.data.result);
+                
+                // Qui puoi aggiungere la logica per marcare il task come completato nello schedule.
+                // Esempio: schedule_set_result(ctx->sched, msg.task_id, msg.data.result);
+
             } else {
-                g_print("[WARNING] Execution Manager: Received unexpected message type %d\n", msg.type);
+                g_warning("EM: Ricevuto tipo di messaggio inatteso %d.", msg.type);
             }
         }
-        
-        /* If errno is EAGAIN, it means the queue is now empty, which is the expected behavior.
-         * Any other errno would indicate a real error. */
+
         if (errno != EAGAIN) {
-            g_printerr("[ERROR] Execution Manager: mq_receive (RESULT) failed with an unexpected error");
+            g_printerr("[ERRORE] EM: mq_receive ha fallito con un errore inatteso: %s", g_strerror(errno));
         }
     }
-    return TRUE;
+
+    return TRUE; // Mantiene l'event source attivo
 }
+
 
 gboolean handle_expiration(gpointer user_data) {
     deadline_context_t *ctx = (deadline_context_t *)user_data;
@@ -205,6 +246,11 @@ gboolean handle_expiration(gpointer user_data) {
                 g_print("[INFO] Execution Manager: Task %u already completed. No ABORT sent.\n", exp->task_id);
                 continue; 
             }
+            
+            /* ---- Part only for test (disable the abort messages ) ----------- */
+            g_print("[INFO] Execution Manager: Task %u NOT completed.\n", exp->task_id);
+            continue;
+            /* ---------------------------------------------------------------- */
 
             ipc_msg_t msg;
             memset(&msg, 0, sizeof(ipc_msg_t));

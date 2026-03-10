@@ -6,6 +6,8 @@
 #include <errno.h>
 #include <mqueue.h>
 
+#include <time.h> // For measure the performance 
+
 #include "schedule.h"
 #include "execution_manager.h"
 #include "task_ipc.h"

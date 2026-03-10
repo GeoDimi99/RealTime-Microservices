@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <glib.h>
+#include <sched.h>
 #include <signal.h> // For signals
 #include <unistd.h> // For sleep()
+
 #include "schedule.h"
 #include "execution_manager.h"
 
@@ -60,8 +62,8 @@ int main(int argc, char *argv[]) {
                 g_error("[ERROR] Execution Manager (%s) : scheduler creation failed.", schedule_name);
             }
 
-            schedule_add_task(sched, 1, "sum", SCHED_POLICY_FIFO, 10, 1, 1, NULL,
-                            1 * 1000, 2 * 1000, "[{\"a\":10, \"b\":5}]");
+            schedule_add_task(sched, 1, "stress_task", SCHED_FIFO, 10, 1, 1, NULL, 
+                  1 * 1000, 4 * 1000, "[{\"total_ops\":1000, \"io_percentage\":50}]");
 
             //schedule_add_task(sched, 2, "subtract", SCHED_POLICY_FIFO, 8, 1, 1, NULL,
             //                  1 * 1000, 7 * 1000, "[{\"a\":20, \"b\":8}]");

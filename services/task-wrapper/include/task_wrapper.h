@@ -12,6 +12,9 @@
 #include <pthread.h> 
 #include <mqueue.h>
 
+#include <time.h>  // For measure the performance 
+
+
 #include "task_ipc.h"
 #include "app_task.h"
 
@@ -34,6 +37,7 @@ typedef struct {
 typedef struct {
     guint16 session_id;                 // Call Task ID
     task_wrapper_t *tw;                 // Task Wrapper Struct
+    glong start_time_request;           // For measure the performance
     input_t *input;                     // Input Data
     output_t *output;                   // Output Data
 } task_input_t;

@@ -1,35 +1,30 @@
 #ifndef APP_TASK_H
 #define APP_TASK_H
 
-#include <sched.h> // Necessario per sched_getcpu()
-
+#define _GNU_SOURCE
+#include <sched.h>
 #include <stdlib.h>
 #include <glib.h>
 #include <json-glib/json-glib.h>
+#include <pthread.h>
 
 /* --- Data Structures --- */
 
 typedef struct {
-    int a;
-    int b;
+    int total_ops;     // Total number of operations to perform
+    int io_percentage; // % of total_ops that are I/O (0-100)
 } input_t;
 
-typedef struct{
-    int result;
+typedef struct {
+    int result;        // Status code (e.g., 0 for success)
 } output_t;
 
+/* --- Task Functions --- */
 
-
-
-void print_input(input_t* input);
-
-/* Input/Output Task Functions */
 int convert_json_to_input(JsonObject *obj, input_t* input);
 gchar* convert_output_to_json(const output_t *output);
 
-/* Main Task */
-output_t *task_main(input_t *arg);
-
-
+/* Standard Thread Function Signature */
+void* task_main(void* arg);
 
 #endif

@@ -183,22 +183,42 @@ void * task_wrapper_run_thread(void *arg){
     task_input_t *input_data = (task_input_t *)arg;
     task_wrapper_t *tw = input_data->tw;
     guint16 sid = input_data->session_id;
+    glong start_time_request = input_data->start_time_request;   // For measure the performance
     pthread_t self = pthread_self();
+
+    /* Part for measure the performance */
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    glong end_time_request = ts.tv_sec * 1000000000L + ts.tv_nsec;
+    /* ------------------------------- */
+
     
     // Register the cleanup handler. It will be called if the thread is cancelled
     // or when pthread_cleanup_pop(1) is called on normal exit.
     pthread_cleanup_push(thread_resource_cleanup_handler, input_data);
     
     /* Execution of the real task */
-    input_data->output = task_main(input_data->input);
+    gpointer res = task_main(input_data->input);
+
+    input_data->output = (output_t*) res; 
 
     /* Send the result to the em_queue */
     if (input_data->output != NULL) {
         ipc_msg_t msg_out;
         memset(&msg_out, 0, sizeof(ipc_msg_t));
 
+        /* Part that measure the performance */
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        glong start_time_result = ts.tv_sec * 1000000000L + ts.tv_nsec;
+        /*-----------------------------------*/
+
+        /* Prepare the message */
+
         msg_out.type = MSG_TASK_RESULT;
         msg_out.task_id = sid;
+        msg_out.start_time_request = start_time_request;
+        msg_out.end_time_request = end_time_request;
+        msg_out.start_time_result = start_time_result;
         
         /* Convert the output in a JSON string*/
         gchar *json_res = convert_output_to_json(input_data->output);
@@ -315,6 +335,7 @@ gboolean handle_input_message(GIOChannel *source, GIOCondition condition, gpoint
                         task_input_t *t_in = g_new0(task_input_t, 1);
                         t_in->session_id = msg.task_id;
                         t_in->tw = tw;
+                        t_in->start_time_request = msg.start_time_request;  // For measure the performance 
                         t_in->input = (input_t *)l->data;
 
                         /* ---- Prepare the thread ---- */
