@@ -43,6 +43,18 @@ void em_run_schedule(execution_manager_t *em, schedule_t *sched) {
     g_return_if_fail(em != NULL);
     g_return_if_fail(sched != NULL);
 
+    /* 0. Drain any stale messages from previous runs */
+    ipc_msg_t stale_msg;
+    g_print("[INFO] Execution Manager: Draining stale messages from the queue...\n");
+    while (mq_receive(em->em_queue, (char *)&stale_msg, sizeof(ipc_msg_t), NULL) != -1) {
+        g_print("[INFO] Execution Manager: Discarded stale message for Task ID %u\n", stale_msg.task_id);
+    }
+
+    // The loop ends when mq_receive returns -1. We expect errno to be EAGAIN because the queue is now empty.
+    if (errno != EAGAIN) {
+        g_printerr("[WARNING] Execution Manager: Unexpected error while draining queue");
+    }
+
     GMainLoop *loop = g_main_loop_new(NULL, FALSE);
     gint64 time_zero_us = g_get_monotonic_time();
 
@@ -143,7 +155,7 @@ gboolean handle_initialization(gpointer user_data) {
 
         /* Check if task->task_queue was open correctly */
         if (mq_send(task->task_queue, (const char *)&msg, sizeof(ipc_msg_t), 0) == -1) {
-            perror("[ERROR] Execution Manager: mq_send (REQUEST) failed");
+            g_printerr("[ERROR] Execution Manager: mq_send (REQUEST) failed");
         }
         
         g_print("[INFO] Execution Manager: Sent REQUEST for Task ID %u\n", task->task_id);
@@ -159,22 +171,21 @@ gboolean handle_result_message(GIOChannel *source, GIOCondition condition, gpoin
     unsigned int priority;
 
     if (condition & G_IO_IN) {
-        ssize_t bytes_read = mq_receive(ctx->em->em_queue, (char *)&msg, sizeof(ipc_msg_t), &priority);
-
-        if (bytes_read < 0) {
-            if (errno != EAGAIN) {
-                perror("[ERROR] Execution Manager: mq_receive (RESULT) failed");
-            }
-            return TRUE;
-        }
-
-        if (bytes_read > 0) {
+        /* Loop to drain all available messages in a single callback invocation */
+        while (mq_receive(ctx->em->em_queue, (char *)&msg, sizeof(ipc_msg_t), &priority) != -1) {
+            /* A message was successfully received, process it */
             if (msg.type == MSG_TASK_RESULT) {
                 g_print("[INFO] Execution Manager: Received RESULT for Task ID %u\n", msg.task_id);
                 schedule_set_result(ctx->sched, msg.task_id, msg.data.result);
             } else {
                 g_print("[WARNING] Execution Manager: Received unexpected message type %d\n", msg.type);
             }
+        }
+        
+        /* If errno is EAGAIN, it means the queue is now empty, which is the expected behavior.
+         * Any other errno would indicate a real error. */
+        if (errno != EAGAIN) {
+            g_printerr("[ERROR] Execution Manager: mq_receive (RESULT) failed with an unexpected error");
         }
     }
     return TRUE;
@@ -203,7 +214,7 @@ gboolean handle_expiration(gpointer user_data) {
 
     
             if (mq_send(exp->task_queue, (const char *)&msg, sizeof(ipc_msg_t), 0) == -1) {
-                perror("[ERROR] Execution Manager: mq_send (ABORT) failed");
+                g_printerr("[ERROR] Execution Manager: mq_send (ABORT) failed");
             }
 
             g_print("[INFO] Execution Manager: Sent ABORT for Task ID %u\n", exp->task_id);

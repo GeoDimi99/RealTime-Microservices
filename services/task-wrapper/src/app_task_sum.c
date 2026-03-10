@@ -43,6 +43,10 @@ gchar* convert_output_to_json(const output_t* output) {
 
 output_t *task_main(input_t *arg) {
 
+    // Imposta la cancellazione come DIFFERITA
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+
     print_input(arg);
     
     int cpu = sched_getcpu();

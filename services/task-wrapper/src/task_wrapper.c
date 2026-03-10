@@ -267,9 +267,9 @@ gboolean handle_input_message(GIOChannel *source, GIOCondition condition, gpoint
     unsigned int priority;
 
     if (condition & G_IO_IN) {
-        ssize_t bytes_read = mq_receive(tw->task_queue, (char *)&msg, sizeof(ipc_msg_t), &priority);
-
-        if (bytes_read >= 0) {
+        /* Loop to drain all available messages in a single callback invocation */
+        while (mq_receive(tw->task_queue, (char *)&msg, sizeof(ipc_msg_t), &priority) != -1) {
+            /* A message was successfully received, process it */
             g_print("[INFO] Message for Session ID: %u\n", msg.task_id);
 
             switch (msg.type) {
@@ -329,17 +329,17 @@ gboolean handle_input_message(GIOChannel *source, GIOCondition condition, gpoint
                 }
 
                 case MSG_TASK_ABORT: {
-                    g_print("  Action: FORCED ABORT for Session ID: %u\n", msg.task_id);
+                    g_print("[INFO] %s: FORCED ABORT for Session ID: %u\n", tw->task_name->str, msg.task_id);
                     
                     GSList *threads = task_wrapper_get_threads(tw, msg.task_id);
                     if (!threads) {
-                        g_print("  [WARN] No active threads found for session %u\n", msg.task_id);
+                        g_print("[WARNING] %s: No active threads found for session %u\n", tw->task_name->str, msg.task_id);
                         break;
                     }
 
                     for (GSList *l = threads; l != NULL; l = l->next) {
                         pthread_t *tid_ptr = (pthread_t *)l->data;
-                        g_print("  [KILL] Cancelling thread %lu\n", (unsigned long)*tid_ptr);
+                        g_print("[INFO] %s: Cancelling thread %lu\n", tw->task_name->str, (unsigned long)*tid_ptr);
                         
                         pthread_cancel(*tid_ptr);
                         task_wrapper_remove_thread(tw, msg.task_id, *tid_ptr);
@@ -352,6 +352,13 @@ gboolean handle_input_message(GIOChannel *source, GIOCondition condition, gpoint
                 default:
                     break;
             }
+        }
+
+        /* The loop terminates when mq_receive returns -1.
+         * If errno is EAGAIN, it means the queue is now empty, which is the expected behavior.
+         * Any other errno would indicate a real error. */
+        if (errno != EAGAIN) {
+            g_printerr("[ERROR] %s: mq_receive failed with an unexpected error: %s", tw->task_name->str, g_strerror(errno));
         }
     }
     return TRUE;

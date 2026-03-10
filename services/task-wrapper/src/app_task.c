@@ -41,13 +41,8 @@ gchar* convert_output_to_json(const output_t* output) {
 
 
 
-/* * MAIN TASK (Worker Thread)
- * Receives the Context pointer, performs calculations, and writes the result.
- */
-#define _GNU_SOURCE
-#include <sched.h> // Necessario per sched_getcpu()
-
 output_t *task_main(input_t *arg) {
+
     // Imposta la cancellazione come DIFFERITA
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
@@ -56,16 +51,16 @@ output_t *task_main(input_t *arg) {
     
     int cpu = sched_getcpu();
     output_t *output = g_new0(output_t, 1);
-    output->result = arg->a * arg->b;
+    output->result = arg->a + arg->b;
     
-    g_print("[THREAD] Running on Core %d | Calculation: %d * %d = %d\n", 
+    g_print("[THREAD] sum_task: Running on Core %d | Calculation: %d + %d = %d\n", 
              cpu, arg->a, arg->b, output->result);
     
     // Punto di cancellazione sicuro: se arriva un cancel, il thread muore qui
     // invece che durante la g_print
     pthread_testcancel(); 
     
-    g_usleep(500000); 
-    
+    //g_usleep(500000); 
+    g_usleep(5000000);
     return output;
 }
