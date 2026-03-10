@@ -200,4 +200,8 @@ CMakeFiles/execution-manager.dir/src/main.c.o: \
  /usr/include/aarch64-linux-gnu/bits/stdio_lim.h \
  /home/vboxuser/projects/RT-microservices-native/services/execution-manager/include/schedule.h \
  /home/vboxuser/projects/RT-microservices-native/services/execution-manager/include/execution_manager.h \
- /home/vboxuser/projects/RT-microservices-native/services/execution-manager/include/app_task.h
+ /home/vboxuser/projects/RT-microservices-native/services/execution-manager/include/app_task.h \
+ /usr/include/fcntl.h /usr/include/aarch64-linux-gnu/bits/fcntl.h \
+ /usr/include/aarch64-linux-gnu/bits/fcntl-linux.h \
+ /usr/include/aarch64-linux-gnu/bits/stat.h \
+ /usr/include/aarch64-linux-gnu/bits/struct_stat.h

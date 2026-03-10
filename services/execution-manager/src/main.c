@@ -18,7 +18,7 @@ volatile gboolean keep_running = TRUE;
 /* Signal Handler for SIGINT (Ctrl+C) */
 void int_handler(int dummy) {
     (void)dummy; 
-    g_print("\n[SYSTEM] Execution Manager: SIGINT received.\n");
+    g_print("\n[INFO] Execution Manager: SIGINT received.\n");
     keep_running = FALSE;
 }
 
@@ -64,12 +64,14 @@ int main(int argc, char *argv[]) {
             g_error("[ERROR] Execution Manager (%s) : scheduler creation failed.", schedule_name);
         }
 
-        input_t *sum_input = g_new0(input_t, 1);
-        sum_input->a = 10;
-        sum_input->b = 5;
+        input_t *func_input = g_new0(input_t, 1);
+        func_input->total_ops = 1000;
+        func_input->io_percentage = 50;
 
 
-        schedule_add_task(sched, 1, "sum", task_main, SCHED_FIFO, 1, 0, 1, NULL, 1 * 1000, 2 * 1000, sum_input);
+
+
+        schedule_add_task(sched, 1, "stress_task", task_main, SCHED_FIFO, 1, 0, 1, NULL, 1 * 1000, 4 * 1000, func_input);
 
         //schedule_add_task(sched, 2, "subtract", SCHED_FIFO, 8, 1, NULL, 1 * 1000, 7 * 1000, "[{\"a\":20, \"b\":8}]");
 
@@ -90,11 +92,11 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    g_print("\n[SYSTEM] Execution Manager: Exit from the main loop. Cleanup ...\n");
+    g_print("\n[INFO] Execution Manager: Exit from the main loop. Cleanup ...\n");
 
     if (em) em_free(em);
     if (sched) schedule_free(sched);
     
-    g_print("[SYSTEM] Execution Manager: Cleanup completed.\n");
+    g_print("[INFO] Execution Manager: Cleanup completed.\n");
     return exit_code;
 }
