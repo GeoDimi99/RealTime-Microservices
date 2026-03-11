@@ -8,6 +8,12 @@
 #include <json-glib/json-glib.h>
 #include <pthread.h>
 
+#include <fcntl.h>
+#include <unistd.h>
+
+#define CPU_INTENSITY 1000000 
+#define IO_TMP_FILE "/tmp/rt_bench.bin"
+
 /* --- Data Structures --- */
 
 typedef struct {
