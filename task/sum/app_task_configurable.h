@@ -10,13 +10,11 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "jsmn.h"
-#include "task_ipc.h"   /* Required for task_service_state_t */
 
 /* --- Configuration --- */
 #define CPU_INTENSITY 1000000 
 #define IO_TMP_FILE "/tmp/rt_bench.bin"
 #define MAX_JSON_TOKENS 128
-#define MAX_TASK_JSON_OUT 4096
 
 /* --- Data Structures --- */
 
@@ -28,14 +26,6 @@ typedef struct {
 typedef struct {
     int result;        // Status code (e.g., 0 for success)
 } output_t;
-
-/* Shared Context Structure */
-typedef struct {
-    pthread_mutex_t lock;
-    task_service_state_t status;
-    input_t input;
-    output_t output;
-} task_context_t;
 
 /* --- Helper: JSON Parsing with jsmn --- */
 
@@ -59,7 +49,7 @@ static int parse_int(const char *json, jsmntok_t *tok) {
 
 /* --- JSON Conversion Functions --- */
 
-int convert_input(const char *json_str, input_t *input) {
+static int convert_input(const char *json_str, input_t *input) {
     if (!json_str || !input) return -1;
     
     // Initialize defaults
@@ -96,7 +86,7 @@ int convert_input(const char *json_str, input_t *input) {
     return 0;
 }
 
-int convert_output(output_t *output, char *json_out) {
+static int convert_output(const output_t *output, char *json_out) {
     if (!output || !json_out) return -1;
     
     snprintf(json_out, 1024, "{\"result\": %d}", output->result);
@@ -126,26 +116,26 @@ static void do_io_op(int fd) {
 /* --- Main Task Logic --- */
 
 void* task_main(void* arg) {
-    task_context_t *ctx = (task_context_t *)arg;
-    
-    // 1. Update state to RUNNING
-    pthread_mutex_lock(&ctx->lock);
-    ctx->status = RUNNING;
-    pthread_mutex_unlock(&ctx->lock);
-    
-    // 2. Thread Setup
+    // Cast the generic pointer back to our known input type
+    input_t *input = (input_t *)arg;
+    if (input == NULL) {
+        fprintf(stderr, "[TASK ERROR] NULL input argument\n");
+        return NULL;
+    }
+
+    // 1. Thread Setup
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-    
-    // 3. Workload Distribution
-    int io_ops = (ctx->input.total_ops * ctx->input.io_percentage) / 100;
-    int cpu_ops = ctx->input.total_ops - io_ops;
+
+    // 2. Workload Distribution
+    int io_ops = (input->total_ops * input->io_percentage) / 100;
+    int cpu_ops = input->total_ops - io_ops;
     int core = sched_getcpu();
-    
+
     printf("[THREAD] Core %d | Executing: %d CPU ops, %d I/O ops (total %d, io_pct %d%%)\n", 
-           core, cpu_ops, io_ops, ctx->input.total_ops, ctx->input.io_percentage);
-    
-    // 4. Execution Phase: CPU Operations
+           core, cpu_ops, io_ops, input->total_ops, input->io_percentage);
+
+    // 3. Execution Phase: CPU Operations
     printf("[THREAD] Phase 1/2: CPU operations...\n");
     for (int i = 0; i < cpu_ops; i++) {
         do_cpu_op();
@@ -155,8 +145,8 @@ void* task_main(void* arg) {
             pthread_testcancel(); 
         }
     }
-    
-    // 5. Execution Phase: I/O Operations
+
+    // 4. Execution Phase: I/O Operations
     printf("[THREAD] Phase 2/2: I/O operations...\n");
     int fd = -1;
     if (io_ops > 0) {
@@ -180,16 +170,20 @@ void* task_main(void* arg) {
         // Cleanup temp file
         unlink(IO_TMP_FILE);
     }
-    
+
+    // 5. Return Output
     printf("[THREAD] ✅ Task completed successfully on core %d\n", core);
     
-    // 6. Write Output protected by Mutex
-    pthread_mutex_lock(&ctx->lock);
-    ctx->output.result = 0;  // Success
-    ctx->status = COMPLETED;
-    pthread_mutex_unlock(&ctx->lock);
+    // We allocate the output_t on the heap so it persists after the thread joins
+    output_t *res = (output_t *)malloc(sizeof(output_t));
+    if (!res) {
+        fprintf(stderr, "[TASK ERROR] Failed to allocate output\n");
+        return NULL;
+    }
     
-    return NULL;
+    res->result = 0;  // Success
+    
+    return (void*)res; 
 }
 
 #endif /* APP_TASK_CONFIGURABLE_H */
