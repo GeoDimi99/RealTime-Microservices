@@ -20,6 +20,7 @@ message TaskRequest {
   string inputs_json = 3;  // JSON string with task inputs
   int32 priority = 4;
   string policy = 5;
+  double client_timestamp_ms = 6;  // Timestamp when client sends request (for latency measurement)
 }
 
 // Response message
@@ -28,4 +29,6 @@ message TaskResponse {
   string status = 2;       // "STARTED", "COMPLETED", "ERROR"
   string result_json = 3;  // JSON string with task outputs (empty for STARTED)
   string error_message = 4;
+  double t2_thread_start_ms = 5;  // T2: Timestamp when thread started (for STARTED status)
+  double t3_task_complete_ms = 6; // T3: Timestamp when task completed (for COMPLETED status)
 }

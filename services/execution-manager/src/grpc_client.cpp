@@ -2,6 +2,8 @@
 #include <memory>
 #include <string>
 #include <chrono>
+#include <map>
+#include <mutex>
 #include <grpcpp/grpcpp.h>
 #include "proto/task_service.grpc.pb.h"
 #include "grpc_client.h"
@@ -12,6 +14,48 @@ using grpc::Status;
 using taskservice::TaskExecutor;
 using taskservice::TaskRequest;
 using taskservice::TaskResponse;
+
+// ============================================
+// CHANNEL POOL - Reuse gRPC channels
+// ============================================
+static std::map<std::string, std::shared_ptr<Channel>> g_channel_pool;
+static std::mutex g_channel_pool_mutex;
+
+// Get or create a channel for the given address
+static std::shared_ptr<Channel> get_or_create_channel(const char* address) {
+    std::lock_guard<std::mutex> lock(g_channel_pool_mutex);
+    
+    std::string addr_str(address);
+    auto it = g_channel_pool.find(addr_str);
+    
+    if (it != g_channel_pool.end()) {
+        // Channel exists, reuse it
+        printf("[gRPC Channel Pool] Reusing existing channel for %s\n", address);
+        return it->second;
+    }
+    
+    // Create new channel with optimized settings
+    printf("[gRPC Channel Pool] Creating new channel for %s\n", address);
+    
+    grpc::ChannelArguments args;
+    // Enable keepalive to maintain connection
+    args.SetInt(GRPC_ARG_KEEPALIVE_TIME_MS, 10000);  // 10 seconds
+    args.SetInt(GRPC_ARG_KEEPALIVE_TIMEOUT_MS, 5000);  // 5 seconds
+    args.SetInt(GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS, 1);
+    // Increase max concurrent streams
+    args.SetInt(GRPC_ARG_MAX_CONCURRENT_STREAMS, 100);
+    // Optimize for low latency
+    args.SetInt(GRPC_ARG_USE_LOCAL_SUBCHANNEL_POOL, 0);
+    
+    std::shared_ptr<Channel> channel = grpc::CreateCustomChannel(
+        address,
+        grpc::InsecureChannelCredentials(),
+        args
+    );
+    
+    g_channel_pool[addr_str] = channel;
+    return channel;
+}
 
 // C interface for calling from C code
 extern "C" {
@@ -27,10 +71,8 @@ int grpc_execute_task(const char* task_service_address,
                       char* result_json_out,
                       int result_json_max_len) {
     
-    // Create a channel to the task service
-    std::shared_ptr<Channel> channel = grpc::CreateChannel(
-        task_service_address, 
-        grpc::InsecureChannelCredentials());
+    // Get or create a channel from the pool (reuses existing connections)
+    std::shared_ptr<Channel> channel = get_or_create_channel(task_service_address);
     
     // Create stub
     std::unique_ptr<TaskExecutor::Stub> stub = TaskExecutor::NewStub(channel);
@@ -51,7 +93,8 @@ int grpc_execute_task(const char* task_service_address,
     std::chrono::system_clock::time_point deadline =
         std::chrono::system_clock::now() + std::chrono::seconds(5);
     context.set_deadline(deadline);
-    context.set_wait_for_ready(true);
+    // Don't wait for ready - channel should already be connected from pool
+    // context.set_wait_for_ready(true);
     
     printf("[gRPC Client] Calling task '%s' at %s\n", task_name, task_service_address);
     printf("[gRPC Client] Inputs: %s\n", inputs_json);
@@ -87,13 +130,12 @@ int grpc_execute_task_async(const char* task_service_address,
                             const char* inputs_json,
                             int priority,
                             const char* policy,
+                            double client_timestamp_ms,
                             grpc_task_callback_t callback,
                             void* user_data) {
     
-    // Create a channel to the task service
-    std::shared_ptr<Channel> channel = grpc::CreateChannel(
-        task_service_address, 
-        grpc::InsecureChannelCredentials());
+    // Get or create a channel from the pool (reuses existing connections)
+    std::shared_ptr<Channel> channel = get_or_create_channel(task_service_address);
     
     // Create stub
     std::unique_ptr<TaskExecutor::Stub> stub = TaskExecutor::NewStub(channel);
@@ -105,6 +147,7 @@ int grpc_execute_task_async(const char* task_service_address,
     request.set_inputs_json(inputs_json);
     request.set_priority(priority);
     request.set_policy(policy);
+    request.set_client_timestamp_ms(client_timestamp_ms);
     
     // Client context
     ClientContext context;
@@ -115,7 +158,8 @@ int grpc_execute_task_async(const char* task_service_address,
     std::chrono::system_clock::time_point deadline =
         std::chrono::system_clock::now() + std::chrono::seconds(60);
     context.set_deadline(deadline);
-    context.set_wait_for_ready(true);
+    // Don't wait for ready - channel should already be connected from pool
+    // context.set_wait_for_ready(true);
     
     printf("[gRPC Client Async] Calling task '%s' at %s\n", task_name, task_service_address);
     printf("[gRPC Client Async] Inputs: %s\n", inputs_json);
@@ -134,6 +178,8 @@ int grpc_execute_task_async(const char* task_service_address,
         std::string status = response.status();
         std::string result_json = response.result_json();
         std::string error_message = response.error_message();
+        double t2_timestamp = response.t2_thread_start_ms();
+        double t3_timestamp = response.t3_task_complete_ms();
         
         printf("[gRPC Client Async] Response #%d - Status: %s\n", response_count, status.c_str());
         
@@ -144,6 +190,8 @@ int grpc_execute_task_async(const char* task_service_address,
                 status.c_str(),
                 result_json.c_str(),
                 error_message.c_str(),
+                t2_timestamp,
+                t3_timestamp,
                 user_data
             );
         }
@@ -184,16 +232,15 @@ grpc_call_handle_t grpc_execute_task_async_cancellable(
                             const char* inputs_json,
                             int priority,
                             const char* policy,
+                            double client_timestamp_ms,
                             grpc_task_callback_t callback,
                             void* user_data) {
     
     // Allocate call context
     GrpcCallContext* ctx = new GrpcCallContext();
     
-    // Create channel
-    ctx->channel = grpc::CreateChannel(
-        task_service_address,
-        grpc::InsecureChannelCredentials());
+    // Get or create channel from pool
+    ctx->channel = get_or_create_channel(task_service_address);
     
     // Create stub
     ctx->stub = TaskExecutor::NewStub(ctx->channel);
@@ -205,12 +252,14 @@ grpc_call_handle_t grpc_execute_task_async_cancellable(
     request.set_inputs_json(inputs_json);
     request.set_priority(priority);
     request.set_policy(policy);
+    request.set_client_timestamp_ms(client_timestamp_ms);
     
     // Set deadline (60 seconds)
     std::chrono::system_clock::time_point deadline =
         std::chrono::system_clock::now() + std::chrono::seconds(60);
     ctx->context.set_deadline(deadline);
-    ctx->context.set_wait_for_ready(true);
+    // Don't wait for ready - channel should already be connected from pool
+    // ctx->context.set_wait_for_ready(true);
     
     printf("[gRPC Client Cancellable] Calling task '%s' at %s\n", task_name, task_service_address);
     
@@ -227,6 +276,8 @@ grpc_call_handle_t grpc_execute_task_async_cancellable(
         std::string status = response.status();
         std::string result_json = response.result_json();
         std::string error_message = response.error_message();
+        double t2_timestamp = response.t2_thread_start_ms();
+        double t3_timestamp = response.t3_task_complete_ms();
         
         printf("[gRPC Client Cancellable] Response #%d - Status: %s\n", response_count, status.c_str());
         
@@ -243,6 +294,8 @@ grpc_call_handle_t grpc_execute_task_async_cancellable(
                 status.c_str(),
                 result_json.c_str(),
                 error_message.c_str(),
+                t2_timestamp,
+                t3_timestamp,
                 user_data
             );
         }

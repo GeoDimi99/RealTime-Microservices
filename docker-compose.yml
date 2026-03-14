@@ -5,8 +5,7 @@ services:
     image: "redis:8.4"
     cpuset: "1"
     container_name: redis
-    ports:
-      - "6379:6379"
+    network_mode: host  # Use host networking for minimal latency
 
   deploy-manager:
     build:
@@ -14,6 +13,7 @@ services:
       dockerfile: ./services/deploy-manager/Dockerfile
     cpuset: "1"
     container_name: deploy-manager
+    network_mode: host  # Use host networking to reach task services on localhost
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
@@ -26,10 +26,9 @@ services:
       dockerfile: ./services/execution-manager/Dockerfile
     cpuset: "1"
     container_name: execution-manager
+    network_mode: host  # Use host networking for minimal latency
     cap_add:
       - SYS_NICE  # Allows real-time scheduling (SCHED_FIFO/SCHED_RR)
-    depends_on:
-     - redis
      # Note: deploy-manager is not a dependency because we only need Redis data,
      # not a running deploy-manager process. This prevents container recreation.
   

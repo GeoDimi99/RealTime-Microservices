@@ -46,6 +46,12 @@ typedef struct {
     // Execution timing (for benchmarking)
     struct timespec execution_start_time;  // Timestamp when task execution started
     
+    // End-to-end timing measurements (absolute CLOCK_MONOTONIC in ms)
+    double t1_start_request;   // T1: Before sending gRPC request
+    double t2_end_request;     // T2: Thread started in Task Wrapper
+    double t3_start_result;    // T3: Task completed in Task Wrapper
+    double t4_end_result;      // T4: After receiving result
+    
     // Timers
     int start_timer_fd;
     int timeout_timer_fd;
@@ -94,28 +100,66 @@ static void scheduler_task_callback(unsigned int task_id,
                                    const char* status,
                                    const char* result_json,
                                    const char* error_message,
+                                   double t2_thread_start_ms,
+                                   double t3_task_complete_ms,
                                    void* user_data) {
     scheduled_task_t *task = (scheduled_task_t *)user_data;
     
     if (strcmp(status, "STARTED") == 0) {
         // Record execution start time for benchmarking
         clock_gettime(CLOCK_MONOTONIC, &task->execution_start_time);
+        
+        // Save T2 timestamp
+        task->t2_end_request = t2_thread_start_ms;
+        
         printf("✅ [T=%lu ms] Task %d '%s' STARTED\n", 
                get_elapsed_ms(), task->task_id, task->task_name);
+        printf("[EXECUTION MANAGER] ⏱️ T2=%.3f ms | Server received request\n", t2_thread_start_ms);
     } else if (strcmp(status, "COMPLETED") == 0) {
-        // Calculate execution time
-        struct timespec end_time;
-        clock_gettime(CLOCK_MONOTONIC, &end_time);
+        // ⏱️ T4 - end_time_result: Capture timestamp after receiving result
+        struct timespec t4;
+        clock_gettime(CLOCK_MONOTONIC, &t4);
+        double t4_ms = t4.tv_sec * 1000.0 + t4.tv_nsec / 1000000.0;
         
-        long long elapsed_ns = (end_time.tv_sec - task->execution_start_time.tv_sec) * 1000000000LL + 
-                               (end_time.tv_nsec - task->execution_start_time.tv_nsec);
-        long long elapsed_us = elapsed_ns / 1000;
-        double elapsed_ms = elapsed_us / 1000.0;
+        // Save T2, T3 and T4 timestamps
+        // Note: Server now sends BOTH T2 and T3 in COMPLETED response (measured inside thread)
+        task->t2_end_request = t2_thread_start_ms;
+        task->t3_start_result = t3_task_complete_ms;
+        task->t4_end_result = t4_ms;
+        
+        // Calculate execution time from T2 and T3 (measured by server inside thread)
+        double task_execution_ms = t3_task_complete_ms - t2_thread_start_ms;
         
         printf("🎉 [T=%lu ms] Task %d '%s' COMPLETED\n", 
                get_elapsed_ms(), task->task_id, task->task_name);
-        printf("   [EXECUTION TIME] %lld µs (%.3f ms)\n", elapsed_us, elapsed_ms);
+        printf("[EXECUTION MANAGER] ⏱️ T2=%.3f ms | Thread started (server measured)\n", t2_thread_start_ms);
+        printf("[EXECUTION MANAGER] ⏱️ T3=%.3f ms | Task completed (server measured)\n", t3_task_complete_ms);
+        printf("[EXECUTION MANAGER] ⏱️ T4=%.3f ms | Result received by client\n", t4_ms);
+        printf("   [TASK EXECUTION] %.3f ms (T3-T2, measured in thread)\n", task_execution_ms);
         printf("   [RESULT] %s\n", result_json);
+        
+        // ============================================
+        // 📊 END-TO-END TIMING RECAP
+        // ============================================
+        printf("\n");
+        printf("╔═══════════════════════════════════════════════════════════════╗\n");
+        printf("║           END-TO-END TIMING MEASUREMENT RECAP                 ║\n");
+        printf("║                   Task %d: %s                                 \n", task->task_id, task->task_name);
+        printf("╠═══════════════════════════════════════════════════════════════╣\n");
+        printf("║ T1 (start_request)    = %12.3f ms                        ║\n", task->t1_start_request);
+        printf("║ T2 (end_request)      = %12.3f ms                        ║\n", task->t2_end_request);
+        printf("║ T3 (start_result)     = %12.3f ms                        ║\n", task->t3_start_result);
+        printf("║ T4 (end_result)       = %12.3f ms                        ║\n", task->t4_end_result);
+        printf("╠═══════════════════════════════════════════════════════════════╣\n");
+        printf("║ METRICS:                                                      ║\n");
+        printf("║   Request Latency    = %12.3f ms  (T2 - T1)            ║\n", task->t2_end_request - task->t1_start_request);
+        printf("║   Task Execution     = %12.3f ms  (T3 - T2)            ║\n", task->t3_start_result - task->t2_end_request);
+        printf("║   Response Latency   = %12.3f ms  (T4 - T3)            ║\n", task->t4_end_result - task->t3_start_result);
+        printf("║   Total End-to-End   = %12.3f ms  (T4 - T1)            ║\n", task->t4_end_result - task->t1_start_request);
+        printf("║   Network Overhead   = %12.3f ms  (Req + Resp)         ║\n", 
+               (task->t2_end_request - task->t1_start_request) + (task->t4_end_result - task->t3_start_result));
+        printf("╚═══════════════════════════════════════════════════════════════╝\n");
+        printf("\n");
         
         pthread_mutex_lock(&task->lock);
         if (task->status == TASK_STATUS_RUNNING) {
@@ -156,6 +200,18 @@ static void *grpc_task_thread(void *arg) {
     
     printf("[GRPC THREAD %d] Starting...\n", task->task_id);
     
+    // ⏱️ T1 - start_time_request: Capture timestamp before sending gRPC request
+    struct timespec t1;
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    double t1_ms = t1.tv_sec * 1000.0 + t1.tv_nsec / 1000000.0;
+    double client_timestamp_ms = t1_ms;
+    
+    // Save T1 in task structure
+    task->t1_start_request = t1_ms;
+    
+    printf("[EXECUTION MANAGER] ⏱️ T1=%.3f ms | Sending gRPC request for task %d '%s'\n",
+           t1_ms, task->task_id, task->task_name);
+    
     // Note: grpc_execute_task_async is blocking, but runs in separate thread
     // so main scheduler thread remains free
     // Cancellation is handled by gRPC server checking context->IsCancelled()
@@ -167,6 +223,7 @@ static void *grpc_task_thread(void *arg) {
         task->inputs_json,
         task->priority,
         task->policy,
+        client_timestamp_ms,
         scheduler_task_callback,
         (void*)task
     );
@@ -393,8 +450,9 @@ void execute_schedule_with_event_loop(redisContext *redis, int num_tasks) {
         
         // Fill task structure
         strncpy(task->task_name, task_name, sizeof(task->task_name) - 1);
+        // With host networking, all task services are on localhost:50051
         snprintf(task->service_address, sizeof(task->service_address),
-                 "task-service-%s:50051", task_name);
+                 "localhost:50051");
         strncpy(task->inputs_json, simple_inputs, sizeof(task->inputs_json) - 1);
         task->priority = task_priority;
         strncpy(task->policy, task_policy ? task_policy : "fifo", sizeof(task->policy) - 1);

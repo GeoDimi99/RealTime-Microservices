@@ -25,6 +25,46 @@ using taskservice::TaskExecutor;
 using taskservice::TaskRequest;
 using taskservice::TaskResponse;
 
+// ============================================
+// THREAD WRAPPER - Measures T2 and T3 INSIDE the thread
+// (Generic wrapper in grpc_server.cpp, like task_wrapper.c in MQ version)
+// ============================================
+extern "C" {
+    void* task_main_wrapper(void* arg) {
+        task_context_t *ctx = (task_context_t *)arg;
+        
+        /* Set CPU affinity from inside the thread (self-affinity) */
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+        CPU_SET(2, &cpuset);  // Pin to CPU 2
+        int affinity_ret = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+        if (affinity_ret != 0) {
+            printf("[THREAD WRAPPER] Warning: Failed to set CPU affinity: %s\n", strerror(affinity_ret));
+        }
+        
+        /* ⏱️ T2 - Measure timestamp INSIDE the thread (like message queue version) */
+        struct timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        ctx->t2_thread_entry_ms = ts.tv_sec * 1000.0 + ts.tv_nsec / 1000000.0;
+        
+        printf("[THREAD WRAPPER] ⏱️ T2=%.3f ms | Thread started (measured inside thread)\n", 
+               ctx->t2_thread_entry_ms);
+        
+        /* Execute the actual task (task-specific code) */
+        task_main(arg);
+        
+        /* ⏱️ T3 - Measure timestamp INSIDE the thread after task completion */
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        ctx->t3_task_complete_ms = ts.tv_sec * 1000.0 + ts.tv_nsec / 1000000.0;
+        
+        double task_time = ctx->t3_task_complete_ms - ctx->t2_thread_entry_ms;
+        printf("[THREAD WRAPPER] ⏱️ T3=%.3f ms | Task completed (%.3f ms execution)\n", 
+               ctx->t3_task_complete_ms, task_time);
+        
+        return NULL;
+    }
+}
+
 // Implementation of TaskExecutor service
 class TaskExecutorServiceImpl final : public TaskExecutor::Service {
     Status ExecuteTask(ServerContext* context, 
@@ -96,8 +136,8 @@ class TaskExecutorServiceImpl final : public TaskExecutor::Service {
         // Use explicit scheduler inheritance
         pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
         
-        // Create real-time thread
-        if (pthread_create(&task_thread, &attr, task_main, ctx) != 0) {
+        // Create real-time thread (using wrapper that measures T2/T3 inside thread)
+        if (pthread_create(&task_thread, &attr, task_main_wrapper, ctx) != 0) {
             response->set_status("ERROR");
             response->set_error_message("Failed to create task thread");
             pthread_attr_destroy(&attr);
@@ -142,8 +182,14 @@ class TaskExecutorServiceImpl final : public TaskExecutor::Service {
                            const TaskRequest* request,
                            ServerWriter<TaskResponse>* writer) override {
         
-        printf("[gRPC Server Async] Received task: %s (ID: %u)\n", 
-               request->task_name().c_str(), request->task_id());
+        // Note: We do NOT measure T2 here anymore!
+        // T2 will be measured INSIDE the worker thread (task_main_wrapper)
+        // This matches the message queue implementation exactly.
+        
+        double client_t1_ms = request->client_timestamp_ms();
+        
+        printf("[gRPC Server Async] Request received for task: %s (ID: %u) | Client T1=%.3f ms\n", 
+               request->task_name().c_str(), request->task_id(), client_t1_ms);
         
         // Allocate task context
         task_context_t* ctx = (task_context_t*)malloc(sizeof(task_context_t));
@@ -182,14 +228,16 @@ class TaskExecutorServiceImpl final : public TaskExecutor::Service {
         
         pthread_attr_init(&attr);
         
-        // Set stack size (avoid page faults)
+        // 1. Set stack size (matching message queue order)
         int stack_ret = pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN + 0x4000);
         printf("[gRPC Server Async] Set stack size: %s\n", stack_ret == 0 ? "OK" : "FAILED");
         
-        // NOTE: CPU affinity will be set AFTER thread creation
-        // Setting it in pthread_attr causes EINVAL with SCHED_FIFO
+        // Note: CPU affinity will be set AFTER pthread_create
+        // Setting it in attributes with pthread_attr_setaffinity_np causes errno=22 with SCHED_FIFO
         
-        // Set scheduling policy based on request
+        // 3. Set scheduling policy
+        memset(&param, 0, sizeof(param));
+        
         int policy = SCHED_OTHER;
         std::string policy_str = request->policy();
         int priority_val = request->priority();
@@ -205,11 +253,6 @@ class TaskExecutorServiceImpl final : public TaskExecutor::Service {
         if (policy != SCHED_OTHER) {
             printf("[gRPC Server Async] Setting SCHED_FIFO with priority %d\n", priority_val);
             
-            // IMPORTANT: Use PTHREAD_EXPLICIT_SCHED to not inherit from parent
-            int sched_ret = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
-            printf("[gRPC Server Async] Set inherit sched: %s (ret=%d)\n", 
-                   sched_ret == 0 ? "OK" : "FAILED", sched_ret);
-            
             int policy_ret = pthread_attr_setschedpolicy(&attr, policy);
             printf("[gRPC Server Async] Set policy SCHED_FIFO: %s (ret=%d)\n",
                    policy_ret == 0 ? "OK" : "FAILED", policy_ret);
@@ -219,29 +262,42 @@ class TaskExecutorServiceImpl final : public TaskExecutor::Service {
                 policy = SCHED_OTHER;
                 use_rt = false;
             } else {
-                // Set priority only if RT policy succeeded
+                // 4. Set priority
                 param.sched_priority = priority_val;
                 int param_ret = pthread_attr_setschedparam(&attr, &param);
                 printf("[gRPC Server Async] Set priority %d: %s (ret=%d)\n",
                        priority_val, param_ret == 0 ? "OK" : "FAILED", param_ret);
                 
-                if (param_ret == 0) {
-                    printf("[gRPC Server Async] RT attributes configured successfully\n");
-                } else {
+                if (param_ret != 0) {
                     use_rt = false;
+                } else {
+                    // 5. Use PTHREAD_EXPLICIT_SCHED (LAST - matching message queue)
+                    int sched_ret = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+                    printf("[gRPC Server Async] Set inherit sched: %s (ret=%d)\n", 
+                           sched_ret == 0 ? "OK" : "FAILED", sched_ret);
+                    
+                    if (sched_ret == 0) {
+                        printf("[gRPC Server Async] RT attributes configured successfully\n");
+                    } else {
+                        use_rt = false;
+                    }
                 }
             }
+        } else {
+            // SCHED_OTHER means no real-time
+            use_rt = false;
         }
         
         // Create thread with RT attributes (or fallback to default if RT failed)
-        int ret = pthread_create(&task_thread, &attr, task_main, ctx);
+        // Using task_main_wrapper that measures T2/T3 INSIDE the thread
+        int ret = pthread_create(&task_thread, &attr, task_main_wrapper, ctx);
         pthread_attr_destroy(&attr);
         
         if (ret != 0) {
             // RT failed, try again with no attributes
             printf("[gRPC Server Async] Thread creation with RT failed (errno=%d), trying without RT...\n", ret);
             use_rt = false;  // ← FIX: aggiorna flag!
-            ret = pthread_create(&task_thread, NULL, task_main, ctx);
+            ret = pthread_create(&task_thread, NULL, task_main_wrapper, ctx);
         }
         
         if (ret != 0) {
@@ -255,75 +311,25 @@ class TaskExecutorServiceImpl final : public TaskExecutor::Service {
             return Status::OK;
         }
         
-        printf("[gRPC Server Async] Thread created successfully (RT=%s)\n", use_rt ? "yes" : "no");
+        printf("[gRPC Server Async] Thread created successfully (RT=%s), waiting for task completion...\n", use_rt ? "yes" : "no");
         
-        // Set CPU affinity on the created thread (must be done after creation when using SCHED_FIFO)
-        cpu_set_t cpuset;
-        CPU_ZERO(&cpuset);
-        CPU_SET(2, &cpuset);  // Pin to CPU 2
-        int affinity_ret = pthread_setaffinity_np(task_thread, sizeof(cpu_set_t), &cpuset);
-        if (affinity_ret == 0) {
-            printf("[gRPC Server Async] CPU affinity set to CPU 2\n");
-        } else {
-            printf("[gRPC Server Async] Warning: Failed to set CPU affinity (errno=%d)\n", affinity_ret);
-        }
+        // Note: CPU affinity is set by the thread itself in task_main_wrapper
         
-        // ✅ SEND IMMEDIATE ACK - Task started!
-        TaskResponse ack_response;
-        ack_response.set_task_id(request->task_id());
-        ack_response.set_status("STARTED");
-        ack_response.set_result_json("");
-        writer->Write(ack_response);
+        // Wait for task completion (blocking join)
+        // NO ACK - we send only ONE response with T2 and T3 (like message queue)
+        // T2 and T3 will be measured INSIDE the thread by task_main_wrapper
+        pthread_join(task_thread, NULL);
         
-        printf("[gRPC Server Async] ACK sent, task started\n");
+        // ⏱️ Read T2 and T3 from context (measured INSIDE the thread, like message queue version)
+        double t2_ms = ctx->t2_thread_entry_ms;
+        double t3_ms = ctx->t3_task_complete_ms;
+        double task_execution_time = t3_ms - t2_ms;
         
-        // Wait for task completion with cancellation support
-        // Check every 100ms if client has cancelled
-        bool task_completed = false;
-        bool task_cancelled = false;
+        printf("[TASK WRAPPER] ⏱️ T2=%.3f ms (measured in thread) | T3=%.3f ms | Execution: %.3f ms\n", 
+               t2_ms, t3_ms, task_execution_time);
         
-        while (!task_completed && !task_cancelled) {
-            // Check if client has cancelled the request
-            if (context->IsCancelled()) {
-                printf("[gRPC Server Async] ⚠️ Client cancelled request! Aborting task thread...\n");
-                
-                // Cancel the pthread (sends SIGCANCEL)
-                pthread_cancel(task_thread);
-                
-                // Wait a short time for thread to cleanup
-                struct timespec timeout = {0, 100000000};  // 100ms
-                nanosleep(&timeout, NULL);
-                
-                // Send CANCELLED response
-                TaskResponse cancel_response;
-                cancel_response.set_task_id(request->task_id());
-                cancel_response.set_status("CANCELLED");
-                cancel_response.set_error_message("Task aborted due to timeout or cancellation");
-                writer->Write(cancel_response);
-                
-                task_cancelled = true;
-                
-                printf("[gRPC Server Async] Task thread cancelled\n");
-                break;
-            }
-            
-            // Check if task thread has completed (non-blocking check)
-            struct timespec timeout = {0, 100000000};  // 100ms
-            int join_ret = pthread_timedjoin_np(task_thread, NULL, &timeout);
-            
-            if (join_ret == 0) {
-                // Thread completed successfully
-                task_completed = true;
-                printf("[gRPC Server Async] Task completed normally\n");
-            } else if (join_ret == ETIMEDOUT) {
-                // Thread still running, continue checking
-                continue;
-            } else {
-                // Some error occurred
-                printf("[gRPC Server Async] Warning: pthread_timedjoin_np returned %d\n", join_ret);
-                break;
-            }
-        }
+        // Check if cancelled during execution
+        bool task_cancelled = context->IsCancelled();
         
         // If task was cancelled, cleanup and return
         if (task_cancelled) {
@@ -345,14 +351,17 @@ class TaskExecutorServiceImpl final : public TaskExecutor::Service {
             return Status::OK;
         }
         
-        // ✅ SEND RESULT - Task completed!
+        // ✅ SEND RESULT - Task completed with T2 and T3 measured inside thread
         TaskResponse result_response;
         result_response.set_task_id(request->task_id());
         result_response.set_status("COMPLETED");
         result_response.set_result_json(result_json);
+        result_response.set_t2_thread_start_ms(t2_ms);    // T2 measured INSIDE thread
+        result_response.set_t3_task_complete_ms(t3_ms);   // T3 measured INSIDE thread
         writer->Write(result_response);
         
-        printf("[gRPC Server Async] Result sent: %s\n", result_json);
+        printf("[gRPC Server Async] Result sent with T2=%.3f ms, T3=%.3f ms: %s\n", 
+               t2_ms, t3_ms, result_json);
         
         // Cleanup
         pthread_mutex_destroy(&ctx->lock);
@@ -369,8 +378,39 @@ void RunServer(const std::string& server_address) {
     builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
     builder.RegisterService(&service);
     
+    // ============================================
+    // PERFORMANCE OPTIMIZATIONS
+    // ============================================
+    
+    // Increase thread pool for handling concurrent requests
+    // Default is usually 2, we increase to handle multiple tasks simultaneously
+    builder.SetSyncServerOption(ServerBuilder::SyncServerOption::NUM_CQS, 4);
+    builder.SetSyncServerOption(ServerBuilder::SyncServerOption::MIN_POLLERS, 2);
+    builder.SetSyncServerOption(ServerBuilder::SyncServerOption::MAX_POLLERS, 8);
+    
+    // Increase max concurrent streams per connection
+    builder.AddChannelArgument(GRPC_ARG_MAX_CONCURRENT_STREAMS, 100);
+    
+    // Enable keepalive to maintain connections
+    builder.AddChannelArgument(GRPC_ARG_KEEPALIVE_TIME_MS, 10000);  // 10 seconds
+    builder.AddChannelArgument(GRPC_ARG_KEEPALIVE_TIMEOUT_MS, 5000);  // 5 seconds
+    builder.AddChannelArgument(GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS, 1);
+    
+    // Increase message size limits (if needed for large payloads)
+    builder.SetMaxReceiveMessageSize(4 * 1024 * 1024);  // 4MB
+    builder.SetMaxSendMessageSize(4 * 1024 * 1024);     // 4MB
+    
+    // Optimize for low latency
+    builder.AddChannelArgument(GRPC_ARG_HTTP2_BDP_PROBE, 0);  // Disable bandwidth probing
+    builder.AddChannelArgument(GRPC_ARG_HTTP2_MIN_RECV_PING_INTERVAL_WITHOUT_DATA_MS, 5000);
+    
     std::unique_ptr<Server> server(builder.BuildAndStart());
     std::cout << "[gRPC Server] Listening on " << server_address << std::endl;
+    std::cout << "[gRPC Server] Performance optimizations enabled:" << std::endl;
+    std::cout << "  - Thread pool: 2-8 pollers, 4 completion queues" << std::endl;
+    std::cout << "  - Max concurrent streams: 100" << std::endl;
+    std::cout << "  - Keepalive enabled (10s interval)" << std::endl;
+    std::cout << "  - Low latency optimizations active" << std::endl;
     
     server->Wait();
 }

@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <time.h>
 #include "jsmn.h"
 #include "task_ipc.h"   /* Required for task_service_state_t */
 
@@ -35,6 +36,10 @@ typedef struct {
     task_service_state_t status;
     input_t input;
     output_t output;
+    
+    // Timing measurements (measured INSIDE the worker thread)
+    double t2_thread_entry_ms;      // T2: Timestamp when thread starts
+    double t3_task_complete_ms;     // T3: Timestamp when task completes
 } task_context_t;
 
 /* --- Helper: JSON Parsing with jsmn --- */

@@ -27,6 +27,10 @@ typedef struct {
     task_service_state_t status;    // Current state (IDLE, RUNNING, COMPLETED)
     input_t input;                  // Input data (Read-only for the thread)
     output_t output;                // Output data (Written by the thread)
+    
+    // Timing measurements (measured INSIDE the worker thread)
+    double t2_thread_entry_ms;      // T2: Timestamp when thread starts (measured in thread)
+    double t3_task_complete_ms;     // T3: Timestamp when task completes (measured in thread)
 } task_context_t;
 
 
@@ -150,6 +154,35 @@ void *task_main(void *arg){
 
     printf("[THREAD] Job Done. Result: %d\n", res);
 
+    return NULL;
+}
+
+/* * THREAD WRAPPER (Measures T2 and T3 INSIDE the thread)
+ * This wrapper is called by pthread_create and measures timestamps
+ * exactly like the message queue version.
+ */
+void *task_main_wrapper(void *arg){
+    task_context_t *ctx = (task_context_t *)arg;
+    
+    /* ⏱️ T2 - Measure timestamp INSIDE the thread (like message queue version) */
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    ctx->t2_thread_entry_ms = ts.tv_sec * 1000.0 + ts.tv_nsec / 1000000.0;
+    
+    printf("[THREAD WRAPPER] ⏱️ T2=%.3f ms | Thread started (measured inside thread)\n", 
+           ctx->t2_thread_entry_ms);
+    
+    /* Execute the actual task */
+    task_main(arg);
+    
+    /* ⏱️ T3 - Measure timestamp INSIDE the thread after task completion */
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    ctx->t3_task_complete_ms = ts.tv_sec * 1000.0 + ts.tv_nsec / 1000000.0;
+    
+    double task_time = ctx->t3_task_complete_ms - ctx->t2_thread_entry_ms;
+    printf("[THREAD WRAPPER] ⏱️ T3=%.3f ms | Task completed (%.3f ms execution)\n", 
+           ctx->t3_task_complete_ms, task_time);
+    
     return NULL;
 }
 

@@ -9,12 +9,16 @@ extern "C" {
 // status: "STARTED", "COMPLETED", or "ERROR"
 // result_json: JSON result (empty for STARTED)
 // error_message: Error message (empty if no error)
+// t2_thread_start_ms: T2 timestamp (for STARTED status, 0 otherwise)
+// t3_task_complete_ms: T3 timestamp (for COMPLETED status, 0 otherwise)
 // user_data: User-provided context pointer
 typedef void (*grpc_task_callback_t)(
     unsigned int task_id,
     const char* status,
     const char* result_json,
     const char* error_message,
+    double t2_thread_start_ms,
+    double t3_task_complete_ms,
     void* user_data
 );
 
@@ -58,6 +62,7 @@ int grpc_execute_task_async(const char* task_service_address,
                             const char* inputs_json,
                             int priority,
                             const char* policy,
+                            double client_timestamp_ms,
                             grpc_task_callback_t callback,
                             void* user_data);
 
@@ -75,6 +80,7 @@ grpc_call_handle_t grpc_execute_task_async_cancellable(
                             const char* inputs_json,
                             int priority,
                             const char* policy,
+                            double client_timestamp_ms,
                             grpc_task_callback_t callback,
                             void* user_data);
 

@@ -171,7 +171,8 @@ int main(int argc, char *argv[]) {
     // ========================================
     // NUOVO: Connessione Redis
     // ========================================
-    redisContext *redis = redisConnect("redis", 6379);
+    // With host networking, use localhost instead of service name
+    redisContext *redis = redisConnect("localhost", 6379);
     
     if (redis == NULL || redis->err) {
         if (redis) {
@@ -280,7 +281,7 @@ int main(int argc, char *argv[]) {
     }
     
 
-        
+    
 
     printf("Test Suite Finished Successfully.\n");
     return 0;

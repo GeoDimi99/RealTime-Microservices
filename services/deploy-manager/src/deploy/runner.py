@@ -40,8 +40,8 @@ class DockerContainerRunner:
                 detach=detach,
                 tty=True,
                 ipc_mode="host",
+                network_mode="host",  # Use host networking for minimal gRPC latency
                 cap_add=["SYS_NICE"],
-                network="realtime-microservices_default",
                 environment={
                     "TASK_NAME": image_tag,
                     "TASK_QUEUE_NAME": image_tag,
@@ -50,7 +50,7 @@ class DockerContainerRunner:
                     docker.types.Ulimit(name="rtprio", soft=99, hard=99),
                     docker.types.Ulimit(name="memlock", soft=-1, hard=-1),
                 ],
-                cpuset_cpus="1",
+                cpuset_cpus="0-7",  # Allow all CPUs (task threads will set their own affinity)
                 #remove=True,
             )
 

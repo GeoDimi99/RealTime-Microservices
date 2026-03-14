@@ -43,7 +43,8 @@ def main():
     task_service_include = task_service_path / "include"
 
     docker_runner = DockerContainerRunner()
-    redis_loader = RedisLoader(host="redis", port=6379)
+    # With host networking, use localhost instead of service name
+    redis_loader = RedisLoader(host="localhost", port=6379)
 
     try:
         # Parse manifest
@@ -69,7 +70,8 @@ def main():
             )
             
             # Wait for gRPC server to be ready
-            if not wait_for_grpc_ready(container_name, 50051, timeout=30):
+            # With host networking, use localhost instead of container name
+            if not wait_for_grpc_ready("localhost", 50051, timeout=30):
                 raise DeployManagerError(f"gRPC server for '{container_name}' failed to become ready")
         
         # Load schedule and tasks into Redis
