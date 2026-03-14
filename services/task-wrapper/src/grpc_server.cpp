@@ -421,13 +421,17 @@ int main(int argc, char** argv) {
         std::cerr << "[gRPC Server] Warning: mlockall failed (need root privileges)" << std::endl;
     }
     
-    // Get task name from environment or default to port 50051
+    // Get task name and port from environment
     const char* task_name = getenv("TASK_NAME");
-    std::string server_address = "0.0.0.0:50051";
+    const char* grpc_port = getenv("GRPC_PORT");
+    
+    std::string server_address = "0.0.0.0:";
+    server_address += grpc_port ? grpc_port : "50051";  // Default to 50051 if not set
     
     if (task_name) {
         std::cout << "[gRPC Server] Starting server for task: " << task_name << std::endl;
     }
+    std::cout << "[gRPC Server] Listening on " << server_address << std::endl;
     
     RunServer(server_address);
     

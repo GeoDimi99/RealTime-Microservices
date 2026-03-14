@@ -14,9 +14,13 @@ class RedisLoader:
     def __init__(self, host="localhost", port=6379, db=0):
         self.client = redis.Redis(host=host, port=port, db=db, decode_responses=True)
 
-    def load_schedule(self, schedule: Schedule):
+    def load_schedule(self, schedule: Schedule, image_to_port: dict = None):
         """
         Push schedule and tasks into Redis.
+        
+        Args:
+            schedule: Schedule object with tasks
+            image_to_port: Mapping from image name to gRPC port (e.g., {"sum": 50051})
         """
         self.client.hset("schedule", mapping={
             "name": schedule.name,
@@ -42,6 +46,12 @@ class RedisLoader:
             # Add deadline if present
             if task.deadline is not None:
                 task_data["deadline"] = str(task.deadline)
+            
+            # Add service port based on task image name
+            if image_to_port and task.name in image_to_port:
+                task_data["service_port"] = str(image_to_port[task.name])
+            else:
+                task_data["service_port"] = "50051"  # Default fallback
             
             self.client.hset(task_key, mapping=task_data)
 

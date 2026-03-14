@@ -15,8 +15,9 @@ class DockerContainerRunner:
     def run_task_service(
         self,
         image_tag: str,
-        container_name: str = "task-service",
+        container_name: str = None,
         detach: bool = True,
+        grpc_port: int = 50051
     ):
         """
         Run a task-service container with privileged capabilities and ulimits.
@@ -45,6 +46,7 @@ class DockerContainerRunner:
                 environment={
                     "TASK_NAME": image_tag,
                     "TASK_QUEUE_NAME": image_tag,
+                    "GRPC_PORT": str(grpc_port),  # Assign unique port to each task service
                     },
                 ulimits=[
                     docker.types.Ulimit(name="rtprio", soft=99, hard=99),

@@ -366,6 +366,7 @@ void execute_schedule_with_event_loop(redisContext *redis, int num_tasks) {
         int task_start = 0;
         int task_deadline = 0;
         char *task_inputs = NULL;
+        int service_port = 50051;  // Default port
         
         for (size_t j = 0; j < reply->elements; j += 2) {
             char *field = reply->element[j]->str;
@@ -383,6 +384,8 @@ void execute_schedule_with_event_loop(redisContext *redis, int num_tasks) {
                 task_deadline = atoi(value);
             } else if (strcmp(field, "inputs") == 0) {
                 task_inputs = value;
+            } else if (strcmp(field, "service_port") == 0) {
+                service_port = atoi(value);
             }
         }
         
@@ -450,9 +453,10 @@ void execute_schedule_with_event_loop(redisContext *redis, int num_tasks) {
         
         // Fill task structure
         strncpy(task->task_name, task_name, sizeof(task->task_name) - 1);
-        // With host networking, all task services are on localhost:50051
+        
+        // Construct service address with the port read from Redis
         snprintf(task->service_address, sizeof(task->service_address),
-                 "localhost:50051");
+                 "localhost:%d", service_port);
         strncpy(task->inputs_json, simple_inputs, sizeof(task->inputs_json) - 1);
         task->priority = task_priority;
         strncpy(task->policy, task_policy ? task_policy : "fifo", sizeof(task->policy) - 1);

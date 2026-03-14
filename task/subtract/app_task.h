@@ -27,6 +27,10 @@ typedef struct {
     task_service_state_t status;    // Current state (IDLE, RUNNING, COMPLETED)
     input_t input;                  // Input data (Read-only for the thread)
     output_t output;                // Output data (Written by the thread)
+    
+    // Timing measurements (measured INSIDE the worker thread)
+    double t2_thread_entry_ms;      // T2: Timestamp when thread starts
+    double t3_task_complete_ms;     // T3: Timestamp when task completes
 } task_context_t;
 
 

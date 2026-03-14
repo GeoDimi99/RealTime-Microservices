@@ -6,6 +6,8 @@ images:
   tasks:
     - alias: "sum"
       src: "sum"
+    - alias: "subtract"
+      src: "subtract"
 
 schedule:
   name: "Configurable CPU/IO Benchmark"
@@ -51,20 +53,57 @@ schedule:
 
 
     - id: 3
-      image: "sum"
+      image: "subtract"
       start: 30
       deadline: 50
       policy: "fifo"
       priority: 50
       depends_on: []
       inputs:
-        total_ops:
+        a:
           type: int
-          value: 1000
-        io_percentage:
+          value: 100
+        b:
           type: int
-          value: 50      
+          value: 50
       outputs:
         result:
           type: int
-    
+
+
+    - id: 4
+      image: "subtract"
+      start: 40
+      deadline: 60
+      policy: "fifo"
+      priority: 50
+      depends_on: []
+      inputs:
+        a:
+          type: int
+          value: 100
+        b:
+          type: int
+          value: 50
+      outputs:
+        result:
+          type: int
+
+
+    - id: 5
+      image: "subtract"
+      start: 50
+      deadline: 70
+      policy: "fifo"
+      priority: 50
+      depends_on: []
+      inputs:
+        a:
+          type: int
+          value: 100
+        b:
+          type: int
+          value: 50
+      outputs:
+        result:
+          type: int

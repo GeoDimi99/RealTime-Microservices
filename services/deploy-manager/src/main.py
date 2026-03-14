@@ -51,32 +51,44 @@ def main():
         parser = ManifestParser(str(manifest_path))
         schedule = parser.parse()
 
-        # Extract unique images from all tasks
+        # Extract unique images from all tasks (preserving order of first appearance)
         # Multiple tasks can use the same image (container), each execution creates a new thread
-        unique_images = set()
+        unique_images = []
+        seen = set()
         for task in schedule.tasks:
-            unique_images.add(task.name)
+            if task.name not in seen:
+                unique_images.append(task.name)
+                seen.add(task.name)
         
         logger.info(f"Found {len(unique_images)} unique task image(s) for {len(schedule.tasks)} task(s)")
 
+        # Assign incremental ports to each unique image (50051, 50052, 50053, ...)
+        BASE_PORT = 50051
+        image_to_port = {}
+        for idx, image_name in enumerate(unique_images):
+            image_to_port[image_name] = BASE_PORT + idx
+        
         # Run ONE container per unique image
         for image_name in unique_images:
-            logger.info(f"Deploying container for image '{image_name}'")
+            port = image_to_port[image_name]
+            logger.info(f"Deploying container for image '{image_name}' on port {port}")
             
             container_name = f"task-service-{image_name}"
             docker_runner.run_task_service(
                 image_tag=image_name,
                 container_name=container_name,
+                grpc_port=port,
             )
             
-            # Wait for gRPC server to be ready
+            # Wait for gRPC server to be ready on the assigned port
             # With host networking, use localhost instead of container name
-            if not wait_for_grpc_ready("localhost", 50051, timeout=30):
-                raise DeployManagerError(f"gRPC server for '{container_name}' failed to become ready")
+            if not wait_for_grpc_ready("localhost", port, timeout=30):
+                raise DeployManagerError(f"gRPC server for '{container_name}' failed to become ready on port {port}")
         
         # Load schedule and tasks into Redis
         # This loads ALL tasks, even if they share the same image/container
-        redis_loader.load_schedule(schedule)
+        # Pass image_to_port mapping so each task knows which port to connect to
+        redis_loader.load_schedule(schedule, image_to_port=image_to_port)
         redis_loader.debug_print()  # REMOVE AFTER DEBUGGING
         logger.info("Schedule data loaded into Redis successfully.")
         
