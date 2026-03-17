@@ -181,7 +181,8 @@ static void print_performance_metrics(guint16 task_id, glong start_req, glong en
     double q_tw_em = (end_res - start_res) / 1e6;
     double total   = (end_res - start_req) / 1e6;
 
-    g_print("[METRICS] Execution Manager: Task %u | EM->TW: %.3f ms | Task: %.3f ms | TW->EM: %.3f ms | Total: %.3f ms\n",
+    // Prefisso univoco e valori separati da virgola
+    g_print("PERF_LOG:%u,%.3f,%.3f,%.3f,%.3f\n",
             task_id, q_em_tw, t_in_tw, q_tw_em, total);
 }
 

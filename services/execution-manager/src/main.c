@@ -43,12 +43,16 @@ int main(int argc, char *argv[]) {
     g_print("Click Ctrl+C for a clean exit.\n\n");
 
 
+
     /* -------------- Main Loop Execution -------------- */
-    while (keep_running) {
+    //while (keep_running) {
+    for(int i=0; i < 25 && keep_running; i++){     // For test
         
         
         if (is_set_new_schedule) {
-            //is_set_new_schedule = FALSE;
+
+            /* Set to false for the next iteration*/
+            is_set_new_schedule = FALSE;
 
             if (sched != NULL) {
                 schedule_free(sched);
@@ -63,7 +67,7 @@ int main(int argc, char *argv[]) {
             }
 
             schedule_add_task(sched, 1, "stress_task", SCHED_FIFO, 10, 1, 1, NULL, 
-                  1 * 1000, 4 * 1000, "[{\"total_ops\":1000, \"io_percentage\":50}]");
+                  1 * 1000, 6 * 1000, "[{\"total_ops\":1000, \"io_percentage\":50}]");
 
             //schedule_add_task(sched, 2, "subtract", SCHED_POLICY_FIFO, 8, 1, 1, NULL,
             //                  1 * 1000, 7 * 1000, "[{\"a\":20, \"b\":8}]");
@@ -72,21 +76,24 @@ int main(int argc, char *argv[]) {
             //                  2 * 1000, 7 * 1000, "[{\"a\":4, \"b\":7}]");
 
             schedule_print(sched);
+        } else {
+            schedule_reset(sched);
         }
 
         /* Run the schedule */
+        g_print("\n[INFO] Execution Manager: Start iteration %d, progress percentage %d %% \n",i, (i*100)/25 );
         em_run_schedule(em, sched);
         
 
 
-        if (keep_running) {
-            g_print("\n[INFO] Execution Manager: Schedule Completed. Reboot in 5 seconds... (or push Ctrl+C for exit)...\n\n");
+        //if (keep_running) {
+            //g_print("\n[INFO] Execution Manager: Schedule Completed. Reboot in 5 seconds... (or push Ctrl+C for exit)...\n\n");
             
             /* Slee for 5 second, but check flag each second */
-            for (int i = 0; i < 5 && keep_running; i++) {
-                sleep(1);
-            }
-        }
+            //for (int i = 0; i < 5 && keep_running; i++) {
+                //sleep(1);
+            //}
+        //}
 
         // schedule_reset(sched); // DO NOT reset a schedule that is about to be freed. This causes memory corruption.
     }
