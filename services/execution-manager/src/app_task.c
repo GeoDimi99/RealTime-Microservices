@@ -1,13 +1,19 @@
 #include "app_task.h"
+#include <math.h>
 
 
 /* --- Internal Workload Functions --- */
 
 static void do_cpu_op() {
-    volatile double val = 1.1;
+    double val = 10;
+    /* Set squrt as cpu */
+    
+    
     for (int i = 0; i < CPU_INTENSITY; i++) {
-        val *= 1.1;
+        sqrt(val);
+        val += 1;
     }
+    
 }
 
 static void do_io_op(int fd) {

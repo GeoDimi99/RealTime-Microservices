@@ -48,48 +48,60 @@ int main(int argc, char *argv[]) {
     g_print("=== Execution Manager Initialized ===\n");
     g_print("Click Ctrl+C for a clean exit.\n\n");
 
+    /* Control for new schedule */
+    gboolean is_set_new_schedule = TRUE;
+
 
     /* -------------- Main Loop Execution -------------- */
-    while (keep_running) {
+    //while (keep_running) {
+
+    for(int i=0; i < 25 && keep_running; i++){     // For text 
         
-        if (sched != NULL) {
-            schedule_free(sched);
-            sched = NULL;   // Avoid double-free at exit 
+        if (is_set_new_schedule){
+
+            /* Set to false for the next iteration*/
+            is_set_new_schedule = FALSE;
+
+            if (sched != NULL) {
+                schedule_free(sched);
+                sched = NULL;   // Avoid double-free at exit 
+            }
+
+            /* Create a schedule */
+            gchar *schedule_name = "schedule";
+            sched = schedule_new(schedule_name, "0.0.1");
+            if (!sched) {
+                g_error("[ERROR] Execution Manager (%s) : scheduler creation failed.", schedule_name);
+            }
+
+            input_t *func_input = g_new0(input_t, 1);
+            func_input->total_ops = 1000;
+            func_input->io_percentage = 0;
+
+
+
+            //void schedule_add_task(schedule_t *sched, guint16 id, const gchar *name, GThreadFunc task_exec, gint policy, gint8 priority, gint cpu_affinity, guint8 repetition, GSList *depends_on,  gint64 start_time, gint64 end_time, gpointer input);
+            schedule_add_task(sched, 1, "stress_task_1", task_main, SCHED_FIFO, 1, 1, 1, NULL, 1 * 1000, 8 * 1000, func_input);
+
+
+            schedule_print(sched);
+        } else {
+            schedule_reset(sched);
         }
-
-        /* Create a schedule */
-        gchar *schedule_name = "schedule";
-        sched = schedule_new(schedule_name, "0.0.1");
-        if (!sched) {
-            g_error("[ERROR] Execution Manager (%s) : scheduler creation failed.", schedule_name);
-        }
-
-        input_t *func_input = g_new0(input_t, 1);
-        func_input->total_ops = 1000;
-        func_input->io_percentage = 50;
-
-
-
-
-        schedule_add_task(sched, 1, "stress_task", task_main, SCHED_FIFO, 1, 0, 1, NULL, 1 * 1000, 4 * 1000, func_input);
-
-        //schedule_add_task(sched, 2, "subtract", SCHED_FIFO, 8, 1, NULL, 1 * 1000, 7 * 1000, "[{\"a\":20, \"b\":8}]");
-
-        //schedule_add_task(sched, 3, "multiply", SCHED_FIFO, 6, 1, NULL, 2 * 1000, 7 * 1000, "[{\"a\":4, \"b\":7}]");
-
-        schedule_print(sched);
 
         /* Run the schedule */
+        g_print("\n[INFO] Execution Manager: Start iteration %d, progress percentage %d %% \n",i, i);
         em_run_schedule(em, sched);
+        
 
-        if (keep_running) {
-            g_print("\n[INFO] Execution Manager: Schedule Completed. Reboot in 5 seconds... (or push Ctrl+C for exit)...\n\n");
+        //if (keep_running) {
+            //g_print("\n[INFO] Execution Manager: Schedule Completed. Reboot in 5 seconds... (or push Ctrl+C for exit)...\n\n");
             
             /* Slee for 5 second, but check flag each second */
-            for (int i = 0; i < 5 && keep_running; i++) {
-                sleep(1);
-            }
-        }
+            //for (int i = 0; i < 5 && keep_running; i++) {
+                //sleep(1);
+            //}
+        //}
     }
 
     g_print("\n[INFO] Execution Manager: Exit from the main loop. Cleanup ...\n");

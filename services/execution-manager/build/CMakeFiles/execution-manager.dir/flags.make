@@ -4,7 +4,7 @@
 # compile C with /usr/bin/cc
 C_DEFINES = 
 
-C_INCLUDES = -I/home/vboxuser/projects/RT-microservices-native/services/execution-manager/include -isystem /usr/include/glib-2.0 -isystem /usr/lib/aarch64-linux-gnu/glib-2.0/include -isystem /usr/include/libmount -isystem /usr/include/blkid
+C_INCLUDES = -I/home/vboxuser/projects/RT-microservices-native/services/execution-manager/include -isystem /usr/include/glib-2.0 -isystem /usr/lib/x86_64-linux-gnu/glib-2.0/include -isystem /usr/include/libmount -isystem /usr/include/blkid
 
 C_FLAGS =  -Wall -Wextra -g -O0 -Wno-unused-parameter -std=gnu99   -pthread -pthread
 
