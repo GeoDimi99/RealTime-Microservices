@@ -55,7 +55,8 @@ int main(int argc, char *argv[]) {
     /* -------------- Main Loop Execution -------------- */
     //while (keep_running) {
 
-    for(int i=0; i < 25 && keep_running; i++){     // For text 
+    for(int i=0; i < 25 && keep_running; i++){     // For test 
+        iteration = i;
         
         if (is_set_new_schedule){
 
@@ -75,13 +76,14 @@ int main(int argc, char *argv[]) {
             }
 
             input_t *func_input = g_new0(input_t, 1);
-            func_input->total_ops = 1000;
+            func_input->total_ops = 4;
             func_input->io_percentage = 0;
 
 
 
             //void schedule_add_task(schedule_t *sched, guint16 id, const gchar *name, GThreadFunc task_exec, gint policy, gint8 priority, gint cpu_affinity, guint8 repetition, GSList *depends_on,  gint64 start_time, gint64 end_time, gpointer input);
-            schedule_add_task(sched, 1, "stress_task_1", task_main, SCHED_FIFO, 1, 1, 1, NULL, 1 * 1000, 8 * 1000, func_input);
+            schedule_add_task(sched, 1, "stress_task_1", task_main, SCHED_FIFO, 1, 1, 1, NULL, 1000, 1100, func_input);
+            schedule_add_task(sched, 2, "stress_task_2", task_main, SCHED_FIFO, 1, 1, 1, NULL, 1040, 1120, func_input);
 
 
             schedule_print(sched);
@@ -90,7 +92,7 @@ int main(int argc, char *argv[]) {
         }
 
         /* Run the schedule */
-        g_print("\n[INFO] Execution Manager: Start iteration %d, progress percentage %d %% \n",i, i);
+        g_print("\n[INFO] Execution Manager: Start iteration %d, progress percentage %d %% \n",i, (i*100)/25);
         em_run_schedule(em, sched);
         
 
