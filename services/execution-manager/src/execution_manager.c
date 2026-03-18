@@ -220,6 +220,7 @@ gboolean handle_result_message(GIOChannel *source, GIOCondition condition, gpoin
                 
                 // Qui puoi aggiungere la logica per marcare il task come completato nello schedule.
                 // Esempio: schedule_set_result(ctx->sched, msg.task_id, msg.data.result);
+                schedule_set_result(ctx->sched, msg.task_id, msg.data.result);
 
             } else {
                 g_warning("EM: Ricevuto tipo di messaggio inatteso %d.", msg.type);
