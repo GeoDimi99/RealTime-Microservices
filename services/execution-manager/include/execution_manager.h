@@ -16,6 +16,9 @@
 
 #define DEFAULT_EXECUTION_MANAGER_NAME "execution_manager"
 
+// For test propose 
+extern gint iteration; 
+
 
 /* Execution Manager Stucture */
 typedef struct execution_manager_t{

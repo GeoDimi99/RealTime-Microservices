@@ -1,5 +1,7 @@
 #include "execution_manager.h"
 
+gint iteration = 0; // For test
+
 /* ----------------- Executor Manager Constructor/Distructors ----------------- */
 execution_manager_t* em_new(const gchar *name){
     g_return_val_if_fail(name != NULL, NULL);
@@ -174,16 +176,16 @@ gboolean handle_initialization(gpointer user_data) {
 }
 
 
-/* Function for print and compute the performanc e*/
+/* Function for print and compute the performance */
 static void print_performance_metrics(guint16 task_id, glong start_req, glong end_req, glong start_res, glong end_res) {
     double q_em_tw = (end_req - start_req) / 1e6;
     double t_in_tw  = (start_res - end_req) / 1e6;
     double q_tw_em = (end_res - start_res) / 1e6;
     double total   = (end_res - start_req) / 1e6;
 
-    // Prefisso univoco e valori separati da virgola
-    g_print("PERF_LOG:%u,%.3f,%.3f,%.3f,%.3f\n",
-            task_id, q_em_tw, t_in_tw, q_tw_em, total);
+    g_print("PERF_LOG:%d,%u,%ld,%ld,%ld,%ld,%.3f,%.3f,%.3f,%.3f\n",iteration,
+            task_id, start_req, end_req, start_res, end_res, 
+            q_em_tw, t_in_tw, q_tw_em, total);
 }
 
 
