@@ -1,0 +1,491 @@
+=== Execution Manager Initialized ===
+Click Ctrl+C for a clean exit.
+
+
+=== SCHEDULE: schedule (v0.0.1) [1120 ms] ===
+
+--- TIMELINE (START) ---
+[1000 ms]: [Activate Task 1 (stress_task_1)]
+[1040 ms]: [Activate Task 2 (stress_task_2)]
+
+--- TASK RESULTS (HashTable) ---
+Task ID 1: Runs Left: 1, Last Output: N/A
+Task ID 2: Runs Left: 1, Last Output: N/A
+==========================================
+
+[INFO] Execution Manager: Start iteration 0, progress percentage 0 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] Depends On: None
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:0,1,13951462109802,13951462288848,13951477247861,13951477265984,0.179,14.959,0.018,15.156
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:0,2,13951501273993,13951501366942,13951516402247,13951516424243,0.093,15.035,0.022,15.150
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 1, progress percentage 4 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:1,1,13952582955978,13952583073152,13952598792497,13952598816622,0.117,15.719,0.024,15.861
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:1,2,13952622347216,13952622446968,13952637688803,13952637707536,0.100,15.242,0.019,15.360
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 2, progress percentage 8 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:2,1,13953704128165,13953704254075,13953719354736,13953719373241,0.126,15.101,0.019,15.245
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:2,2,13953743494492,13953743591765,13953758544048,13953758561777,0.097,14.952,0.018,15.067
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 3, progress percentage 12 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:3,1,13954825416799,13954825526520,13954840552460,13954840570296,0.110,15.026,0.018,15.153
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:3,2,13954864776009,13954864884911,13954879977527,13954879995144,0.109,15.093,0.018,15.219
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 4, progress percentage 16 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:4,1,13955946694308,13955946811421,13955961955227,13955961973553,0.117,15.144,0.018,15.279
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:4,2,13955986069731,13955986159949,13956001152149,13956001170108,0.090,14.992,0.018,15.100
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 5, progress percentage 20 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:5,1,13957067998148,13957068128331,13957083185869,13957083203930,0.130,15.058,0.018,15.206
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:5,2,13957107335407,13957107436121,13957122427365,13957122444901,0.101,14.991,0.018,15.109
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 6, progress percentage 24 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:6,1,13958189190640,13958189302112,13958204672071,13958204690094,0.111,15.370,0.018,15.499
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:6,2,13958228434413,13958228519919,13958243496268,13958243513884,0.086,14.976,0.018,15.079
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 7, progress percentage 28 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:7,1,13959310347218,13959310446015,13959325429648,13959325447113,0.099,14.984,0.017,15.100
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:7,2,13959349668855,13959349775463,13959364786717,13959364804142,0.107,15.011,0.017,15.135
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 8, progress percentage 32 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:8,1,13960431559677,13960431676815,13960446775276,13960446792953,0.117,15.098,0.018,15.233
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:8,2,13960470918282,13960471019634,13960485964080,13960485981824,0.101,14.944,0.018,15.064
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 9, progress percentage 36 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:9,1,13961552801121,13961552903016,13961567964615,13961567982333,0.102,15.062,0.018,15.181
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:9,2,13961592156001,13961592268845,13961607796418,13961607824443,0.113,15.528,0.028,15.668
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 10, progress percentage 40 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:10,1,13962674034717,13962674117879,13962689742082,13962689785754,0.083,15.624,0.044,15.751
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:10,2,13962713393248,13962713492791,13962728494053,13962728510754,0.100,15.001,0.017,15.118
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 11, progress percentage 44 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:11,1,13963795174098,13963795268009,13963810365640,13963810383061,0.094,15.098,0.017,15.209
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:11,2,13963834518139,13963834617064,13963849637986,13963849656032,0.099,15.021,0.018,15.138
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 12, progress percentage 48 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:12,1,13964916349034,13964916437324,13964931936272,13964931954150,0.088,15.499,0.018,15.605
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:12,2,13964955583636,13964955685407,13964971077739,13964971096875,0.102,15.392,0.019,15.513
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 13, progress percentage 52 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:13,1,13966037492268,13966037599991,13966052571608,13966052589126,0.108,14.972,0.018,15.097
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:13,2,13966076855463,13966076957046,13966092036488,13966092053953,0.102,15.079,0.017,15.198
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 14, progress percentage 56 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:14,1,13967158670136,13967158776509,13967173696068,13967173723832,0.106,14.920,0.028,15.054
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] Depends On: None
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:14,2,13967198032400,13967198115792,13967213575273,13967213605141,0.083,15.459,0.030,15.573
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 15, progress percentage 60 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:15,1,13968279927487,13968280029570,13968295108926,13968295127193,0.102,15.079,0.018,15.200
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:15,2,13968319297871,13968319397869,13968334341256,13968334359140,0.100,14.943,0.018,15.061
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 16, progress percentage 64 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:16,1,13969401283741,13969401377409,13969416475969,13969416494513,0.094,15.099,0.019,15.211
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:16,2,13969440626983,13969440728661,13969456230110,13969456248716,0.102,15.501,0.019,15.622
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 17, progress percentage 68 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:17,1,13970521449510,13970521558203,13970536478514,13970536496825,0.109,14.920,0.018,15.047
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:17,2,13970560807231,13970560910567,13970575916718,13970575937111,0.103,15.006,0.020,15.130
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 18, progress percentage 72 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:18,1,13971642719598,13971642833280,13971658209868,13971658237267,0.114,15.377,0.027,15.518
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:18,2,13971681943820,13971682027763,13971696936319,13971696954186,0.084,14.909,0.018,15.010
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 19, progress percentage 76 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:19,1,13972763711013,13972763818170,13972778854712,13972778872520,0.107,15.037,0.018,15.162
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:19,2,13972803080313,13972803170657,13972818115915,13972818133414,0.090,14.945,0.017,15.053
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 20, progress percentage 80 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:20,1,13973885021541,13973885095037,13973899886590,13973899904257,0.073,14.792,0.018,14.883
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:20,2,13973924368498,13973924482097,13973939282531,13973939300017,0.114,14.800,0.017,14.932
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 21, progress percentage 84 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:21,1,13975006160605,13975006263852,13975021311772,13975021328995,0.103,15.048,0.017,15.168
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:21,2,13975045513648,13975045617463,13975060525120,13975060542796,0.104,14.908,0.018,15.029
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 22, progress percentage 88 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:22,1,13976127437465,13976127539108,13976142407556,13976142425462,0.102,14.868,0.018,14.988
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:22,2,13976166796836,13976166899920,13976181865861,13976181883837,0.103,14.966,0.018,15.087
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 23, progress percentage 92 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:23,1,13977248511322,13977248589239,13977263500280,13977263528430,0.078,14.911,0.028,15.017
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:23,2,13977287863639,13977287964489,13977302793575,13977302811108,0.101,14.829,0.018,14.947
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 24, progress percentage 96 % 
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:24,1,13978369647566,13978369761565,13978384795319,13978384812935,0.114,15.034,0.018,15.165
+[INFO] Depends On: None
+[INFO] ThreadCall 2: start thread function.
+[THREAD] Core 1 | Executing: 4 CPU ops, 0 I/O ops
+[INFO] ThreadCall 2: termination thread function. 
+[INFO] Execution Manager: Task 2 updated: 0 runs left.
+PERF_LOG:24,2,13978408979778,13978409093824,13978424166511,13978424184167,0.114,15.073,0.018,15.204
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager: Task 2 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Exit from the main loop. Cleanup ...
