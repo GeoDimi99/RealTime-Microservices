@@ -140,9 +140,9 @@ execution-manager: CMakeFiles/execution-manager.dir/src/execution_manager.c.o
 execution-manager: CMakeFiles/execution-manager.dir/src/schedule.c.o
 execution-manager: CMakeFiles/execution-manager.dir/src/app_task.c.o
 execution-manager: CMakeFiles/execution-manager.dir/build.make
-execution-manager: /usr/lib/aarch64-linux-gnu/libgio-2.0.so
-execution-manager: /usr/lib/aarch64-linux-gnu/libgobject-2.0.so
-execution-manager: /usr/lib/aarch64-linux-gnu/libglib-2.0.so
+execution-manager: /usr/lib/x86_64-linux-gnu/libgio-2.0.so
+execution-manager: /usr/lib/x86_64-linux-gnu/libgobject-2.0.so
+execution-manager: /usr/lib/x86_64-linux-gnu/libglib-2.0.so
 execution-manager: CMakeFiles/execution-manager.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/vboxuser/projects/RT-microservices-native/services/execution-manager/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking C executable execution-manager"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/execution-manager.dir/link.txt --verbose=$(VERBOSE)

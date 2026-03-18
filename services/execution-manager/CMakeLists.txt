@@ -42,6 +42,7 @@ target_link_libraries(execution-manager
     Threads::Threads 
     PkgConfig::GLIB2
     PkgConfig::GIO
+    m
 )
 
 # Apply additional compiler definitions from PkgConfig (if any)

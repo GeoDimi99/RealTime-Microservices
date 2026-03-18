@@ -8,6 +8,8 @@
 #include <pthread.h>
 #include <sched.h>
 
+#include <time.h>  // For performance measuring
+
 
 #include "schedule.h"
 #include "execution_manager.h"
@@ -15,6 +17,9 @@
 
 
 #define DEFAULT_EXECUTION_MANAGER_NAME "execution_manager"
+
+// For test propose 
+extern gint iteration; 
 
 
 /* Execution Manager Stucture */
@@ -40,10 +45,15 @@ typedef struct {
 
 
 typedef struct {
-    guint16 task_id;    // Task ID 
-    gpointer data;      // Task input
-    GThreadFunc thread_func; 
-    schedule_t *sched;  // Reference to the schedule for store the result
+    guint16 task_id;            // Task ID 
+    gpointer data;              // Task input
+    GThreadFunc thread_func;    // Task function
+    /* Timestamps for measures the performance */
+    glong start_time_request;
+    //glong end_time_request;
+    //glong start_time_result; 
+    /*-----------------------------------------*/
+    schedule_t *sched;          // Reference to the schedule for store the result
 } task_wrapper_input_t; 
 
 
