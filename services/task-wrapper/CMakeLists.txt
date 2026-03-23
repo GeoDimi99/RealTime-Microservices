@@ -31,4 +31,5 @@ target_link_libraries(task-wrapper PRIVATE
     PkgConfig::GLIB2
     PkgConfig::GIO
     PkgConfig::JSON_GLIB
+    m
 )

@@ -7,6 +7,7 @@
 #include <glib.h>
 #include <json-glib/json-glib.h>
 #include <pthread.h>
+#include <math.h> // for test
 
 #include <fcntl.h>
 #include <unistd.h>

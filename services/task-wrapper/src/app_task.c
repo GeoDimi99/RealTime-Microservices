@@ -4,10 +4,12 @@
 /* --- Internal Workload Functions --- */
 
 static void do_cpu_op() {
-    volatile double val = 1.1;
+    double val = 10;
     for (int i = 0; i < CPU_INTENSITY; i++) {
-        val *= 1.1;
+        sqrt(val);
+        val += 1;
     }
+    
 }
 
 static void do_io_op(int fd) {

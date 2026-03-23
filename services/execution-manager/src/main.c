@@ -46,7 +46,8 @@ int main(int argc, char *argv[]) {
 
     /* -------------- Main Loop Execution -------------- */
     //while (keep_running) {
-    for(int i=0; i < 25 && keep_running; i++){     // For test
+    int num_iter = 100; // for test
+    for(int i=0; i < num_iter && keep_running; i++){     // For test
         iteration = i;
         
         
@@ -67,9 +68,26 @@ int main(int argc, char *argv[]) {
                 g_error("[ERROR] Execution Manager (%s) : scheduler creation failed.", schedule_name);
             }
 
-            schedule_add_task(sched, 1, "stress_task", SCHED_FIFO, 10, 1, 1, NULL, 
-                  1 * 1000, 6 * 1000, "[{\"total_ops\":1000, \"io_percentage\":50}]");
-                  1000, 2000, "[{\"total_ops\":4, \"io_percentage\":0}]");
+            /* Test 1: Single Task - Num operation 4 , IO Burst: 0% */
+            //schedule_add_task(sched, 1, "stress_task", SCHED_FIFO, 10, 1, 1, NULL, 1000, 2000, "[{\"total_ops\":4, \"io_percentage\":0}]");
+            
+
+            /* Test 1: Single Task - Num operation 4 , IO Burst: 25% */
+            //schedule_add_task(sched, 1, "stress_task", SCHED_FIFO, 10, 1, 1, NULL, 1000, 2000, "[{\"total_ops\":4, \"io_percentage\":25}]");
+            
+
+            /* Test 1: Single Task - Num operation 4 , IO Burst: 50% */
+            //schedule_add_task(sched, 1, "stress_task", SCHED_FIFO, 10, 1, 1, NULL, 1000, 2000, "[{\"total_ops\":4, \"io_percentage\":50}]");
+
+            /* Test 1: Single Task - Num operation 4 , IO Burst: 75% */
+            //schedule_add_task(sched, 1, "stress_task", SCHED_FIFO, 10, 1, 1, NULL, 1000, 2000, "[{\"total_ops\":4, \"io_percentage\":75}]");
+
+            /* Test 1: Single Task - Num operation 4 , IO Burst: 100% */
+            schedule_add_task(sched, 1, "stress_task", SCHED_FIFO, 10, 1, 1, NULL, 1000, 2000, "[{\"total_ops\":4, \"io_percentage\":100}]");
+            
+            
+            
+
 
             //schedule_add_task(sched, 2, "subtract", SCHED_POLICY_FIFO, 8, 1, 1, NULL,
             //                  1 * 1000, 7 * 1000, "[{\"a\":20, \"b\":8}]");
@@ -83,7 +101,7 @@ int main(int argc, char *argv[]) {
         }
 
         /* Run the schedule */
-        g_print("\n[INFO] Execution Manager: Start iteration %d, progress percentage %d %% \n",i, (i*100)/25 );
+        g_print("\n[INFO] Execution Manager: Start iteration %d, progress percentage %d %% \n",i, (i*100)/num_iter );
         em_run_schedule(em, sched);
         
 

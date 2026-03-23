@@ -1,0 +1,1118 @@
+=========== Execution Manager Init ========
+====== Execution Manager Initialized ======
+==== Execution Manager Start Main Loop ====
+Click Ctrl+C for a clean exit.
+
+
+=== SCHEDULE: schedule (v0.0.1) [2000 ms] ===
+
+--- TIMELINE (START) ---
+[1000 ms]: [Activate Task 1 (stress_task)]
+
+--- TASK RESULTS (HashTable) ---
+Task ID 1: Runs Left: 1, Last Output: N/A
+==========================================
+
+[INFO] Execution Manager: Start iteration 0, progress percentage 0 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:0,1,9835124476727300,9835124477158960,9835124570240857,9835124570359564,0.432,93.082,0.119,93.632
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 1, progress percentage 1 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:1,1,9835126478634861,9835126478874899,9835126570623026,9835126570751357,0.240,91.748,0.128,92.116
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 2, progress percentage 2 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:2,1,9835128480048346,9835128480419924,9835128572038553,9835128572114677,0.372,91.619,0.076,92.066
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 3, progress percentage 3 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:3,1,9835130481394458,9835130482164446,9835130573738451,9835130573828866,0.770,91.574,0.090,92.434
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 4, progress percentage 4 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:4,1,9835132483124397,9835132483745928,9835132575363099,9835132575585054,0.622,91.617,0.222,92.461
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 5, progress percentage 5 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:5,1,9835134484959042,9835134485324786,9835134576883333,9835134576966457,0.366,91.559,0.083,92.007
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 6, progress percentage 6 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:6,1,9835136486272488,9835136486661273,9835136578368276,9835136578489024,0.389,91.707,0.121,92.217
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 7, progress percentage 7 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:7,1,9835138487794763,9835138488243631,9835138579840969,9835138579935176,0.449,91.597,0.094,92.140
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 8, progress percentage 8 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:8,1,9835140489244998,9835140489746365,9835140581363828,9835140581455409,0.501,91.617,0.092,92.210
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 9, progress percentage 9 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:9,1,9835142490747149,9835142491112310,9835142582716356,9835142582801521,0.365,91.604,0.085,92.054
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 10, progress percentage 10 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:10,1,9835144492116010,9835144492690584,9835144584271881,9835144584369296,0.575,91.581,0.097,92.253
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 11, progress percentage 11 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:11,1,9835146493761658,9835146494145486,9835146585778406,9835146586083485,0.384,91.633,0.305,92.322
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 12, progress percentage 12 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:12,1,9835148495379891,9835148495852091,9835148587430471,9835148587515345,0.472,91.578,0.085,92.135
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 13, progress percentage 13 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:13,1,9835150496797168,9835150497399450,9835150589017204,9835150589110244,0.602,91.618,0.093,92.313
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 14, progress percentage 14 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:14,1,9835152498411608,9835152498936600,9835152590542979,9835152590787392,0.525,91.606,0.244,92.376
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 15, progress percentage 15 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:15,1,9835154500089923,9835154500557749,9835154592334167,9835154592695245,0.468,91.776,0.361,92.605
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 16, progress percentage 16 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:16,1,9835156501997484,9835156502362936,9835156593986232,9835156594228603,0.365,91.623,0.242,92.231
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 17, progress percentage 17 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:17,1,9835158503512468,9835158503873545,9835158595518133,9835158595831378,0.361,91.645,0.313,92.319
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 18, progress percentage 18 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:18,1,9835160505136242,9835160505498486,9835160597084157,9835160597159114,0.362,91.586,0.075,92.023
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 19, progress percentage 19 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:19,1,9835162506475353,9835162506847222,9835162598420061,9835162598719889,0.372,91.573,0.300,92.245
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 20, progress percentage 20 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:20,1,9835164507997920,9835164508568703,9835164600175957,9835164600460620,0.571,91.607,0.285,92.463
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 21, progress percentage 21 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:21,1,9835166509744776,9835166510116061,9835166601752774,9835166601960437,0.371,91.637,0.208,92.216
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 22, progress percentage 22 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:22,1,9835168511296509,9835168511985123,9835168603641960,9835168603909706,0.689,91.657,0.268,92.613
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 23, progress percentage 23 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:23,1,9835170512480748,9835170512893741,9835170604477371,9835170604565453,0.413,91.584,0.088,92.085
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 24, progress percentage 24 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:24,1,9835172513856609,9835172514216228,9835172605837483,9835172606172311,0.360,91.621,0.335,92.316
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 25, progress percentage 25 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:25,1,9835174515459383,9835174515793628,9835174607413132,9835174607963790,0.334,91.620,0.551,92.504
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 26, progress percentage 26 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:26,1,9835176517331653,9835176517839728,9835176609426566,9835176609952141,0.508,91.587,0.526,92.620
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 27, progress percentage 27 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:27,1,9835178519280338,9835178519823996,9835178611403251,9835178611898785,0.544,91.579,0.496,92.618
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 28, progress percentage 28 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:28,1,9835180521224649,9835180521846472,9835180613464227,9835180613751514,0.622,91.618,0.287,92.527
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 29, progress percentage 29 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:29,1,9835182523066586,9835182523525662,9835182615134375,9835182615351955,0.459,91.609,0.218,92.285
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 30, progress percentage 30 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:30,1,9835184524624444,9835184525127561,9835184616706233,9835184617028519,0.503,91.579,0.322,92.404
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 31, progress percentage 31 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:31,1,9835186526321717,9835186526929540,9835186618572669,9835186618836332,0.608,91.643,0.264,92.515
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 32, progress percentage 32 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:32,1,9835188528180570,9835188528548356,9835188620183318,9835188620621395,0.368,91.635,0.438,92.441
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 33, progress percentage 33 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:33,1,9835190529906134,9835190530387960,9835190622020005,9835190622305543,0.482,91.632,0.286,92.399
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 34, progress percentage 34 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:34,1,9835192531599907,9835192532058691,9835192623681695,9835192624074564,0.459,91.623,0.393,92.475
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 35, progress percentage 35 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:35,1,9835194533374762,9835194533850462,9835194625488633,9835194625955584,0.476,91.638,0.467,92.581
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 36, progress percentage 36 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:36,1,9835196535307405,9835196535662066,9835196627289446,9835196627590732,0.355,91.627,0.301,92.283
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 37, progress percentage 37 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:37,1,9835198536889180,9835198537281174,9835198628868303,9835198629147132,0.392,91.587,0.279,92.258
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 38, progress percentage 38 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:38,1,9835200538444413,9835200538834365,9835200630533785,9835200630829530,0.390,91.699,0.296,92.385
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 39, progress percentage 39 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:39,1,9835202540157144,9835202540530180,9835202632198100,9835202632310390,0.373,91.668,0.112,92.153
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 40, progress percentage 40 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:40,1,9835204541612920,9835204541988873,9835204633586211,9835204633666418,0.376,91.597,0.080,92.053
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 41, progress percentage 41 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:41,1,9835206542959615,9835206543325068,9835206634896156,9835206635094486,0.365,91.571,0.198,92.135
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 42, progress percentage 42 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:42,1,9835208544388559,9835208544768886,9835208636354558,9835208636569804,0.380,91.586,0.215,92.181
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 43, progress percentage 43 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:43,1,9835210545836460,9835210546210080,9835210637792251,9835210637881500,0.374,91.582,0.089,92.045
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 44, progress percentage 44 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:44,1,9835212547204738,9835212547577774,9835212639166071,9835212639395900,0.373,91.588,0.230,92.191
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 45, progress percentage 45 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:45,1,9835214548689973,9835214549072925,9835214640704096,9835214640926342,0.383,91.631,0.222,92.236
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 46, progress percentage 46 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:46,1,9835216550482036,9835216550843113,9835216642478367,9835216642574907,0.361,91.635,0.097,92.093
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 47, progress percentage 47 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:47,1,9835218551853522,9835218552442096,9835218644087850,9835218644168348,0.589,91.646,0.080,92.315
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 48, progress percentage 48 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:48,1,9835220553483129,9835220553878622,9835220645508627,9835220645751581,0.395,91.630,0.243,92.268
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 49, progress percentage 49 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:49,1,9835222555048862,9835222555498605,9835222647086318,9835222647309439,0.450,91.588,0.223,92.261
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 50, progress percentage 50 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:50,1,9835224556571721,9835224557015630,9835224648608885,9835224648847173,0.444,91.593,0.238,92.275
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 51, progress percentage 51 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:51,1,9835226558178286,9835226558698028,9835226650331532,9835226650421364,0.520,91.634,0.090,92.243
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 52, progress percentage 52 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:52,1,9835228559702603,9835228560103347,9835228651705643,9835228651801600,0.401,91.602,0.096,92.099
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 53, progress percentage 53 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:53,1,9835230561111714,9835230561446834,9835230653084129,9835230653181253,0.335,91.637,0.097,92.070
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 54, progress percentage 54 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:54,1,9835232562475325,9835232562892110,9835232654560614,9835232654847609,0.417,91.669,0.287,92.372
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 55, progress percentage 55 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:55,1,9835234564168806,9835234564534842,9835234656122264,9835234656322052,0.366,91.587,0.200,92.153
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 56, progress percentage 56 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:56,1,9835236565614666,9835236565978952,9835236657626456,9835236657828286,0.364,91.648,0.202,92.214
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 57, progress percentage 57 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:57,1,9835238566505785,9835238566864238,9835238658550241,9835238658657573,0.358,91.686,0.107,92.152
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 58, progress percentage 58 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:58,1,9835240568892255,9835240569261499,9835240660897628,9835240661128916,0.369,91.636,0.231,92.237
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 59, progress percentage 59 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:59,1,9835242570416572,9835242570910939,9835242662496027,9835242662718566,0.494,91.585,0.223,92.302
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 60, progress percentage 60 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:60,1,9835244572009722,9835244572394132,9835244663978054,9835244664239674,0.384,91.584,0.262,92.230
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 61, progress percentage 61 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:61,1,9835246573523247,9835246573892491,9835246665529495,9835246665934030,0.369,91.637,0.405,92.411
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 62, progress percentage 62 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:62,1,9835248575261936,9835248575639638,9835248667230851,9835248667646470,0.378,91.591,0.416,92.385
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 63, progress percentage 63 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:63,1,9835250576922751,9835250577514825,9835250669198494,9835250669314868,0.592,91.684,0.116,92.392
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 64, progress percentage 64 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:64,1,9835252578610690,9835252578982559,9835252670608188,9835252670856101,0.372,91.626,0.248,92.245
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 65, progress percentage 65 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:65,1,9835254580140840,9835254580525834,9835254672176546,9835254672447792,0.385,91.651,0.271,92.307
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 66, progress percentage 66 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:66,1,9835256581739531,9835256582110234,9835256673751321,9835256674054066,0.371,91.641,0.303,92.315
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 67, progress percentage 67 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:67,1,9835258583334139,9835258583812173,9835258675403094,9835258675654799,0.478,91.591,0.252,92.321
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 68, progress percentage 68 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:68,1,9835260584929622,9835260585307032,9835260676891537,9835260677146741,0.377,91.585,0.255,92.217
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 69, progress percentage 69 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:69,1,9835262586300233,9835262586671227,9835262678293648,9835262678624101,0.371,91.622,0.330,92.324
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 70, progress percentage 70 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:70,1,9835264587896590,9835264588252126,9835264679824965,9835264680087460,0.356,91.573,0.262,92.191
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 71, progress percentage 71 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:71,1,9835266589372200,9835266589742319,9835266681402948,9835266681744775,0.370,91.661,0.342,92.373
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 72, progress percentage 72 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:72,1,9835268591039723,9835268591427633,9835268683092345,9835268683348716,0.388,91.665,0.256,92.309
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 73, progress percentage 73 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:73,1,9835270592610123,9835270592962450,9835270684611121,9835270684822284,0.352,91.649,0.211,92.212
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 74, progress percentage 74 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:74,1,9835272594118982,9835272594496976,9835272686077105,9835272686498265,0.378,91.580,0.421,92.379
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 75, progress percentage 75 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:75,1,9835274595768130,9835274596141166,9835274687726546,9835274687936542,0.373,91.585,0.210,92.168
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 76, progress percentage 76 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:76,1,9835276597418737,9835276597871396,9835276689467859,9835276689718397,0.453,91.596,0.251,92.300
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 77, progress percentage 77 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:77,1,9835278598992053,9835278599208466,9835278690838470,9835278691110591,0.216,91.630,0.272,92.119
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 78, progress percentage 78 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:78,1,9835280600384247,9835280600981279,9835280692690324,9835280693099526,0.597,91.709,0.409,92.715
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 79, progress percentage 79 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:79,1,9835282602397098,9835282602758176,9835282694338597,9835282694625009,0.361,91.580,0.286,92.228
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 80, progress percentage 80 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:80,1,9835284603903041,9835284604300868,9835284695934372,9835284696262783,0.398,91.634,0.328,92.360
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 81, progress percentage 81 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:81,1,9835286605534106,9835286605904225,9835286697504188,9835286697586145,0.370,91.600,0.082,92.052
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 82, progress percentage 82 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:82,1,9835288606834427,9835288607290003,9835288698897549,9835288699177836,0.456,91.608,0.280,92.343
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 83, progress percentage 83 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:83,1,9835290608444201,9835290609082065,9835290700672695,9835290700761360,0.638,91.591,0.089,92.317
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 84, progress percentage 84 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:84,1,9835292610044641,9835292610497884,9835292702087056,9835292702348093,0.453,91.589,0.261,92.303
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 85, progress percentage 85 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:85,1,9835294611640707,9835294612082867,9835294703773828,9835294704143656,0.442,91.691,0.370,92.503
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 86, progress percentage 86 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:86,1,9835296613441812,9835296613878721,9835296705465268,9835296705542267,0.437,91.587,0.077,92.100
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 87, progress percentage 87 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:87,1,9835298614842756,9835298615250791,9835298706846379,9835298706932128,0.408,91.596,0.086,92.089
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 88, progress percentage 88 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:88,1,9835300616216284,9835300616606236,9835300708283197,9835300708398404,0.390,91.677,0.115,92.182
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 89, progress percentage 89 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:89,1,9835302617700060,9835302618126761,9835302709773390,9835302709954512,0.427,91.647,0.181,92.254
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 90, progress percentage 90 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:90,1,9835304619294084,9835304619841825,9835304711498954,9835304711761741,0.548,91.657,0.263,92.468
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 91, progress percentage 91 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:91,1,9835306621068647,9835306621572931,9835306713180185,9835306713260975,0.504,91.607,0.081,92.192
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 92, progress percentage 92 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:92,1,9835308622546881,9835308623039499,9835308714680003,9835308714953582,0.493,91.641,0.274,92.407
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 93, progress percentage 93 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:93,1,9835310624285570,9835310624674356,9835310716280443,9835310716672145,0.389,91.606,0.392,92.387
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 94, progress percentage 94 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:94,1,9835312625964176,9835312626471377,9835312718081548,9835312718340544,0.507,91.610,0.259,92.376
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 95, progress percentage 95 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:95,1,9835314627609533,9835314628202482,9835314719793987,9835314719990275,0.593,91.592,0.196,92.381
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 96, progress percentage 96 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:96,1,9835316629389638,9835316629773173,9835316721381303,9835316721625716,0.384,91.608,0.244,92.236
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 97, progress percentage 97 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:97,1,9835318630911622,9835318631587403,9835318723297322,9835318723622234,0.676,91.710,0.325,92.711
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 98, progress percentage 98 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:98,1,9835320632916014,9835320633385007,9835320724984678,9835320725070718,0.469,91.600,0.086,92.155
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 99, progress percentage 99 % 
+[INFO] Execution Manager: Draining stale messages from the queue...
+[INFO] Execution Manager: Scheduler started. Waiting for events...
+[INFO] Execution Manager: Sent REQUEST for Task ID 1
+PERF_LOG:99,1,9835322634356333,9835322634818617,9835322726480996,9835322726581619,0.462,91.662,0.101,92.225
+[INFO] EM: Ricevuto risultato per Task ID 1: {"result":0}
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+[INFO] Execution Manager: Task 1 already completed. No ABORT sent.
+[INFO] Execution Manager: Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+==== Execution Manager Exit Main Loop ====
+[INFO] Execution Manager: Exit from the main loop. Cleanup ...
+[INFO] Execution Manager: Cleanup completed.
+==== Execution Manager Fish ====
