@@ -64,6 +64,10 @@ typedef struct {
     // gRPC handle for cancellation
     grpc_call_handle_t grpc_handle;
     
+    // Per-iteration epoll event data pointers (freed after each iteration)
+    void *start_event_data;
+    void *timeout_event_data;
+    
 } scheduled_task_t;
 
 // Event data for epoll
@@ -164,24 +168,24 @@ static void scheduler_task_callback(unsigned int task_id,
         pthread_mutex_lock(&task->lock);
         if (task->status == TASK_STATUS_RUNNING) {
             task->status = TASK_STATUS_COMPLETED;
+            // Notify event loop inside lock to suppress stale notifications from timed-out tasks
+            uint64_t notify = task->task_id;
+            write(g_completion_eventfd, &notify, sizeof(notify));
         }
         pthread_mutex_unlock(&task->lock);
-        
-        // Notify event loop
-        uint64_t notify = task->task_id;
-        write(g_completion_eventfd, &notify, sizeof(notify));
         
     } else if (strcmp(status, "ERROR") == 0) {
         printf("❌ [T=%lu ms] Task %d '%s' ERROR: %s\n", 
                get_elapsed_ms(), task->task_id, task->task_name, error_message);
         
         pthread_mutex_lock(&task->lock);
-        task->status = TASK_STATUS_ERROR;
+        if (task->status == TASK_STATUS_RUNNING) {
+            task->status = TASK_STATUS_ERROR;
+            // Notify event loop inside lock to suppress stale notifications from timed-out tasks
+            uint64_t notify = task->task_id;
+            write(g_completion_eventfd, &notify, sizeof(notify));
+        }
         pthread_mutex_unlock(&task->lock);
-        
-        // Notify event loop
-        uint64_t notify = task->task_id;
-        write(g_completion_eventfd, &notify, sizeof(notify));
         
     } else if (strcmp(status, "CANCELLED") == 0) {
         printf("⚠️ [T=%lu ms] Task %d '%s' CANCELLED\n",
@@ -311,24 +315,22 @@ static void handle_task_completion(scheduled_task_t *task) {
     pthread_mutex_unlock(&task->lock);
 }
 
-// Main function to execute schedule with event loop
-void execute_schedule_with_event_loop(redisContext *redis, int num_tasks) {
+// Main function to execute schedule with event loop, repeated for the given number of iterations
+void execute_schedule_with_event_loop(redisContext *redis, int num_tasks, int iterations) {
     printf("\n============================================\n");
     printf("   REAL-TIME EVENT-DRIVEN SCHEDULER\n");
     printf("============================================\n\n");
     
-    // Initialize global state
-    clock_gettime(CLOCK_MONOTONIC, &g_schedule_start);
     g_num_tasks = num_tasks;
     
-    // Create epoll instance
+    // Create epoll instance (shared across all iterations)
     int epoll_fd = epoll_create1(0);
     if (epoll_fd < 0) {
         perror("epoll_create1");
         return;
     }
     
-    // Create eventfd for task completion notifications
+    // Create eventfd for task completion notifications (shared across all iterations)
     g_completion_eventfd = eventfd(0, EFD_NONBLOCK);
     
     epoll_event_data_t *completion_event_data = malloc(sizeof(epoll_event_data_t));
@@ -341,12 +343,16 @@ void execute_schedule_with_event_loop(redisContext *redis, int num_tasks) {
     };
     epoll_ctl(epoll_fd, EPOLL_CTL_ADD, g_completion_eventfd, &completion_ev);
     
-    printf("[SCHEDULER] 🚀 Schedule started at T=0\n");
+    printf("[SCHEDULER] 🚀 Loading schedule: %d task(s), %d iteration(s)\n\n", num_tasks, iterations);
     
-    // Load tasks from Redis and setup timers
+    // ---- Load task data from Redis ONCE (shared across all iterations) ----
     for (int i = 0; i < num_tasks; i++) {
         scheduled_task_t *task = &g_tasks[i];
         task->task_id = i + 1;
+        task->start_timer_fd = -1;
+        task->timeout_timer_fd = -1;
+        task->start_event_data = NULL;
+        task->timeout_event_data = NULL;
         
         // Read task from Redis
         char key[64];
@@ -366,7 +372,7 @@ void execute_schedule_with_event_loop(redisContext *redis, int num_tasks) {
         int task_start = 0;
         int task_deadline = 0;
         char *task_inputs = NULL;
-        int service_port = 50051;  // Default port
+        int service_port = 50051;
         
         for (size_t j = 0; j < reply->elements; j += 2) {
             char *field = reply->element[j]->str;
@@ -453,146 +459,188 @@ void execute_schedule_with_event_loop(redisContext *redis, int num_tasks) {
         
         // Fill task structure
         strncpy(task->task_name, task_name, sizeof(task->task_name) - 1);
-        
-        // Construct service address with the port read from Redis
-        snprintf(task->service_address, sizeof(task->service_address),
-                 "localhost:%d", service_port);
+        snprintf(task->service_address, sizeof(task->service_address), "localhost:%d", service_port);
         strncpy(task->inputs_json, simple_inputs, sizeof(task->inputs_json) - 1);
         task->priority = task_priority;
         strncpy(task->policy, task_policy ? task_policy : "fifo", sizeof(task->policy) - 1);
-        task->start_time_ms = task_start * 1000ULL;  // Convert seconds to ms
-        task->deadline_ms = task_deadline * 1000ULL;  // Convert seconds to ms
+        task->start_time_ms = task_start * 1000ULL;
+        task->deadline_ms = task_deadline * 1000ULL;
         task->status = TASK_STATUS_PENDING;
-        pthread_mutex_init(&task->lock, NULL);
         task->grpc_handle = NULL;
+        pthread_mutex_init(&task->lock, NULL);
         
         printf("[SCHEDULER] DEBUG - Task %d: start_time=%d s, deadline=%d s (parsed from Redis)\n",
                task->task_id, task_start, task_deadline);
         
         freeReplyObject(reply);
         
-        // Create start timer
-        task->start_timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
-        if (task->start_timer_fd < 0) {
-            perror("timerfd_create (start)");
-            continue;
-        }
-        
-        struct itimerspec start_spec = {0};
-        ms_to_timespec(task->start_time_ms, &start_spec.it_value);
-        timerfd_settime(task->start_timer_fd, 0, &start_spec, NULL);
-        
-        epoll_event_data_t *start_data = malloc(sizeof(epoll_event_data_t));
-        start_data->type = EVENT_TYPE_START_TIMER;
-        start_data->task = task;
-        
-        struct epoll_event start_ev = {
-            .events = EPOLLIN,
-            .data.ptr = start_data
-        };
-        epoll_ctl(epoll_fd, EPOLL_CTL_ADD, task->start_timer_fd, &start_ev);
-        
-        // Create timeout timer (disarmed)
-        task->timeout_timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
-        if (task->timeout_timer_fd < 0) {
-            perror("timerfd_create (timeout)");
-            continue;
-        }
-        
-        epoll_event_data_t *timeout_data = malloc(sizeof(epoll_event_data_t));
-        timeout_data->type = EVENT_TYPE_TIMEOUT_TIMER;
-        timeout_data->task = task;
-        
-        struct epoll_event timeout_ev = {
-            .events = EPOLLIN,
-            .data.ptr = timeout_data
-        };
-        epoll_ctl(epoll_fd, EPOLL_CTL_ADD, task->timeout_timer_fd, &timeout_ev);
-        
         printf("[SCHEDULER] 📋 Task %d '%s': start=%lu ms, deadline=%lu ms\n",
                task->task_id, task->task_name, task->start_time_ms, task->deadline_ms);
     }
     
-    printf("\n[SCHEDULER] 🔄 Entering event loop (NO SLEEP - event-driven!)\n\n");
-    
-    // Event loop
-    int tasks_pending = num_tasks;
-    
-    while (tasks_pending > 0) {
-        struct epoll_event events[MAX_EPOLL_EVENTS];
+    // ---- Iteration loop ----
+    for (int iter = 0; iter < iterations; iter++) {
+        printf("\n[SCHEDULER] 🔁 ===== ITERATION %d / %d =====\n\n", iter + 1, iterations);
         
-        // Wait for events (blocks here but is event-driven!)
-        int n = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENTS, -1);
+        // Reset schedule start time for this iteration
+        clock_gettime(CLOCK_MONOTONIC, &g_schedule_start);
+        printf("[SCHEDULER] 🚀 Schedule started at T=0\n");
         
-        if (n < 0) {
-            perror("epoll_wait");
-            break;
+        // Drain any stale eventfd notifications left from the previous iteration
+        {
+            uint64_t dummy;
+            while (read(g_completion_eventfd, &dummy, sizeof(dummy)) > 0) {}
         }
         
-        // Process all ready events
-        for (int i = 0; i < n; i++) {
-            epoll_event_data_t *data = (epoll_event_data_t *)events[i].data.ptr;
+        // Create and arm timers for each task
+        for (int i = 0; i < num_tasks; i++) {
+            scheduled_task_t *task = &g_tasks[i];
             
-            switch (data->type) {
-                case EVENT_TYPE_START_TIMER: {
-                    // Start timer expired - launch task
-                    uint64_t expirations;
-                    read(data->task->start_timer_fd, &expirations, sizeof(expirations));
-                    
-                    launch_task(data->task);
-                    
-                    // Remove start timer from epoll (one-shot)
-                    epoll_ctl(epoll_fd, EPOLL_CTL_DEL, data->task->start_timer_fd, NULL);
-                    close(data->task->start_timer_fd);
-                    data->task->start_timer_fd = -1;
-                    
-                    break;
-                }
+            task->status = TASK_STATUS_PENDING;
+            task->grpc_handle = NULL;
+            
+            // Create start timer
+            task->start_timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
+            if (task->start_timer_fd < 0) {
+                perror("timerfd_create (start)");
+                continue;
+            }
+            
+            struct itimerspec start_spec = {0};
+            ms_to_timespec(task->start_time_ms, &start_spec.it_value);
+            timerfd_settime(task->start_timer_fd, 0, &start_spec, NULL);
+            
+            epoll_event_data_t *start_data = malloc(sizeof(epoll_event_data_t));
+            start_data->type = EVENT_TYPE_START_TIMER;
+            start_data->task = task;
+            task->start_event_data = start_data;
+            
+            struct epoll_event start_ev = {
+                .events = EPOLLIN,
+                .data.ptr = start_data
+            };
+            epoll_ctl(epoll_fd, EPOLL_CTL_ADD, task->start_timer_fd, &start_ev);
+            
+            // Create timeout timer (disarmed initially)
+            task->timeout_timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
+            if (task->timeout_timer_fd < 0) {
+                perror("timerfd_create (timeout)");
+                continue;
+            }
+            
+            epoll_event_data_t *timeout_data = malloc(sizeof(epoll_event_data_t));
+            timeout_data->type = EVENT_TYPE_TIMEOUT_TIMER;
+            timeout_data->task = task;
+            task->timeout_event_data = timeout_data;
+            
+            struct epoll_event timeout_ev = {
+                .events = EPOLLIN,
+                .data.ptr = timeout_data
+            };
+            epoll_ctl(epoll_fd, EPOLL_CTL_ADD, task->timeout_timer_fd, &timeout_ev);
+        }
+        
+        printf("\n[SCHEDULER] 🔄 Entering event loop (NO SLEEP - event-driven!)\n\n");
+        
+        // Event loop for this iteration
+        int tasks_pending = num_tasks;
+        
+        while (tasks_pending > 0) {
+            struct epoll_event events[MAX_EPOLL_EVENTS];
+            
+            int n = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENTS, -1);
+            
+            if (n < 0) {
+                perror("epoll_wait");
+                break;
+            }
+            
+            for (int i = 0; i < n; i++) {
+                epoll_event_data_t *data = (epoll_event_data_t *)events[i].data.ptr;
                 
-                case EVENT_TYPE_TIMEOUT_TIMER: {
-                    // Timeout timer expired - abort task
-                    uint64_t expirations;
-                    read(data->task->timeout_timer_fd, &expirations, sizeof(expirations));
+                switch (data->type) {
+                    case EVENT_TYPE_START_TIMER: {
+                        uint64_t expirations;
+                        read(data->task->start_timer_fd, &expirations, sizeof(expirations));
+                        
+                        launch_task(data->task);
+                        
+                        // Remove start timer from epoll (one-shot)
+                        epoll_ctl(epoll_fd, EPOLL_CTL_DEL, data->task->start_timer_fd, NULL);
+                        close(data->task->start_timer_fd);
+                        data->task->start_timer_fd = -1;
+                        
+                        break;
+                    }
                     
-                    abort_task_timeout(data->task);
-                    
-                    tasks_pending--;
-                    printf("[SCHEDULER] %d tasks remaining\n", tasks_pending);
-                    
-                    break;
-                }
-                
-                case EVENT_TYPE_TASK_COMPLETION: {
-                    // Task completed - read notification
-                    uint64_t task_id;
-                    read(g_completion_eventfd, &task_id, sizeof(task_id));
-                    
-                    if (task_id > 0 && task_id <= num_tasks) {
-                        scheduled_task_t *task = &g_tasks[task_id - 1];
-                        handle_task_completion(task);
+                    case EVENT_TYPE_TIMEOUT_TIMER: {
+                        uint64_t expirations;
+                        read(data->task->timeout_timer_fd, &expirations, sizeof(expirations));
+                        
+                        abort_task_timeout(data->task);
                         
                         tasks_pending--;
                         printf("[SCHEDULER] %d tasks remaining\n", tasks_pending);
+                        
+                        break;
                     }
                     
-                    break;
+                    case EVENT_TYPE_TASK_COMPLETION: {
+                        uint64_t task_id;
+                        read(g_completion_eventfd, &task_id, sizeof(task_id));
+                        
+                        if (task_id > 0 && task_id <= (uint64_t)num_tasks) {
+                            scheduled_task_t *task = &g_tasks[task_id - 1];
+                            handle_task_completion(task);
+                            
+                            tasks_pending--;
+                            printf("[SCHEDULER] %d tasks remaining\n", tasks_pending);
+                        }
+                        
+                        break;
+                    }
                 }
+            }
+        }
+        
+        printf("\n[SCHEDULER] 🏁 Iteration %d/%d complete!\n", iter + 1, iterations);
+        printf("[SCHEDULER] Iteration execution time: %lu ms\n\n", get_elapsed_ms());
+        
+        // Cleanup timers for this iteration (close fds and free event data)
+        for (int i = 0; i < num_tasks; i++) {
+            scheduled_task_t *task = &g_tasks[i];
+            
+            if (task->start_timer_fd >= 0) {
+                epoll_ctl(epoll_fd, EPOLL_CTL_DEL, task->start_timer_fd, NULL);
+                close(task->start_timer_fd);
+                task->start_timer_fd = -1;
+            }
+            if (task->timeout_timer_fd >= 0) {
+                epoll_ctl(epoll_fd, EPOLL_CTL_DEL, task->timeout_timer_fd, NULL);
+                close(task->timeout_timer_fd);
+                task->timeout_timer_fd = -1;
+            }
+            if (task->start_event_data) {
+                free(task->start_event_data);
+                task->start_event_data = NULL;
+            }
+            if (task->timeout_event_data) {
+                free(task->timeout_event_data);
+                task->timeout_event_data = NULL;
             }
         }
     }
     
-    printf("\n[SCHEDULER] 🏁 All tasks completed!\n");
+    printf("\n[SCHEDULER] 🏁 All %d iteration(s) completed!\n", iterations);
     printf("[SCHEDULER] Total execution time: %lu ms\n\n", get_elapsed_ms());
     
-    // Cleanup
+    // Final cleanup
     for (int i = 0; i < num_tasks; i++) {
         scheduled_task_t *task = &g_tasks[i];
-        
-        if (task->start_timer_fd >= 0) close(task->start_timer_fd);
-        if (task->timeout_timer_fd >= 0) close(task->timeout_timer_fd);
         pthread_mutex_destroy(&task->lock);
     }
     
+    free(completion_event_data);
     close(g_completion_eventfd);
     close(epoll_fd);
 }

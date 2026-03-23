@@ -48,9 +48,11 @@ step 6 "docker compose up deploy-manager"
 docker compose up deploy-manager \
   || fail 6 "docker compose up deploy-manager"
 
-# 7 — Avvia execution-manager
-step 7 "docker compose up execution-manager"
-docker compose up execution-manager \
+# 7 — Avvia execution-manager (output salvato su file di log)
+LOG_FILE="execution_manager_$(date +%Y%m%d_%H%M%S).log"
+step 7 "docker compose up execution-manager  →  log: $LOG_FILE"
+docker compose up execution-manager 2>&1 | tee "$LOG_FILE" \
   || fail 7 "docker compose up execution-manager"
 
 echo -e "\n${GREEN}✔ Tutti gli step completati con successo.${NC}"
+echo -e "${GREEN}📄 Log salvato in: $LOG_FILE${NC}"

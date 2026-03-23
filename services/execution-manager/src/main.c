@@ -196,6 +196,7 @@ int main(int argc, char *argv[]) {
         char *schedule_name = NULL;
         char *schedule_version = NULL;
         int num_tasks = 0;
+        int iterations = 1;
         
         if (schedule_reply && schedule_reply->type == REDIS_REPLY_ARRAY) {
             for (size_t i = 0; i < schedule_reply->elements; i += 2) {
@@ -208,6 +209,9 @@ int main(int argc, char *argv[]) {
                     schedule_version = value;
                 } else if (strcmp(key, "length") == 0) {
                     num_tasks = atoi(value);
+                } else if (strcmp(key, "iterations") == 0) {
+                    iterations = atoi(value);
+                    if (iterations < 1) iterations = 1;
                 }
             }
         }
@@ -216,7 +220,8 @@ int main(int argc, char *argv[]) {
         printf("Schedule: %s (v%s)\n", 
                schedule_name ? schedule_name : "N/A",
                schedule_version ? schedule_version : "N/A");
-        printf("Number of tasks: %d\n\n", num_tasks);
+        printf("Number of tasks: %d\n", num_tasks);
+        printf("Iterations: %d\n\n", iterations);
         
         // Leggi ogni task
         printf("Tasks:\n");
@@ -273,7 +278,7 @@ int main(int argc, char *argv[]) {
             // - Timeout enforcement
             // - Event-driven (no sleep)
             // - Full time awareness
-            execute_schedule_with_event_loop(redis, num_tasks);
+            execute_schedule_with_event_loop(redis, num_tasks, iterations);
         }
         
         freeReplyObject(schedule_reply);

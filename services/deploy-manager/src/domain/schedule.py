@@ -9,3 +9,4 @@ class Schedule:
     version: str
     description: str
     tasks: List[Task]
+    iterations: int = 1

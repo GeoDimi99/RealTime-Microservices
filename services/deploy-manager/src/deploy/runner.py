@@ -52,7 +52,7 @@ class DockerContainerRunner:
                     docker.types.Ulimit(name="rtprio", soft=99, hard=99),
                     docker.types.Ulimit(name="memlock", soft=-1, hard=-1),
                 ],
-                cpuset_cpus="0-7",  # Allow all CPUs (task threads will set their own affinity)
+                cpuset_cpus="0-3",  # Allow all CPUs (task threads will set their own affinity)
                 #remove=True,
             )
 

@@ -206,6 +206,10 @@ int grpc_execute_task_async(const char* task_service_address,
     Status grpc_status = reader->Finish();
     if (!grpc_status.ok()) {
         std::cerr << "[gRPC Client Async] RPC failed: " << grpc_status.error_message() << std::endl;
+        // Notify scheduler of the error so it doesn't hang waiting for a completion event
+        if (callback) {
+            callback(task_id, "ERROR", "", grpc_status.error_message().c_str(), 0.0, 0.0, user_data);
+        }
         return -1;
     }
     

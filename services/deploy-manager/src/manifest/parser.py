@@ -63,7 +63,8 @@ class ManifestParser:
             name=schedule_data.get("name", "unnamed"),
             version=schedule_data.get("version", "0.0.0"),
             description=schedule_data.get("description", ""),
-            tasks=tasks
+            tasks=tasks,
+            iterations=int(schedule_data.get("iterations", 1))
         )
 
         logger.info(f"Parsed schedule '{schedule.name}' with {len(tasks)} tasks.")

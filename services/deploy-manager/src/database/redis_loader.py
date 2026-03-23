@@ -26,7 +26,8 @@ class RedisLoader:
             "name": schedule.name,
             "version": schedule.version,
             "description": schedule.description,
-            "length": str(len(schedule.tasks))
+            "length": str(len(schedule.tasks)),
+            "iterations": str(schedule.iterations)
         })
 
         for i, task in enumerate(schedule.tasks, start=1):
