@@ -29,9 +29,15 @@ static std::shared_ptr<Channel> get_or_create_channel(const char* address) {
     auto it = g_channel_pool.find(addr_str);
     
     if (it != g_channel_pool.end()) {
-        // Channel exists, reuse it
-        printf("[gRPC Channel Pool] Reusing existing channel for %s\n", address);
-        return it->second;
+        // Check channel health before reusing
+        grpc_connectivity_state state = it->second->GetState(false);
+        if (state == GRPC_CHANNEL_TRANSIENT_FAILURE || state == GRPC_CHANNEL_SHUTDOWN) {
+            printf("[gRPC Channel Pool] Channel for %s in bad state (%d), recreating\n", address, (int)state);
+            g_channel_pool.erase(it);
+        } else {
+            printf("[gRPC Channel Pool] Reusing existing channel for %s (state=%d)\n", address, (int)state);
+            return it->second;
+        }
     }
     
     // Create new channel with optimized settings
@@ -40,8 +46,8 @@ static std::shared_ptr<Channel> get_or_create_channel(const char* address) {
     grpc::ChannelArguments args;
     // Enable keepalive to maintain connection
     args.SetInt(GRPC_ARG_KEEPALIVE_TIME_MS, 10000);  // 10 seconds
-    args.SetInt(GRPC_ARG_KEEPALIVE_TIMEOUT_MS, 5000);  // 5 seconds
-    args.SetInt(GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS, 1);
+    args.SetInt(GRPC_ARG_KEEPALIVE_TIMEOUT_MS, 10000);  // 10 seconds
+    args.SetInt(GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS, 1);  // Keep TCP connection alive during idle gaps between iterations
     // Increase max concurrent streams
     args.SetInt(GRPC_ARG_MAX_CONCURRENT_STREAMS, 100);
     // Optimize for low latency
@@ -134,87 +140,107 @@ int grpc_execute_task_async(const char* task_service_address,
                             grpc_task_callback_t callback,
                             void* user_data) {
     
-    // Get or create a channel from the pool (reuses existing connections)
-    std::shared_ptr<Channel> channel = get_or_create_channel(task_service_address);
-    
-    // Create stub
-    std::unique_ptr<TaskExecutor::Stub> stub = TaskExecutor::NewStub(channel);
-    
-    // Prepare request
-    TaskRequest request;
-    request.set_task_id(task_id);
-    request.set_task_name(task_name);
-    request.set_inputs_json(inputs_json);
-    request.set_priority(priority);
-    request.set_policy(policy);
-    request.set_client_timestamp_ms(client_timestamp_ms);
-    
-    // Client context
-    ClientContext context;
-    
-    // Set deadline (configurable, 60 seconds default for long-running tasks)
-    // The gRPC server will check context->IsCancelled() periodically
-    // and abort the task thread if deadline expires
-    std::chrono::system_clock::time_point deadline =
-        std::chrono::system_clock::now() + std::chrono::seconds(60);
-    context.set_deadline(deadline);
-    // Don't wait for ready - channel should already be connected from pool
-    // context.set_wait_for_ready(true);
-    
-    printf("[gRPC Client Async] Calling task '%s' at %s\n", task_name, task_service_address);
-    printf("[gRPC Client Async] Inputs: %s\n", inputs_json);
-    
-    // Make the streaming RPC call
-    std::unique_ptr<grpc::ClientReader<TaskResponse>> reader = 
-        stub->ExecuteTaskAsync(&context, request);
-    
-    // Read streaming responses
-    TaskResponse response;
-    int response_count = 0;
-    
-    while (reader->Read(&response)) {
-        response_count++;
-        
-        std::string status = response.status();
-        std::string result_json = response.result_json();
-        std::string error_message = response.error_message();
-        double t2_timestamp = response.t2_thread_start_ms();
-        double t3_timestamp = response.t3_task_complete_ms();
-        
-        printf("[gRPC Client Async] Response #%d - Status: %s\n", response_count, status.c_str());
-        
-        // Call user callback
-        if (callback) {
-            callback(
-                response.task_id(),
-                status.c_str(),
-                result_json.c_str(),
-                error_message.c_str(),
-                t2_timestamp,
-                t3_timestamp,
-                user_data
-            );
+    const int MAX_ATTEMPTS = 2;
+    for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+
+        // Get or create a channel from the pool (reuses existing connections)
+        std::shared_ptr<Channel> channel = get_or_create_channel(task_service_address);
+
+        // Create stub
+        std::unique_ptr<TaskExecutor::Stub> stub = TaskExecutor::NewStub(channel);
+
+        // Prepare request
+        TaskRequest request;
+        request.set_task_id(task_id);
+        request.set_task_name(task_name);
+        request.set_inputs_json(inputs_json);
+        request.set_priority(priority);
+        request.set_policy(policy);
+        request.set_client_timestamp_ms(client_timestamp_ms);
+
+        // Client context (must be fresh per attempt)
+        ClientContext context;
+
+        // Set deadline (configurable, 60 seconds default for long-running tasks)
+        // The gRPC server will check context->IsCancelled() periodically
+        // and abort the task thread if deadline expires
+        std::chrono::system_clock::time_point deadline =
+            std::chrono::system_clock::now() + std::chrono::seconds(60);
+        context.set_deadline(deadline);
+        // Allow channel to reconnect if in transient failure
+        context.set_wait_for_ready(true);
+
+        if (attempt > 1) {
+            printf("[gRPC Client Async] Retry attempt %d for task '%s' at %s\n", attempt, task_name, task_service_address);
         }
-        
-        // If error, stop reading
-        if (status == "ERROR") {
-            break;
+        printf("[gRPC Client Async] Calling task '%s' at %s\n", task_name, task_service_address);
+        printf("[gRPC Client Async] Inputs: %s\n", inputs_json);
+
+        // Make the streaming RPC call
+        std::unique_ptr<grpc::ClientReader<TaskResponse>> reader =
+            stub->ExecuteTaskAsync(&context, request);
+
+        // Read streaming responses
+        TaskResponse response;
+        int response_count = 0;
+
+        while (reader->Read(&response)) {
+            response_count++;
+
+            std::string status = response.status();
+            std::string result_json = response.result_json();
+            std::string error_message = response.error_message();
+            double t2_timestamp = response.t2_thread_start_ms();
+            double t3_timestamp = response.t3_task_complete_ms();
+
+            printf("[gRPC Client Async] Response #%d - Status: %s\n", response_count, status.c_str());
+
+            // Call user callback
+            if (callback) {
+                callback(
+                    response.task_id(),
+                    status.c_str(),
+                    result_json.c_str(),
+                    error_message.c_str(),
+                    t2_timestamp,
+                    t3_timestamp,
+                    user_data
+                );
+            }
+
+            // If error, stop reading
+            if (status == "ERROR") {
+                break;
+            }
         }
+
+        // Check final status
+        Status grpc_status = reader->Finish();
+        if (!grpc_status.ok()) {
+            std::cerr << "[gRPC Client Async] RPC failed: " << grpc_status.error_message() << std::endl;
+            // Evict the broken channel from the pool so the next attempt gets a fresh connection
+            {
+                std::lock_guard<std::mutex> lock(g_channel_pool_mutex);
+                g_channel_pool.erase(std::string(task_service_address));
+                printf("[gRPC Channel Pool] Evicted broken channel for %s\n", task_service_address);
+            }
+            // If no data was received and we have retries left, retry immediately
+            if (response_count == 0 && attempt < MAX_ATTEMPTS) {
+                printf("[gRPC Client Async] Broken connection detected, retrying with fresh channel...\n");
+                continue;
+            }
+            // Only notify error if no response was received (task may have already completed)
+            if (response_count == 0 && callback) {
+                callback(task_id, "ERROR", "", grpc_status.error_message().c_str(), 0.0, 0.0, user_data);
+            }
+            return -1;
+        }
+
+        printf("[gRPC Client Async] Stream completed, received %d responses\n", response_count);
+        return 0;
     }
-    
-    // Check final status
-    Status grpc_status = reader->Finish();
-    if (!grpc_status.ok()) {
-        std::cerr << "[gRPC Client Async] RPC failed: " << grpc_status.error_message() << std::endl;
-        // Notify scheduler of the error so it doesn't hang waiting for a completion event
-        if (callback) {
-            callback(task_id, "ERROR", "", grpc_status.error_message().c_str(), 0.0, 0.0, user_data);
-        }
-        return -1;
-    }
-    
-    printf("[gRPC Client Async] Stream completed, received %d responses\n", response_count);
-    return 0;
+
+    return -1;
 }
 
 // Internal structure for cancellable call
