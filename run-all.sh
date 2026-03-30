@@ -19,7 +19,7 @@ TOTAL=7
 
 # 1 — Build immagine task-wrapper
 step 1 "docker build task-wrapper"
-docker build -t geodimi99/realtime-microservices:task-wrapper \
+docker build --no-cache -t geodimi99/realtime-microservices:task-wrapper \
   -f services/task-wrapper/Dockerfile . \
   || fail 1 "docker build task-wrapper"
 

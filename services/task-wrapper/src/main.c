@@ -129,7 +129,7 @@ int main(int argc, char *argv[]){
                     /* CPU Affinity */
                     cpu_set_t cpuset;
                     CPU_ZERO(&cpuset);
-                    CPU_SET(2, &cpuset);
+                    CPU_SET(1, &cpuset);
                     ret = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset);
                     if (ret != 0) {
                         log_message(LOG_WARN, svc.task_name, "Affinity failed: %s\n", strerror(ret));

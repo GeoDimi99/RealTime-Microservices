@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from dslparser.parser import DSL_Parser
 from dslparser.exceptions import ParserError
 from builder.builder import Builder
+from builder.exceptions import BuilderError
 
 
 
@@ -67,7 +68,7 @@ def main():
             src_path = os.path.join(args.context, img['src'])
             if not os.path.isdir(src_path):
                 # We raise this here because main knows about the context path
-                raise ImageBuilderError(f"Source path '{src_path}' for alias '{img['alias']}' does not exist.")
+                raise BuilderError(f"Source path '{src_path}' for alias '{img['alias']}' does not exist.")
         
         print("Manifest validated. Ready to build.")
         

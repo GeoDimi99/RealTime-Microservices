@@ -1,0 +1,96 @@
+version: "1.0"
+
+images:
+  base: "geodimi99/realtime-microservices:task-wrapper"
+  repo: "geodimi99/realtime-microservices"
+  tasks:
+    - alias: "sum1"
+      src: "sum1"
+    - alias: "sum2"
+      src: "sum2"
+    - alias: "sum3"
+      src: "sum3"
+    - alias: "sum4"
+      src: "sum4"
+
+schedule:
+  name: "Configurable CPU/IO Benchmark"
+  description: "Benchmark with configurable CPU/IO ratio using total_ops and io_percentage parameters"
+  iterations: 50
+  
+  tasks:
+    # Pure CPU workload
+    - id: 1
+      image: "sum1"
+      start: 10
+      deadline: 30
+      policy: "fifo"
+      priority: 50
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 200
+        io_percentage:
+          type: int
+          value: 50      
+      outputs:
+        result:
+          type: int
+
+    - id: 2
+      image: "sum2"
+      start: 20
+      deadline: 40
+      policy: "fifo"
+      priority: 50
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 200
+        io_percentage:
+          type: int
+          value: 50      
+      outputs:
+        result:
+          type: int
+
+
+    - id: 3
+      image: "sum3"
+      start: 21
+      deadline: 41
+      policy: "fifo"
+      priority: 70
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 200
+        io_percentage:
+          type: int
+          value: 50      
+      outputs:
+        result:
+          type: int
+
+
+
+    - id: 4
+      image: "sum4"
+      start: 21
+      deadline: 41
+      policy: "fifo"
+      priority: 60
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 200
+        io_percentage:
+          type: int
+          value: 50      
+      outputs:
+        result:
+          type: int

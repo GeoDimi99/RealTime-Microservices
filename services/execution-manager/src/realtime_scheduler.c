@@ -240,8 +240,11 @@ static void *grpc_task_thread(void *arg) {
 
 // Launch a task at its scheduled time
 static void launch_task(scheduled_task_t *task) {
-    printf("[SCHEDULER] ⏰ T=%lu ms: Launching task %d '%s' (deadline: %lu ms)\n",
-           get_elapsed_ms(), task->task_id, task->task_name, task->deadline_ms);
+    struct timespec _now;
+    clock_gettime(CLOCK_MONOTONIC, &_now);
+    double _wall_ms = _now.tv_sec * 1000.0 + _now.tv_nsec / 1000000.0;
+    printf("[SCHEDULER] ⏰ T=%lu ms | T_wall=%.3f ms: Launching task %d '%s' (deadline: %lu ms)\n",
+           get_elapsed_ms(), _wall_ms, task->task_id, task->task_name, task->deadline_ms);
     
     pthread_mutex_lock(&task->lock);
     task->status = TASK_STATUS_RUNNING;

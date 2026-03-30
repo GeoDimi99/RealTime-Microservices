@@ -157,7 +157,7 @@ int main(int argc, char *argv[]) {
     // Set Real-Time Scheduling for Execution Manager
     // ========================================
     struct sched_param param;
-    param.sched_priority = 90;  // High priority (range 1-99, higher than task priorities)
+    param.sched_priority = 95;  // High priority (range 1-99, higher than task priorities)
     
     if (sched_setscheduler(0, SCHED_FIFO, &param) != 0) {
         perror("Warning: Failed to set RT scheduling (need root or CAP_SYS_NICE)");

@@ -1,0 +1,232 @@
+version: "1.0"
+
+images:
+  base: "geodimi99/realtime-microservices:task-wrapper"
+  repo: "geodimi99/realtime-microservices"
+  tasks:
+    - alias: "pusl"
+      src: "sum1"
+    - alias: "satcm"
+      src: "sum2"
+    - alias: "ssmapl"
+      src: "sum3"
+    - alias: "ssmapf"
+      src: "sum4"
+    - alias: "aocscm_pre"
+      src: "sum5"
+    - alias: "aocn"
+      src: "sum6"
+    - alias: "aocscm_post"
+      src: "sum7"
+    - alias: "cmg"
+      src: "sum8"
+    - alias: "aocn_cmg"
+      src: "sum9"
+    - alias: "orb"
+      src: "sum10"
+    - alias: "mhstr"
+      src: "sum11"
+
+schedule:
+  name: "Satellite Operations Schedule"
+  description: "AOCS/payload task schedule derived from Gantt chart"
+  iterations: 1
+
+  tasks:
+    - id: 1
+      image: "pusl"
+      start: 0
+      deadline: 14
+      policy: "fifo"
+      priority: 135
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 1000
+        io_percentage:
+          type: int
+          value: 50
+      outputs:
+        result:
+          type: int
+
+    - id: 2
+      image: "satcm"
+      start: 0
+      deadline: 15
+      policy: "fifo"
+      priority: 136
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 1000
+        io_percentage:
+          type: int
+          value: 50
+      outputs:
+        result:
+          type: int
+
+    - id: 3
+      image: "ssmapl"
+      start: 5
+      deadline: 15
+      policy: "fifo"
+      priority: 137
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 1000
+        io_percentage:
+          type: int
+          value: 50
+      outputs:
+        result:
+          type: int
+
+    - id: 4
+      image: "ssmapf"
+      start: 12
+      deadline: 15
+      policy: "fifo"
+      priority: 138
+      depends_on: [3]
+      inputs:
+        total_ops:
+          type: int
+          value: 1000
+        io_percentage:
+          type: int
+          value: 50
+      outputs:
+        result:
+          type: int
+
+    - id: 5
+      image: "aocscm_pre"
+      start: 4
+      deadline: 5
+      policy: "fifo"
+      priority: 140
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 1000
+        io_percentage:
+          type: int
+          value: 50
+      outputs:
+        result:
+          type: int
+
+    - id: 6
+      image: "aocn"
+      start: 4
+      deadline: 5
+      policy: "fifo"
+      priority: 141
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 1000
+        io_percentage:
+          type: int
+          value: 50
+      outputs:
+        result:
+          type: int
+
+    - id: 7
+      image: "aocscm_post"
+      start: 14
+      deadline: 31
+      policy: "fifo"
+      priority: 142
+      depends_on: [5]
+      inputs:
+        total_ops:
+          type: int
+          value: 1000
+        io_percentage:
+          type: int
+          value: 50
+      outputs:
+        result:
+          type: int
+
+    - id: 8
+      image: "cmg"
+      start: 3
+      deadline: 31
+      policy: "fifo"
+      priority: 133
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 1000
+        io_percentage:
+          type: int
+          value: 50
+      outputs:
+        result:
+          type: int
+
+    - id: 9
+      image: "aocn_cmg"
+      start: 3
+      deadline: 28
+      policy: "fifo"
+      priority: 134
+      depends_on: [6]
+      inputs:
+        total_ops:
+          type: int
+          value: 1000
+        io_percentage:
+          type: int
+          value: 50
+      outputs:
+        result:
+          type: int
+
+    - id: 10
+      image: "orb"
+      start: 17
+      deadline: 19
+      policy: "fifo"
+      priority: 206
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 1000
+        io_percentage:
+          type: int
+          value: 50
+      outputs:
+        result:
+          type: int
+
+    - id: 11
+      image: "mhstr"
+      start: 10
+      deadline: 18
+      policy: "fifo"
+      priority: 100
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 1000
+        io_percentage:
+          type: int
+          value: 50
+      outputs:
+        result:
+          type: int

@@ -4,39 +4,25 @@ images:
   base: "geodimi99/realtime-microservices:task-wrapper"
   repo: "geodimi99/realtime-microservices"
   tasks:
-    - alias: "sum"
-      src: "sum"
-    - alias: "subtract"
-      src: "subtract"
+    - alias: "sum1"
+      src: "sum1"
+    - alias: "sum2"
+      src: "sum2"
+    - alias: "sum3"
+      src: "sum3"
+    - alias: "sum4"
+      src: "sum4"
 
 schedule:
   name: "Configurable CPU/IO Benchmark"
   description: "Benchmark with configurable CPU/IO ratio using total_ops and io_percentage parameters"
-  iterations: 25
+  iterations: 5
   
   tasks:
     # Pure CPU workload
     - id: 1
-      image: "sum"
+      image: "sum1"
       start: 10
-      deadline: 30
-      policy: "fifo"
-      priority: 50
-      depends_on: []
-      inputs:
-        total_ops:
-          type: int
-          value: 1000
-        io_percentage:
-          type: int
-          value: 50      
-      outputs:
-        result:
-          type: int
-
-    - id: 2
-      image: "sum"
-      start: 20
       deadline: 40
       policy: "fifo"
       priority: 50
@@ -44,67 +30,67 @@ schedule:
       inputs:
         total_ops:
           type: int
-          value: 1000
+          value: 100
         io_percentage:
           type: int
-          value: 50      
+          value: 0      
+      outputs:
+        result:
+          type: int
+
+    - id: 2
+      image: "sum2"
+      start: 30
+      deadline: 70
+      policy: "fifo"
+      priority: 50
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 100
+        io_percentage:
+          type: int
+          value: 0      
       outputs:
         result:
           type: int
 
 
     - id: 3
-      image: "subtract"
-      start: 30
-      deadline: 50
+      image: "sum3"
+      start: 31
+      deadline: 71
       policy: "fifo"
-      priority: 50
+      priority: 70
       depends_on: []
       inputs:
-        a:
+        total_ops:
           type: int
           value: 100
-        b:
+        io_percentage:
           type: int
-          value: 50
+          value: 0      
       outputs:
         result:
           type: int
+
 
 
     - id: 4
-      image: "subtract"
-      start: 40
-      deadline: 60
+      image: "sum4"
+      start: 31
+      deadline: 71
       policy: "fifo"
-      priority: 50
+      priority: 60
       depends_on: []
       inputs:
-        a:
+        total_ops:
           type: int
           value: 100
-        b:
+        io_percentage:
           type: int
-          value: 50
-      outputs:
-        result:
-          type: int
-
-
-    - id: 5
-      image: "subtract"
-      start: 50
-      deadline: 70
-      policy: "fifo"
-      priority: 50
-      depends_on: []
-      inputs:
-        a:
-          type: int
-          value: 100
-        b:
-          type: int
-          value: 50
+          value: 0      
       outputs:
         result:
           type: int

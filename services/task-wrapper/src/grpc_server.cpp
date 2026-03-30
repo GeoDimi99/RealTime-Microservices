@@ -36,7 +36,7 @@ extern "C" {
         /* Set CPU affinity from inside the thread (self-affinity) */
         cpu_set_t cpuset;
         CPU_ZERO(&cpuset);
-        CPU_SET(2, &cpuset);  // Pin to CPU 2
+        CPU_SET(1, &cpuset);  // Pin to CPU 2
         int affinity_ret = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
         if (affinity_ret != 0) {
             printf("[THREAD WRAPPER] Warning: Failed to set CPU affinity: %s\n", strerror(affinity_ret));
@@ -110,7 +110,7 @@ class TaskExecutorServiceImpl final : public TaskExecutor::Service {
         // Set CPU affinity (CPU 2)
         cpu_set_t cpuset;
         CPU_ZERO(&cpuset);
-        CPU_SET(2, &cpuset);
+        CPU_SET(1, &cpuset);
         int ret = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset);
         if (ret != 0) {
             printf("[gRPC Server] Warning: CPU affinity failed\n");
@@ -420,7 +420,17 @@ int main(int argc, char** argv) {
     if (mlockall(MCL_CURRENT | MCL_FUTURE) == -1) {
         std::cerr << "[gRPC Server] Warning: mlockall failed (need root privileges)" << std::endl;
     }
-    
+
+    // Set Real-Time Scheduling: SCHED_FIFO with priority 85
+    struct sched_param rt_param;
+    rt_param.sched_priority = 85;
+    if (sched_setscheduler(0, SCHED_FIFO, &rt_param) != 0) {
+        std::cerr << "[gRPC Server] Warning: Failed to set RT scheduling (need root or CAP_SYS_NICE)" << std::endl;
+        std::cout << "[gRPC Server] ⚠️  Running with SCHED_OTHER" << std::endl;
+    } else {
+        std::cout << "[gRPC Server] ✅ Running with SCHED_FIFO priority 85" << std::endl;
+    }
+
     // Get task name and port from environment
     const char* task_name = getenv("TASK_NAME");
     const char* grpc_port = getenv("GRPC_PORT");
