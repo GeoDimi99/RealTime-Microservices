@@ -16,7 +16,7 @@ images:
 schedule:
   name: "Configurable CPU/IO Benchmark"
   description: "Benchmark with configurable CPU/IO ratio using total_ops and io_percentage parameters"
-  iterations: 50
+  iterations: 5
   
   tasks:
     # Pure CPU workload

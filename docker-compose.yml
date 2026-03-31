@@ -3,7 +3,7 @@ services:
   
   redis:
     image: "redis:8.4"
-    cpuset: "1"
+    cpuset: "0"
     container_name: redis
     network_mode: host  # Use host networking for minimal latency
 
@@ -11,7 +11,7 @@ services:
     build:
       context: . 
       dockerfile: ./services/deploy-manager/Dockerfile
-    cpuset: "1"
+    cpuset: "0"
     container_name: deploy-manager
     network_mode: host  # Use host networking to reach task services on localhost
     volumes:
@@ -24,7 +24,7 @@ services:
     build:
       context: . 
       dockerfile: ./services/execution-manager/Dockerfile
-    cpuset: "1"
+    cpuset: "0"
     container_name: execution-manager
     network_mode: host  # Use host networking for minimal latency
     cap_add:

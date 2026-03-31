@@ -254,7 +254,20 @@ static void launch_task(scheduled_task_t *task) {
     grpc_thread_args_t *args = malloc(sizeof(grpc_thread_args_t));
     args->task = task;
     
-    pthread_create(&task->grpc_thread, NULL, grpc_task_thread, args);
+    // Use SCHED_FIFO prio 85 (below scheduler prio 95) so the scheduler can preempt
+    // this thread when start timers fire, avoiding starvation of the epoll event loop.
+    pthread_attr_t grpc_attr;
+    struct sched_param grpc_param = {.sched_priority = 85};
+    pthread_attr_init(&grpc_attr);
+    pthread_attr_setinheritsched(&grpc_attr, PTHREAD_EXPLICIT_SCHED);
+    pthread_attr_setschedpolicy(&grpc_attr, SCHED_FIFO);
+    pthread_attr_setschedparam(&grpc_attr, &grpc_param);
+    int rc = pthread_create(&task->grpc_thread, &grpc_attr, grpc_task_thread, args);
+    pthread_attr_destroy(&grpc_attr);
+    if (rc != 0) {
+        printf("[SCHEDULER] WARNING: pthread_create with SCHED_FIFO 85 failed (rc=%d), retrying with inherited attrs\n", rc);
+        pthread_create(&task->grpc_thread, NULL, grpc_task_thread, args);
+    }
     pthread_detach(task->grpc_thread);
     
     // Arm timeout timer if deadline is set
@@ -558,6 +571,11 @@ void execute_schedule_with_event_loop(redisContext *redis, int num_tasks, int it
                 break;
             }
             
+            printf("[EPOLL] T=%lu ms: epoll_wait returned %d event(s)\n", get_elapsed_ms(), n);
+            for (int i = 0; i < n; i++) {
+                epoll_event_data_t *d = (epoll_event_data_t *)events[i].data.ptr;
+                printf("[EPOLL] event[%d]: type=%d task=%s\n", i, d->type, d->task ? d->task->task_name : "NULL");
+            }
             for (int i = 0; i < n; i++) {
                 epoll_event_data_t *data = (epoll_event_data_t *)events[i].data.ptr;
                 
