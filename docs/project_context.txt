@@ -80,7 +80,7 @@ services:
   
   redis:
     image: "redis:8.4"
-    cpuset: "1"
+    cpuset: "6"
     container_name: redis
     ports:
       - "6379:6379"
@@ -89,7 +89,7 @@ services:
     build:
       context: . 
       dockerfile: ./services/deploy-manager/Dockerfile
-    cpuset: "1"
+    cpuset: "6"
     container_name: deploy-manager
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -101,7 +101,7 @@ services:
     build:
       context: . 
       dockerfile: ./services/execution-manager/Dockerfile
-    cpuset: "1"
+    cpuset: "6"
     container_name: execution-manager
     depends_on:
      - redis
@@ -2360,7 +2360,7 @@ int main(int argc, char *argv[]){
                     /* CPU Affinity */
                     cpu_set_t cpuset;
                     CPU_ZERO(&cpuset);
-                    CPU_SET(2, &cpuset);
+                    CPU_SET(7, &cpuset);
                     ret = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset);
                     if (ret != 0) {
                         log_message(LOG_WARN, svc.task_name, "Affinity failed: %s\n", strerror(ret));
@@ -2795,7 +2795,7 @@ class DockerContainerRunner:
                     docker.types.Ulimit(name="rtprio", soft=99, hard=99),
                     docker.types.Ulimit(name="memlock", soft=-1, hard=-1),
                 ],
-                cpuset_cpus="1",
+                cpuset_cpus="7",
                 #remove=True,
             )
 

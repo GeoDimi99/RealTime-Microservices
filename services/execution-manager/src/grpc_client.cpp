@@ -48,6 +48,10 @@ static std::shared_ptr<Channel> get_or_create_channel(const char* address) {
     args.SetInt(GRPC_ARG_KEEPALIVE_TIME_MS, 10000);  // 10 seconds
     args.SetInt(GRPC_ARG_KEEPALIVE_TIMEOUT_MS, 10000);  // 10 seconds
     args.SetInt(GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS, 1);  // Keep TCP connection alive during idle gaps between iterations
+    // Prevent channel from transitioning READY→IDLE during long inter-task gaps.
+    // Default idle timeout in gRPC Core is ~30s; tasks spaced >30s apart cause
+    // state=0 (IDLE) on reuse, forcing a reconnect (+1-2ms latency).
+    args.SetInt(GRPC_ARG_CLIENT_IDLE_TIMEOUT_MS, INT_MAX);
     // Increase max concurrent streams
     args.SetInt(GRPC_ARG_MAX_CONCURRENT_STREAMS, 100);
     // Optimize for low latency
@@ -130,6 +134,8 @@ int grpc_execute_task(const char* task_service_address,
 }
 
 // Execute a task via gRPC asynchronously with streaming responses
+// Uses async CompletionQueue API: cq.Next() blocks in epoll_wait properly,
+// eliminating the busy-poll tight loop of the synchronous ClientReader.
 int grpc_execute_task_async(const char* task_service_address,
                             unsigned int task_id,
                             const char* task_name,
@@ -139,17 +145,13 @@ int grpc_execute_task_async(const char* task_service_address,
                             double client_timestamp_ms,
                             grpc_task_callback_t callback,
                             void* user_data) {
-    
+
     const int MAX_ATTEMPTS = 2;
     for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
 
-        // Get or create a channel from the pool (reuses existing connections)
         std::shared_ptr<Channel> channel = get_or_create_channel(task_service_address);
-
-        // Create stub
         std::unique_ptr<TaskExecutor::Stub> stub = TaskExecutor::NewStub(channel);
 
-        // Prepare request
         TaskRequest request;
         request.set_task_id(task_id);
         request.set_task_name(task_name);
@@ -158,16 +160,10 @@ int grpc_execute_task_async(const char* task_service_address,
         request.set_policy(policy);
         request.set_client_timestamp_ms(client_timestamp_ms);
 
-        // Client context (must be fresh per attempt)
         ClientContext context;
-
-        // Set deadline (configurable, 60 seconds default for long-running tasks)
-        // The gRPC server will check context->IsCancelled() periodically
-        // and abort the task thread if deadline expires
         std::chrono::system_clock::time_point deadline =
             std::chrono::system_clock::now() + std::chrono::seconds(60);
         context.set_deadline(deadline);
-        // Allow channel to reconnect if in transient failure
         context.set_wait_for_ready(true);
 
         if (attempt > 1) {
@@ -176,60 +172,77 @@ int grpc_execute_task_async(const char* task_service_address,
         printf("[gRPC Client Async] Calling task '%s' at %s\n", task_name, task_service_address);
         printf("[gRPC Client Async] Inputs: %s\n", inputs_json);
 
-        // Make the streaming RPC call
-        std::unique_ptr<grpc::ClientReader<TaskResponse>> reader =
-            stub->ExecuteTaskAsync(&context, request);
+        // Async CompletionQueue: cq.Next() uses blocking epoll_wait — no busy-polling
+        grpc::CompletionQueue cq;
+        void* const TAG_INIT   = (void*)1;
+        void* const TAG_READ   = (void*)2;
+        void* const TAG_FINISH = (void*)3;
 
-        // Read streaming responses
-        TaskResponse response;
+        // Start the async streaming call; TAG_INIT delivered when ready to send
+        std::unique_ptr<grpc::ClientAsyncReader<TaskResponse>> reader =
+            stub->AsyncExecuteTaskAsync(&context, request, &cq, TAG_INIT);
+
+        void* tag;
+        bool ok;
         int response_count = 0;
 
-        while (reader->Read(&response)) {
-            response_count++;
+        // Wait for call initialisation
+        bool init_ok = cq.Next(&tag, &ok) && ok;
 
-            std::string status = response.status();
-            std::string result_json = response.result_json();
-            std::string error_message = response.error_message();
-            double t2_timestamp = response.t2_thread_start_ms();
-            double t3_timestamp = response.t3_task_complete_ms();
+        if (init_ok) {
+            // Queue first read
+            TaskResponse response;
+            reader->Read(&response, TAG_READ);
 
-            printf("[gRPC Client Async] Response #%d - Status: %s\n", response_count, status.c_str());
+            while (cq.Next(&tag, &ok)) {
+                if (tag != TAG_READ) continue;
+                if (!ok) break;  // stream ended normally
 
-            // Call user callback
-            if (callback) {
-                callback(
-                    response.task_id(),
-                    status.c_str(),
-                    result_json.c_str(),
-                    error_message.c_str(),
-                    t2_timestamp,
-                    t3_timestamp,
-                    user_data
-                );
-            }
+                response_count++;
+                std::string status_str  = response.status();
+                std::string result_json = response.result_json();
+                std::string error_msg   = response.error_message();
+                double t2 = response.t2_thread_start_ms();
+                double t3 = response.t3_task_complete_ms();
 
-            // If error, stop reading
-            if (status == "ERROR") {
-                break;
+                printf("[gRPC Client Async] Response #%d - Status: %s\n", response_count, status_str.c_str());
+
+                if (callback) {
+                    callback(response.task_id(), status_str.c_str(), result_json.c_str(),
+                             error_msg.c_str(), t2, t3, user_data);
+                }
+
+                if (status_str == "ERROR") break;
+
+                // Queue next read
+                reader->Read(&response, TAG_READ);
             }
         }
 
-        // Check final status
-        Status grpc_status = reader->Finish();
-        if (!grpc_status.ok()) {
-            std::cerr << "[gRPC Client Async] RPC failed: " << grpc_status.error_message() << std::endl;
-            // Evict the broken channel from the pool so the next attempt gets a fresh connection
+        // Always Finish to obtain final RPC status and release server resources
+        grpc::Status grpc_status;
+        reader->Finish(&grpc_status, TAG_FINISH);
+
+        // Drain until TAG_FINISH (discard any late TAG_READ events)
+        while (cq.Next(&tag, &ok)) {
+            if (tag == TAG_FINISH) break;
+        }
+
+        cq.Shutdown();
+        while (cq.Next(&tag, &ok)) {}  // drain residual events
+
+        if (!init_ok || !grpc_status.ok()) {
+            fprintf(stderr, "[gRPC Client Async] RPC failed: %s\n",
+                    grpc_status.error_message().c_str());
             {
                 std::lock_guard<std::mutex> lock(g_channel_pool_mutex);
                 g_channel_pool.erase(std::string(task_service_address));
                 printf("[gRPC Channel Pool] Evicted broken channel for %s\n", task_service_address);
             }
-            // If no data was received and we have retries left, retry immediately
             if (response_count == 0 && attempt < MAX_ATTEMPTS) {
-                printf("[gRPC Client Async] Broken connection detected, retrying with fresh channel...\n");
+                printf("[gRPC Client Async] Broken connection, retrying with fresh channel...\n");
                 continue;
             }
-            // Only notify error if no response was received (task may have already completed)
             if (response_count == 0 && callback) {
                 callback(task_id, "ERROR", "", grpc_status.error_message().c_str(), 0.0, 0.0, user_data);
             }
@@ -243,18 +256,21 @@ int grpc_execute_task_async(const char* task_service_address,
     return -1;
 }
 
-// Internal structure for cancellable call
+// Internal structure for cancellable call (async CQ version)
 struct GrpcCallContext {
     std::shared_ptr<Channel> channel;
     std::unique_ptr<TaskExecutor::Stub> stub;
     ClientContext context;
-    std::unique_ptr<grpc::ClientReader<TaskResponse>> reader;
+    grpc::CompletionQueue cq;
+    std::unique_ptr<grpc::ClientAsyncReader<TaskResponse>> reader;
     bool cancelled;
-    
+
     GrpcCallContext() : cancelled(false) {}
 };
 
 // Execute a task via gRPC with cancellation support
+// Uses async CompletionQueue: TryCancel() causes cq.Next() to return ok=false,
+// breaking the read loop cleanly without busy-polling.
 grpc_call_handle_t grpc_execute_task_async_cancellable(
                             const char* task_service_address,
                             unsigned int task_id,
@@ -265,17 +281,12 @@ grpc_call_handle_t grpc_execute_task_async_cancellable(
                             double client_timestamp_ms,
                             grpc_task_callback_t callback,
                             void* user_data) {
-    
-    // Allocate call context
+
     GrpcCallContext* ctx = new GrpcCallContext();
-    
-    // Get or create channel from pool
+
     ctx->channel = get_or_create_channel(task_service_address);
-    
-    // Create stub
-    ctx->stub = TaskExecutor::NewStub(ctx->channel);
-    
-    // Prepare request
+    ctx->stub    = TaskExecutor::NewStub(ctx->channel);
+
     TaskRequest request;
     request.set_task_id(task_id);
     request.set_task_name(task_name);
@@ -283,80 +294,89 @@ grpc_call_handle_t grpc_execute_task_async_cancellable(
     request.set_priority(priority);
     request.set_policy(policy);
     request.set_client_timestamp_ms(client_timestamp_ms);
-    
-    // Set deadline (60 seconds)
+
     std::chrono::system_clock::time_point deadline =
         std::chrono::system_clock::now() + std::chrono::seconds(60);
     ctx->context.set_deadline(deadline);
-    // Don't wait for ready - channel should already be connected from pool
-    // ctx->context.set_wait_for_ready(true);
-    
+    ctx->context.set_wait_for_ready(true);
+
     printf("[gRPC Client Cancellable] Calling task '%s' at %s\n", task_name, task_service_address);
-    
-    // Make the streaming RPC call
-    ctx->reader = ctx->stub->ExecuteTaskAsync(&ctx->context, request);
-    
-    // Read streaming responses
-    TaskResponse response;
+
+    void* const TAG_INIT   = (void*)1;
+    void* const TAG_READ   = (void*)2;
+    void* const TAG_FINISH = (void*)3;
+
+    ctx->reader = ctx->stub->AsyncExecuteTaskAsync(&ctx->context, request, &ctx->cq, TAG_INIT);
+
+    void* tag;
+    bool ok;
     int response_count = 0;
-    
-    while (ctx->reader->Read(&response)) {
-        response_count++;
-        
-        std::string status = response.status();
-        std::string result_json = response.result_json();
-        std::string error_message = response.error_message();
-        double t2_timestamp = response.t2_thread_start_ms();
-        double t3_timestamp = response.t3_task_complete_ms();
-        
-        printf("[gRPC Client Cancellable] Response #%d - Status: %s\n", response_count, status.c_str());
-        
-        // Check if cancelled
-        if (ctx->cancelled) {
-            printf("[gRPC Client Cancellable] Call was cancelled\n");
-            break;
-        }
-        
-        // Call user callback
-        if (callback) {
-            callback(
-                response.task_id(),
-                status.c_str(),
-                result_json.c_str(),
-                error_message.c_str(),
-                t2_timestamp,
-                t3_timestamp,
-                user_data
-            );
-        }
-        
-        // If error or cancelled status, stop reading
-        if (status == "ERROR" || status == "CANCELLED") {
-            break;
+
+    bool init_ok = ctx->cq.Next(&tag, &ok) && ok;
+
+    if (init_ok) {
+        TaskResponse response;
+        ctx->reader->Read(&response, TAG_READ);
+
+        while (ctx->cq.Next(&tag, &ok)) {
+            if (tag != TAG_READ) continue;
+            if (!ok) break;  // stream ended or cancelled
+
+            response_count++;
+            std::string status_str  = response.status();
+            std::string result_json = response.result_json();
+            std::string error_msg   = response.error_message();
+            double t2 = response.t2_thread_start_ms();
+            double t3 = response.t3_task_complete_ms();
+
+            printf("[gRPC Client Cancellable] Response #%d - Status: %s\n", response_count, status_str.c_str());
+
+            if (ctx->cancelled) {
+                printf("[gRPC Client Cancellable] Call was cancelled\n");
+                break;
+            }
+
+            if (callback) {
+                callback(response.task_id(), status_str.c_str(), result_json.c_str(),
+                         error_msg.c_str(), t2, t3, user_data);
+            }
+
+            if (status_str == "ERROR" || status_str == "CANCELLED") break;
+
+            ctx->reader->Read(&response, TAG_READ);
         }
     }
-    
-    // Check final status
-    Status grpc_status = ctx->reader->Finish();
+
+    // Finish and drain
+    grpc::Status grpc_status;
+    ctx->reader->Finish(&grpc_status, TAG_FINISH);
+    while (ctx->cq.Next(&tag, &ok)) {
+        if (tag == TAG_FINISH) break;
+    }
+    ctx->cq.Shutdown();
+    while (ctx->cq.Next(&tag, &ok)) {}
+
     if (!grpc_status.ok() && !ctx->cancelled) {
-        std::cerr << "[gRPC Client Cancellable] RPC failed: " << grpc_status.error_message() << std::endl;
+        fprintf(stderr, "[gRPC Client Cancellable] RPC failed: %s\n",
+                grpc_status.error_message().c_str());
     }
-    
+
     printf("[gRPC Client Cancellable] Stream completed, received %d responses\n", response_count);
-    
+
     delete ctx;
-    return nullptr;  // Context deleted after call completes
+    return nullptr;
 }
 
 // Cancel an ongoing gRPC task call
+// TryCancel() causes any pending cq.Next() to return ok=false, cleanly unwinding the read loop.
 void grpc_cancel_task(grpc_call_handle_t handle) {
     if (!handle) {
         printf("[gRPC Client] Cannot cancel NULL handle\n");
         return;
     }
-    
+
     GrpcCallContext* ctx = static_cast<GrpcCallContext*>(handle);
-    
+
     printf("[gRPC Client] Cancelling gRPC call...\n");
     ctx->cancelled = true;
     ctx->context.TryCancel();

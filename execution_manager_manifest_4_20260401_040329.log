@@ -1,0 +1,931 @@
+ Container execution-manager  Creating
+ Container execution-manager  Created
+Attaching to execution-manager
+execution-manager  | ============================================
+execution-manager  |    DUAL PRIORITY QUEUE ARCHITECTURE TESTER  
+execution-manager  | ============================================
+execution-manager  | 
+execution-manager  | ✅ Execution Manager running with SCHED_FIFO priority 95
+execution-manager  |    This ensures precise timing and prevents preemption by tasks
+execution-manager  | 
+execution-manager  | 
+execution-manager  | [Redis] Reading schedule from Redis...
+execution-manager  | 
+execution-manager  | === REDIS DATA ===
+execution-manager  | Schedule: Configurable CPU/IO Benchmark (v0.0.0)
+execution-manager  | Number of tasks: 4
+execution-manager  | Iterations: 5
+execution-manager  | 
+execution-manager  | Tasks:
+execution-manager  |   1. Task: sum1
+execution-manager  |      Policy: fifo, Priority: 50, Start: 10 ms
+execution-manager  |      Inputs: {"total_ops": {"type": "int", "value": 200}, "io_percentage": {"type": "int", "value": 50}}
+execution-manager  | 
+execution-manager  |   2. Task: sum2
+execution-manager  |      Policy: fifo, Priority: 65, Start: 11 ms
+execution-manager  |      Inputs: {"total_ops": {"type": "int", "value": 200}, "io_percentage": {"type": "int", "value": 50}}
+execution-manager  | 
+execution-manager  |   3. Task: sum3
+execution-manager  |      Policy: fifo, Priority: 65, Start: 20 ms
+execution-manager  |      Inputs: {"total_ops": {"type": "int", "value": 200}, "io_percentage": {"type": "int", "value": 50}}
+execution-manager  | 
+execution-manager  |   4. Task: sum4
+execution-manager  |      Policy: fifo, Priority: 50, Start: 21 ms
+execution-manager  |      Inputs: {"total_ops": {"type": "int", "value": 200}, "io_percentage": {"type": "int", "value": 50}}
+execution-manager  | 
+execution-manager  | ==================
+execution-manager  | 
+execution-manager  | 
+execution-manager  | ============================================
+execution-manager  |    REAL-TIME EVENT-DRIVEN SCHEDULER
+execution-manager  | ============================================
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🚀 Loading schedule: 4 task(s), 5 iteration(s)
+execution-manager  | 
+execution-manager  | [SCHEDULER] DEBUG - Task 1: start_time=10 s, deadline=40 s (parsed from Redis)
+execution-manager  | [SCHEDULER] 📋 Task 1 'sum1': start=10000 ms, deadline=40000 ms
+execution-manager  | [SCHEDULER] DEBUG - Task 2: start_time=11 s, deadline=41 s (parsed from Redis)
+execution-manager  | [SCHEDULER] 📋 Task 2 'sum2': start=11000 ms, deadline=41000 ms
+execution-manager  | [SCHEDULER] DEBUG - Task 3: start_time=20 s, deadline=50 s (parsed from Redis)
+execution-manager  | [SCHEDULER] 📋 Task 3 'sum3': start=20000 ms, deadline=50000 ms
+execution-manager  | [SCHEDULER] DEBUG - Task 4: start_time=21 s, deadline=51 s (parsed from Redis)
+execution-manager  | [SCHEDULER] 📋 Task 4 'sum4': start=21000 ms, deadline=51000 ms
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🔁 ===== ITERATION 1 / 5 =====
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🚀 Schedule started at T=0
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🔄 Entering event loop (NO SLEEP - event-driven!)
+execution-manager  | 
+execution-manager  | [EPOLL] T=10000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum1
+execution-manager  | [SCHEDULER] ⏰ T=10000 ms | T_wall=744328656.670 ms: Launching task 1 'sum1' (deadline: 40000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 1 at T=40000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 1] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744328656.906 ms | Sending gRPC request for task 1 'sum1'
+execution-manager  | [gRPC Channel Pool] Creating new channel for localhost:50051
+execution-manager  | [gRPC Client Async] Calling task 'sum1' at localhost:50051
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [EPOLL] T=11000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum2
+execution-manager  | [SCHEDULER] ⏰ T=11000 ms | T_wall=744329656.701 ms: Launching task 2 'sum2' (deadline: 41000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 2 at T=41000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 2] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744329656.946 ms | Sending gRPC request for task 2 'sum2'
+execution-manager  | [gRPC Channel Pool] Creating new channel for localhost:50052
+execution-manager  | [gRPC Client Async] Calling task 'sum2' at localhost:50052
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=13311 ms] Task 2 'sum2' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744329678.117 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744331966.569 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744331967.355 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 2288.452 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 2: sum2                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744329656.946 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744329678.117 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744331966.569 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744331967.355 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =       21.171 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     2288.452 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.787 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     2310.409 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =       21.958 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=13311 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=13311 ms: Task 2 'sum2' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 2
+execution-manager  | [SCHEDULER] 3 tasks remaining
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 2] Completed
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=14603 ms] Task 1 'sum1' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744328682.310 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744333259.194 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744333259.885 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 4576.884 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 1: sum1                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744328656.906 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744328682.310 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744333259.194 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744333259.885 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =       25.404 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     4576.884 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.690 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     4602.978 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =       26.094 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=14603 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=14603 ms: Task 1 'sum1' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 1
+execution-manager  | [SCHEDULER] 2 tasks remaining
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 1] Completed
+execution-manager  | [EPOLL] T=20000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum3
+execution-manager  | [SCHEDULER] ⏰ T=20000 ms | T_wall=744338656.731 ms: Launching task 3 'sum3' (deadline: 50000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 3 at T=50000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 3] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744338656.907 ms | Sending gRPC request for task 3 'sum3'
+execution-manager  | [gRPC Channel Pool] Creating new channel for localhost:50053
+execution-manager  | [gRPC Client Async] Calling task 'sum3' at localhost:50053
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [EPOLL] T=21000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum4
+execution-manager  | [SCHEDULER] ⏰ T=21000 ms | T_wall=744339656.751 ms: Launching task 4 'sum4' (deadline: 51000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 4 at T=51000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 4] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744339656.952 ms | Sending gRPC request for task 4 'sum4'
+execution-manager  | [gRPC Channel Pool] Creating new channel for localhost:50054
+execution-manager  | [gRPC Client Async] Calling task 'sum4' at localhost:50054
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=22311 ms] Task 3 'sum3' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744338678.732 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744340967.220 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744340967.909 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 2288.488 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 3: sum3                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744338656.907 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744338678.732 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744340967.220 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744340967.909 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =       21.825 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     2288.488 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.689 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     2311.002 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =       22.514 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=22311 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=22311 ms: Task 3 'sum3' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 3
+execution-manager  | [SCHEDULER] 1 tasks remaining
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 3] Completed
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=24600 ms] Task 4 'sum4' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744340967.311 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744343255.832 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744343256.532 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 2288.521 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 4: sum4                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744339656.952 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744340967.311 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744343255.832 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744343256.532 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =     1310.359 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     2288.521 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.700 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     3599.580 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =     1311.059 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=24600 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=24600 ms: Task 4 'sum4' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 4
+execution-manager  | [SCHEDULER] 0 tasks remaining
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🏁 Iteration 1/5 complete!
+execution-manager  | [SCHEDULER] Iteration execution time: 24600 ms
+execution-manager  | 
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🔁 ===== ITERATION 2 / 5 =====
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🚀 Schedule started at T=0
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🔄 Entering event loop (NO SLEEP - event-driven!)
+execution-manager  | 
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 4] Completed
+execution-manager  | [EPOLL] T=10000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum1
+execution-manager  | [SCHEDULER] ⏰ T=10000 ms | T_wall=744353256.817 ms: Launching task 1 'sum1' (deadline: 40000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 1 at T=40000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 1] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744353256.979 ms | Sending gRPC request for task 1 'sum1'
+execution-manager  | [gRPC Channel Pool] Reusing existing channel for localhost:50051 (state=2)
+execution-manager  | [gRPC Client Async] Calling task 'sum1' at localhost:50051
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [EPOLL] T=11000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum2
+execution-manager  | [SCHEDULER] ⏰ T=11000 ms | T_wall=744354256.845 ms: Launching task 2 'sum2' (deadline: 41000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 2 at T=41000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 2] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744354256.993 ms | Sending gRPC request for task 2 'sum2'
+execution-manager  | [gRPC Channel Pool] Reusing existing channel for localhost:50052 (state=2)
+execution-manager  | [gRPC Client Async] Calling task 'sum2' at localhost:50052
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=13291 ms] Task 2 'sum2' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744354258.106 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744356546.662 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744356547.257 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 2288.555 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 2: sum2                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744354256.993 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744354258.106 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744356546.662 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744356547.257 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =        1.114 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     2288.555 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.596 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     2290.265 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =        1.709 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=13291 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=13291 ms: Task 2 'sum2' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 2
+execution-manager  | [SCHEDULER] 3 tasks remaining
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 2] Completed
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=14580 ms] Task 1 'sum1' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744353258.308 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744357835.384 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744357836.023 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 4577.076 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 1: sum1                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744353256.979 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744353258.308 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744357835.384 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744357836.023 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =        1.329 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     4577.076 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.640 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     4579.045 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =        1.969 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=14580 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=14580 ms: Task 1 'sum1' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 1
+execution-manager  | [SCHEDULER] 2 tasks remaining
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 1] Completed
+execution-manager  | [EPOLL] T=20000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum3
+execution-manager  | [SCHEDULER] ⏰ T=20000 ms | T_wall=744363256.882 ms: Launching task 3 'sum3' (deadline: 50000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 3 at T=50000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 3] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744363257.056 ms | Sending gRPC request for task 3 'sum3'
+execution-manager  | [gRPC Channel Pool] Reusing existing channel for localhost:50053 (state=2)
+execution-manager  | [gRPC Client Async] Calling task 'sum3' at localhost:50053
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [EPOLL] T=21000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum4
+execution-manager  | [SCHEDULER] ⏰ T=21000 ms | T_wall=744364256.907 ms: Launching task 4 'sum4' (deadline: 51000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 4 at T=51000 ms (in 29999 ms)
+execution-manager  | [GRPC THREAD 4] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744364257.090 ms | Sending gRPC request for task 4 'sum4'
+execution-manager  | [gRPC Channel Pool] Reusing existing channel for localhost:50054 (state=2)
+execution-manager  | [gRPC Client Async] Calling task 'sum4' at localhost:50054
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=22290 ms] Task 3 'sum3' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744363258.015 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744365546.103 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744365546.835 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 2288.088 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 3: sum3                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744363257.056 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744363258.015 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744365546.103 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744365546.835 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =        0.959 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     2288.088 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.732 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     2289.779 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =        1.691 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=22290 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=22290 ms: Task 3 'sum3' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 3
+execution-manager  | [SCHEDULER] 1 tasks remaining
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 3] Completed
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=24579 ms] Task 4 'sum4' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744365546.192 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744367834.705 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744367835.546 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 2288.514 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 4: sum4                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744364257.090 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744365546.192 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744367834.705 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744367835.546 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =     1289.101 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     2288.514 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.840 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     3578.455 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =     1289.942 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=24579 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=24579 ms: Task 4 'sum4' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 4
+execution-manager  | [SCHEDULER] 0 tasks remaining
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🏁 Iteration 2/5 complete!
+execution-manager  | [SCHEDULER] Iteration execution time: 24579 ms
+execution-manager  | 
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🔁 ===== ITERATION 3 / 5 =====
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🚀 Schedule started at T=0
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🔄 Entering event loop (NO SLEEP - event-driven!)
+execution-manager  | 
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 4] Completed
+execution-manager  | [EPOLL] T=10000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum1
+execution-manager  | [SCHEDULER] ⏰ T=10000 ms | T_wall=744377835.831 ms: Launching task 1 'sum1' (deadline: 40000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 1 at T=40000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 1] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744377835.990 ms | Sending gRPC request for task 1 'sum1'
+execution-manager  | [gRPC Channel Pool] Reusing existing channel for localhost:50051 (state=2)
+execution-manager  | [gRPC Client Async] Calling task 'sum1' at localhost:50051
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [EPOLL] T=11000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum2
+execution-manager  | [SCHEDULER] ⏰ T=11000 ms | T_wall=744378835.854 ms: Launching task 2 'sum2' (deadline: 41000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 2 at T=41000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 2] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744378836.015 ms | Sending gRPC request for task 2 'sum2'
+execution-manager  | [gRPC Channel Pool] Reusing existing channel for localhost:50052 (state=2)
+execution-manager  | [gRPC Client Async] Calling task 'sum2' at localhost:50052
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=13291 ms] Task 2 'sum2' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744378837.058 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744381125.983 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744381126.617 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 2288.924 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 2: sum2                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744378836.015 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744378837.058 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744381125.983 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744381126.617 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =        1.043 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     2288.924 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.634 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     2290.601 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =        1.677 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=13291 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=13291 ms: Task 2 'sum2' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 2
+execution-manager  | [SCHEDULER] 3 tasks remaining
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 2] Completed
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=14579 ms] Task 1 'sum1' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744377836.817 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744382414.259 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744382414.937 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 4577.442 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 1: sum1                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744377835.990 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744377836.817 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744382414.259 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744382414.937 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =        0.827 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     4577.442 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.678 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     4578.947 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =        1.505 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=14580 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=14580 ms: Task 1 'sum1' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 1
+execution-manager  | [SCHEDULER] 2 tasks remaining
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 1] Completed
+execution-manager  | [EPOLL] T=20000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum3
+execution-manager  | [SCHEDULER] ⏰ T=20000 ms | T_wall=744387835.891 ms: Launching task 3 'sum3' (deadline: 50000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 3 at T=50000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 3] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744387836.068 ms | Sending gRPC request for task 3 'sum3'
+execution-manager  | [gRPC Channel Pool] Reusing existing channel for localhost:50053 (state=2)
+execution-manager  | [gRPC Client Async] Calling task 'sum3' at localhost:50053
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [EPOLL] T=21000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum4
+execution-manager  | [SCHEDULER] ⏰ T=21000 ms | T_wall=744388835.913 ms: Launching task 4 'sum4' (deadline: 51000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 4 at T=51000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 4] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744388836.072 ms | Sending gRPC request for task 4 'sum4'
+execution-manager  | [gRPC Channel Pool] Reusing existing channel for localhost:50054 (state=2)
+execution-manager  | [gRPC Client Async] Calling task 'sum4' at localhost:50054
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=22290 ms] Task 3 'sum3' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744387836.949 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744390125.218 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744390125.853 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 2288.269 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 3: sum3                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744387836.068 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744387836.949 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744390125.218 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744390125.853 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =        0.881 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     2288.269 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.635 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     2289.785 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =        1.516 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=22290 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=22290 ms: Task 3 'sum3' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 3
+execution-manager  | [SCHEDULER] 1 tasks remaining
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 3] Completed
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=24579 ms] Task 4 'sum4' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744390125.305 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744392413.622 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744392414.285 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 2288.317 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 4: sum4                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744388836.072 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744390125.305 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744392413.622 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744392414.285 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =     1289.233 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     2288.317 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.663 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     3578.212 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =     1289.896 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=24579 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=24579 ms: Task 4 'sum4' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 4
+execution-manager  | [SCHEDULER] 0 tasks remaining
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🏁 Iteration 3/5 complete!
+execution-manager  | [SCHEDULER] Iteration execution time: 24579 ms
+execution-manager  | 
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🔁 ===== ITERATION 4 / 5 =====
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🚀 Schedule started at T=0
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🔄 Entering event loop (NO SLEEP - event-driven!)
+execution-manager  | 
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 4] Completed
+execution-manager  | [EPOLL] T=10000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum1
+execution-manager  | [SCHEDULER] ⏰ T=10000 ms | T_wall=744402414.585 ms: Launching task 1 'sum1' (deadline: 40000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 1 at T=40000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 1] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744402414.745 ms | Sending gRPC request for task 1 'sum1'
+execution-manager  | [gRPC Channel Pool] Reusing existing channel for localhost:50051 (state=2)
+execution-manager  | [gRPC Client Async] Calling task 'sum1' at localhost:50051
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [EPOLL] T=11000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum2
+execution-manager  | [SCHEDULER] ⏰ T=11000 ms | T_wall=744403414.587 ms: Launching task 2 'sum2' (deadline: 41000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 2 at T=41000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 2] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744403414.737 ms | Sending gRPC request for task 2 'sum2'
+execution-manager  | [gRPC Channel Pool] Reusing existing channel for localhost:50052 (state=2)
+execution-manager  | [gRPC Client Async] Calling task 'sum2' at localhost:50052
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=13291 ms] Task 2 'sum2' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744403415.716 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744405704.657 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744405705.504 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 2288.940 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 2: sum2                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744403414.737 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744403415.716 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744405704.657 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744405705.504 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =        0.979 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     2288.940 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.848 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     2290.767 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =        1.827 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=13291 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=13291 ms: Task 2 'sum2' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 2
+execution-manager  | [SCHEDULER] 3 tasks remaining
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 2] Completed
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=14580 ms] Task 1 'sum1' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744402415.605 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744406993.526 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744406994.395 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 4577.921 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 1: sum1                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744402414.745 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744402415.605 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744406993.526 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744406994.395 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =        0.860 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     4577.921 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.869 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     4579.650 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =        1.729 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=14580 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=14580 ms: Task 1 'sum1' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 1
+execution-manager  | [SCHEDULER] 2 tasks remaining
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 1] Completed
+execution-manager  | [EPOLL] T=20000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum3
+execution-manager  | [SCHEDULER] ⏰ T=20000 ms | T_wall=744412414.620 ms: Launching task 3 'sum3' (deadline: 50000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 3 at T=50000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 3] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744412414.779 ms | Sending gRPC request for task 3 'sum3'
+execution-manager  | [gRPC Channel Pool] Reusing existing channel for localhost:50053 (state=2)
+execution-manager  | [gRPC Client Async] Calling task 'sum3' at localhost:50053
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [EPOLL] T=21000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum4
+execution-manager  | [SCHEDULER] ⏰ T=21000 ms | T_wall=744413414.643 ms: Launching task 4 'sum4' (deadline: 51000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 4 at T=51000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 4] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744413414.791 ms | Sending gRPC request for task 4 'sum4'
+execution-manager  | [gRPC Channel Pool] Reusing existing channel for localhost:50054 (state=2)
+execution-manager  | [gRPC Client Async] Calling task 'sum4' at localhost:50054
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=22290 ms] Task 3 'sum3' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744412415.760 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744414703.966 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744414704.575 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 2288.207 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 3: sum3                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744412414.779 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744412415.760 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744414703.966 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744414704.575 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =        0.981 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     2288.207 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.609 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     2289.796 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =        1.590 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=22290 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=22290 ms: Task 3 'sum3' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 3
+execution-manager  | [SCHEDULER] 1 tasks remaining
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 3] Completed
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=24579 ms] Task 4 'sum4' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744414704.055 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744416992.439 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744416993.023 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 2288.384 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 4: sum4                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744413414.791 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744414704.055 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744416992.439 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744416993.023 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =     1289.265 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     2288.384 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.584 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     3578.233 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =     1289.849 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=24579 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=24579 ms: Task 4 'sum4' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 4
+execution-manager  | [SCHEDULER] 0 tasks remaining
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🏁 Iteration 4/5 complete!
+execution-manager  | [SCHEDULER] Iteration execution time: 24579 ms
+execution-manager  | 
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🔁 ===== ITERATION 5 / 5 =====
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🚀 Schedule started at T=0
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🔄 Entering event loop (NO SLEEP - event-driven!)
+execution-manager  | 
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 4] Completed
+execution-manager  | [EPOLL] T=10000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum1
+execution-manager  | [SCHEDULER] ⏰ T=10000 ms | T_wall=744426993.302 ms: Launching task 1 'sum1' (deadline: 40000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 1 at T=40000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 1] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744426993.465 ms | Sending gRPC request for task 1 'sum1'
+execution-manager  | [gRPC Channel Pool] Reusing existing channel for localhost:50051 (state=2)
+execution-manager  | [gRPC Client Async] Calling task 'sum1' at localhost:50051
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [EPOLL] T=11000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum2
+execution-manager  | [SCHEDULER] ⏰ T=11000 ms | T_wall=744427993.323 ms: Launching task 2 'sum2' (deadline: 41000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 2 at T=41000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 2] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744427993.469 ms | Sending gRPC request for task 2 'sum2'
+execution-manager  | [gRPC Channel Pool] Reusing existing channel for localhost:50052 (state=2)
+execution-manager  | [gRPC Client Async] Calling task 'sum2' at localhost:50052
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=13290 ms] Task 2 'sum2' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744427994.301 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744430282.604 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744430283.184 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 2288.303 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 2: sum2                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744427993.469 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744427994.301 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744430282.604 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744430283.184 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =        0.832 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     2288.303 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.580 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     2289.715 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =        1.412 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=13290 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=13290 ms: Task 2 'sum2' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 2
+execution-manager  | [SCHEDULER] 3 tasks remaining
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 2] Completed
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=14578 ms] Task 1 'sum1' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744426994.373 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744431571.073 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744431571.654 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 4576.701 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 1: sum1                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744426993.465 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744426994.373 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744431571.073 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744431571.654 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =        0.908 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     4576.701 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.580 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     4578.189 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =        1.488 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=14578 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=14578 ms: Task 1 'sum1' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 1
+execution-manager  | [SCHEDULER] 2 tasks remaining
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 1] Completed
+execution-manager  | [EPOLL] T=20000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum3
+execution-manager  | [SCHEDULER] ⏰ T=20000 ms | T_wall=744436993.363 ms: Launching task 3 'sum3' (deadline: 50000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 3 at T=50000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 3] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744436993.526 ms | Sending gRPC request for task 3 'sum3'
+execution-manager  | [gRPC Channel Pool] Reusing existing channel for localhost:50053 (state=2)
+execution-manager  | [gRPC Client Async] Calling task 'sum3' at localhost:50053
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [EPOLL] T=21000 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=0 task=sum4
+execution-manager  | [SCHEDULER] ⏰ T=21000 ms | T_wall=744437993.384 ms: Launching task 4 'sum4' (deadline: 51000 ms)
+execution-manager  | [SCHEDULER] 🕐 Timeout armed for task 4 at T=51000 ms (in 30000 ms)
+execution-manager  | [GRPC THREAD 4] Starting...
+execution-manager  | [EXECUTION MANAGER] ⏱️ T1=744437993.552 ms | Sending gRPC request for task 4 'sum4'
+execution-manager  | [gRPC Channel Pool] Reusing existing channel for localhost:50054 (state=2)
+execution-manager  | [gRPC Client Async] Calling task 'sum4' at localhost:50054
+execution-manager  | [gRPC Client Async] Inputs: {"total_ops": 200, "io_percentage": 50}
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=22290 ms] Task 3 'sum3' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744436994.456 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744439282.836 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744439283.415 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 2288.380 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 3: sum3                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744436993.526 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744436994.456 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744439282.836 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744439283.415 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =        0.930 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     2288.380 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.579 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     2289.888 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =        1.508 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=22290 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=22290 ms: Task 3 'sum3' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 3
+execution-manager  | [SCHEDULER] 1 tasks remaining
+execution-manager  | [gRPC Client Async] Stream completed, received 1 responses
+execution-manager  | [GRPC THREAD 3] Completed
+execution-manager  | [gRPC Client Async] Response #1 - Status: COMPLETED
+execution-manager  | 🎉 [T=24579 ms] Task 4 'sum4' COMPLETED
+execution-manager  | [EXECUTION MANAGER] ⏱️ T2=744439282.916 ms | Thread started (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T3=744441571.428 ms | Task completed (server measured)
+execution-manager  | [EXECUTION MANAGER] ⏱️ T4=744441572.056 ms | Result received by client
+execution-manager  |    [TASK EXECUTION] 2288.511 ms (T3-T2, measured in thread)
+execution-manager  |    [RESULT] {"result": 0}
+execution-manager  | 
+execution-manager  | ╔═══════════════════════════════════════════════════════════════╗
+execution-manager  | ║           END-TO-END TIMING MEASUREMENT RECAP                 ║
+execution-manager  | ║                   Task 4: sum4                                 
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ T1 (start_request)    = 744437993.552 ms                        ║
+execution-manager  | ║ T2 (end_request)      = 744439282.916 ms                        ║
+execution-manager  | ║ T3 (start_result)     = 744441571.428 ms                        ║
+execution-manager  | ║ T4 (end_result)       = 744441572.056 ms                        ║
+execution-manager  | ╠═══════════════════════════════════════════════════════════════╣
+execution-manager  | ║ METRICS:                                                      ║
+execution-manager  | ║   Request Latency    =     1289.365 ms  (T2 - T1)            ║
+execution-manager  | ║   Task Execution     =     2288.511 ms  (T3 - T2)            ║
+execution-manager  | ║   Response Latency   =        0.629 ms  (T4 - T3)            ║
+execution-manager  | ║   Total End-to-End   =     3578.505 ms  (T4 - T1)            ║
+execution-manager  | ║   Network Overhead   =     1289.993 ms  (Req + Resp)         ║
+execution-manager  | ╚═══════════════════════════════════════════════════════════════╝
+execution-manager  | 
+execution-manager  | [EPOLL] T=24579 ms: epoll_wait returned 1 event(s)
+execution-manager  | [EPOLL] event[0]: type=2 task=NULL
+execution-manager  | [SCHEDULER] ✅ T=24579 ms: Task 4 'sum4' completed with status 2
+execution-manager  | [SCHEDULER] 🔕 Timeout disarmed for task 4
+execution-manager  | [SCHEDULER] 0 tasks remaining
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🏁 Iteration 5/5 complete!
+execution-manager  | [SCHEDULER] Iteration execution time: 24579 ms
+execution-manager  | 
+execution-manager  | 
+execution-manager  | [SCHEDULER] 🏁 All 5 iteration(s) completed!
+execution-manager  | [SCHEDULER] Total execution time: 24579 ms
+execution-manager  | 
+execution-manager  | Test Suite Finished Successfully.
+[Kexecution-manager exited with code 0

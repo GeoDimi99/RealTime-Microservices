@@ -166,6 +166,27 @@ int main(int argc, char *argv[]) {
         printf("✅ Execution Manager running with SCHED_FIFO priority %d\n", 
                param.sched_priority);
         printf("   This ensures precise timing and prevents preemption by tasks\n\n");
+
+        
+        // Force SCHED_OTHER as the default for all threads created with NULL attrs.
+        // Without this, gRPC internal threads (created via pthread_create(NULL,...))
+        // inherit SCHED_FIFO from their creator.  Two SCHED_FIFO threads at the same
+        // priority are non-preemptive: if a gRPC thread is running at T=11000ms the
+        // main thread cannot be scheduled even though its timerfd fired.
+        pthread_attr_t default_attr;
+        struct sched_param default_param = {.sched_priority = 45};
+        pthread_attr_init(&default_attr);
+        pthread_attr_setinheritsched(&default_attr, PTHREAD_EXPLICIT_SCHED);
+        pthread_attr_setschedpolicy(&default_attr, SCHED_FIFO);
+        pthread_attr_setschedparam(&default_attr, &default_param);
+        if (pthread_setattr_default_np(&default_attr) != 0) {
+            perror("Warning: pthread_setattr_default_np failed");
+        } else {
+            printf("✅ Default thread policy set to SCHED_FIFO 45\n");
+            printf("   gRPC internal threads: RT scheduling, below task threads (50/65)\n\n");
+        }
+        pthread_attr_destroy(&default_attr);
+        
     }
 
     // ========================================

@@ -36,7 +36,7 @@ extern "C" {
         /* Set CPU affinity from inside the thread (self-affinity) */
         cpu_set_t cpuset;
         CPU_ZERO(&cpuset);
-        CPU_SET(1, &cpuset);  // Pin to CPU 2
+        CPU_SET(7, &cpuset);  // Pin to CPU 7
         int affinity_ret = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
         if (affinity_ret != 0) {
             printf("[THREAD WRAPPER] Warning: Failed to set CPU affinity: %s\n", strerror(affinity_ret));
@@ -110,7 +110,7 @@ class TaskExecutorServiceImpl final : public TaskExecutor::Service {
         // Set CPU affinity (CPU 2)
         cpu_set_t cpuset;
         CPU_ZERO(&cpuset);
-        CPU_SET(1, &cpuset);
+        CPU_SET(7, &cpuset);
         int ret = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset);
         if (ret != 0) {
             printf("[gRPC Server] Warning: CPU affinity failed\n");
@@ -438,6 +438,17 @@ int main(int argc, char** argv) {
     std::string server_address = "0.0.0.0:";
     server_address += grpc_port ? grpc_port : "50051";  // Default to 50051 if not set
     
+    // Pin gRPC server and its internal threads to CPU 6.
+    // Task execution threads (task_main_wrapper) are pinned to CPU 1 separately.
+    cpu_set_t server_cpuset;
+    CPU_ZERO(&server_cpuset);
+    CPU_SET(6, &server_cpuset);
+    if (sched_setaffinity(0, sizeof(cpu_set_t), &server_cpuset) != 0) {
+        std::cerr << "[gRPC Server] Warning: Failed to set CPU affinity to CPU 0" << std::endl;
+    } else {
+        std::cout << "[gRPC Server] ✅ gRPC server pinned to CPU 0" << std::endl;
+    }
+
     if (task_name) {
         std::cout << "[gRPC Server] Starting server for task: " << task_name << std::endl;
     }

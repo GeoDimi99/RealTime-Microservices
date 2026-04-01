@@ -1,0 +1,9 @@
+Iteration,Task,Request Latency (ms),Task Execution (ms),Response Latency (ms),Total End-to-End (ms),Network Overhead (ms)
+1,Task 1: sum1,10.7,2180.816,0.544,2192.06,11.244
+2,Task 1: sum1,0.59,2178.769,0.687,2180.046,1.277
+3,Task 1: sum1,0.526,2179.112,0.454,2180.092,0.98
+4,Task 1: sum1,0.556,2179.729,0.444,2180.73,1.001
+5,Task 1: sum1,0.495,2183.115,0.509,2184.12,1.004
+
+---,AVERAGES (excl. iter 1),---,---,---,---,---
+AVERAGE,Task 1: sum1,0.542,2180.181,0.524,2181.247,1.065

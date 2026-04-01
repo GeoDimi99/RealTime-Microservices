@@ -1,0 +1,33 @@
+version: "1.0"
+
+images:
+  base: "geodimi99/realtime-microservices:task-wrapper"
+  repo: "geodimi99/realtime-microservices"
+  tasks:
+    - alias: "sum1"
+      src: "sum1"
+
+schedule:
+  name: "Configurable CPU/IO Benchmark"
+  description: "Benchmark with configurable CPU/IO ratio using total_ops and io_percentage parameters"
+  iterations: 50
+  
+  tasks:
+    # Pure CPU workload
+    - id: 1
+      image: "sum1"
+      start: 10
+      deadline: 30
+      policy: "fifo"
+      priority: 50
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 100
+        io_percentage:
+          type: int
+          value: 25      
+      outputs:
+        result:
+          type: int

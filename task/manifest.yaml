@@ -23,14 +23,14 @@ schedule:
     - id: 1
       image: "sum1"
       start: 10
-      deadline: 40
+      deadline: 30
       policy: "fifo"
       priority: 50
       depends_on: []
       inputs:
         total_ops:
           type: int
-          value: 200
+          value: 800
         io_percentage:
           type: int
           value: 50      
@@ -40,15 +40,15 @@ schedule:
 
     - id: 2
       image: "sum2"
-      start: 11
-      deadline: 41
+      start: 20
+      deadline: 40
       policy: "fifo"
-      priority: 65
+      priority: 50
       depends_on: []
       inputs:
         total_ops:
           type: int
-          value: 200
+          value: 800
         io_percentage:
           type: int
           value: 50      
@@ -59,15 +59,15 @@ schedule:
 
     - id: 3
       image: "sum3"
-      start: 20
+      start: 30
       deadline: 50
       policy: "fifo"
-      priority: 65
+      priority: 50
       depends_on: []
       inputs:
         total_ops:
           type: int
-          value: 200
+          value: 800
         io_percentage:
           type: int
           value: 50      
@@ -79,15 +79,15 @@ schedule:
 
     - id: 4
       image: "sum4"
-      start: 21
-      deadline: 51
+      start: 40
+      deadline: 60
       policy: "fifo"
       priority: 50
       depends_on: []
       inputs:
         total_ops:
           type: int
-          value: 200
+          value: 800
         io_percentage:
           type: int
           value: 50      

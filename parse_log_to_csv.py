@@ -254,93 +254,102 @@ def generate_pdf_report(metrics, pdf_file, csv_name):
                 pdf.savefig(fig)
                 plt.close(fig)
 
+        def _add_avg_per_task_page(pdf, data, title):
+            td = defaultdict(list)
+            for m in data:
+                td[m['Task ID']].append(m)
+            fig2, ax2 = plt.subplots(figsize=(12, 8))
+            ax2.axis('off')
+            ax2.set_title(title, fontsize=16, fontweight='bold', pad=20)
+            col_labels2 = ['', 'em_tw_ms', 'task_ms', 'tw_em_ms', 'total_ms']
+            tdata2 = []
+            for task_id in sorted(td.keys()):
+                tm = td[task_id]
+                tdata2.append([
+                    str(task_id),
+                    f"{statistics.mean([m['Request Latency'] for m in tm]):.4f}",
+                    f"{statistics.mean([m['Task Execution'] for m in tm]):.4f}",
+                    f"{statistics.mean([m['Response Latency'] for m in tm]):.4f}",
+                    f"{statistics.mean([m['Total End-to-End'] for m in tm]):.4f}",
+                ])
+            t2 = ax2.table(cellText=tdata2, colLabels=col_labels2, loc='center', cellLoc='center')
+            t2.auto_set_font_size(False)
+            t2.set_fontsize(12)
+            t2.scale(1, 2.0)
+            for j in range(len(col_labels2)):
+                t2[0, j].set_facecolor('#E8E8E8')
+                t2[0, j].set_text_props(fontweight='bold')
+            plt.tight_layout()
+            pdf.savefig(fig2)
+            plt.close(fig2)
+
+        def _add_global_summary_page(pdf, data, title, footer):
+            fig3, ax3 = plt.subplots(figsize=(12, 8))
+            ax3.axis('off')
+            ax3.set_title(title, fontsize=16, fontweight='bold', pad=20)
+            col_labels3 = ['', 'Mean', 'Std Dev', 'Min', 'Median', 'Max']
+            metric_names3 = [
+                ('em_tw_ms', 'Request Latency'),
+                ('task_ms', 'Task Execution'),
+                ('tw_em_ms', 'Response Latency'),
+                ('total_ms', 'Total End-to-End'),
+            ]
+            tdata3 = []
+            for display_name, key in metric_names3:
+                values = [m[key] for m in data]
+                tdata3.append([
+                    display_name,
+                    f"{statistics.mean(values):.4f}",
+                    f"{(statistics.stdev(values) if len(values) > 1 else 0):.4f}",
+                    f"{min(values):.3f}",
+                    f"{statistics.median(values):.4f}",
+                    f"{max(values):.3f}",
+                ])
+            t3 = ax3.table(cellText=tdata3, colLabels=col_labels3, loc='center', cellLoc='center')
+            t3.auto_set_font_size(False)
+            t3.set_fontsize(12)
+            t3.scale(1, 2.0)
+            for j in range(len(col_labels3)):
+                t3[0, j].set_facecolor('#E8E8E8')
+                t3[0, j].set_text_props(fontweight='bold')
+            ax3.text(0.5, 0.08, footer, transform=ax3.transAxes, ha='center', fontsize=12)
+            plt.tight_layout()
+            pdf.savefig(fig3)
+            plt.close(fig3)
+
         # =============================================
         # 2) AVERAGE PERFORMANCE PER TASK ID TABLE
         # =============================================
-        fig, ax = plt.subplots(figsize=(12, 8))
-        ax.axis('off')
-        ax.set_title('Average Performance per Task ID (ms)', fontsize=16, fontweight='bold', pad=20)
-
-        col_labels = ['', 'em_tw_ms', 'task_ms', 'tw_em_ms', 'total_ms']
-        table_data = []
-
-        for task_id in sorted(tasks_data.keys()):
-            task_metrics = tasks_data[task_id]
-            em_tw = statistics.mean([m['Request Latency'] for m in task_metrics])
-            task_ms = statistics.mean([m['Task Execution'] for m in task_metrics])
-            tw_em = statistics.mean([m['Response Latency'] for m in task_metrics])
-            total = statistics.mean([m['Total End-to-End'] for m in task_metrics])
-            table_data.append([
-                str(task_id),
-                f"{em_tw:.4f}", f"{task_ms:.4f}",
-                f"{tw_em:.4f}", f"{total:.4f}"
-            ])
-
-        table = ax.table(cellText=table_data, colLabels=col_labels,
-                         loc='center', cellLoc='center')
-        table.auto_set_font_size(False)
-        table.set_fontsize(12)
-        table.scale(1, 2.0)
-
-        # Style header row
-        for j in range(len(col_labels)):
-            table[0, j].set_facecolor('#E8E8E8')
-            table[0, j].set_text_props(fontweight='bold')
-
-        plt.tight_layout()
-        pdf.savefig(fig)
-        plt.close(fig)
+        _add_avg_per_task_page(pdf, metrics, 'Average Performance per Task ID (ms)')
 
         # =============================================
         # 3) GLOBAL PERFORMANCE SUMMARY TABLE
         # =============================================
-        fig, ax = plt.subplots(figsize=(12, 8))
-        ax.axis('off')
-        ax.set_title('Global Performance Summary (ms)', fontsize=16, fontweight='bold', pad=20)
-
-        col_labels = ['', 'Mean', 'Std Dev', 'Min', 'Median', 'Max']
-        metric_names = [
-            ('em_tw_ms', 'Request Latency'),
-            ('task_ms', 'Task Execution'),
-            ('tw_em_ms', 'Response Latency'),
-            ('total_ms', 'Total End-to-End'),
-        ]
-
-        table_data = []
-        total_samples = len(metrics)
-
-        for display_name, key in metric_names:
-            values = [m[key] for m in metrics]
-            mean_v = statistics.mean(values)
-            stdev_v = statistics.stdev(values) if len(values) > 1 else 0
-            min_v = min(values)
-            median_v = statistics.median(values)
-            max_v = max(values)
-            table_data.append([
-                display_name,
-                f"{mean_v:.4f}", f"{stdev_v:.4f}",
-                f"{min_v:.3f}", f"{median_v:.4f}", f"{max_v:.3f}"
-            ])
-
-        table = ax.table(cellText=table_data, colLabels=col_labels,
-                         loc='center', cellLoc='center')
-        table.auto_set_font_size(False)
-        table.set_fontsize(12)
-        table.scale(1, 2.0)
-
-        # Style header row
-        for j in range(len(col_labels)):
-            table[0, j].set_facecolor('#E8E8E8')
-            table[0, j].set_text_props(fontweight='bold')
-
-        # Add dataset info at bottom
         base_csv = os.path.basename(csv_name)
-        ax.text(0.5, 0.08, f"Dataset: {base_csv} | Total Samples: {total_samples}",
-                transform=ax.transAxes, ha='center', fontsize=12)
+        _add_global_summary_page(
+            pdf, metrics,
+            'Global Performance Summary (ms)',
+            f"Dataset: {base_csv} | Total Samples: {len(metrics)}"
+        )
 
-        plt.tight_layout()
-        pdf.savefig(fig)
-        plt.close(fig)
+        # =============================================
+        # 4) AVERAGE PER TASK (excl. iter 1)
+        # =============================================
+        metrics_excl1 = [m for m in metrics if m['Iteration'] > 1]
+        if metrics_excl1:
+            _add_avg_per_task_page(
+                pdf, metrics_excl1,
+                'Average Performance per Task ID — excl. iter 1 (ms)'
+            )
+
+            # =============================================
+            # 5) GLOBAL SUMMARY (excl. iter 1)
+            # =============================================
+            _add_global_summary_page(
+                pdf, metrics_excl1,
+                'Global Performance Summary — excl. iter 1 (ms)',
+                f"Dataset: {base_csv} | Samples (excl. iter 1): {len(metrics_excl1)}"
+            )
 
     print(f"Report PDF generato con successo: {pdf_file}")
 

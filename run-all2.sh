@@ -34,7 +34,7 @@ for manifest_file in $MANIFEST_FILES; do
 
   docker compose down
 
-  ACTIVE_CONTAINERS=$(docker ps -q)
+  ACTIVE_CONTAINERS=$(docker ps -q --filter ancestor=sum1 --filter ancestor=sum2 --filter ancestor=sum3 --filter ancestor=sum4)
   if [ -n "$ACTIVE_CONTAINERS" ]; then
     docker rm -f $ACTIVE_CONTAINERS
   fi
@@ -83,7 +83,7 @@ for manifest_file in $MANIFEST_FILES; do
   step 8 "docker compose down e rimozione container attivi"
   docker compose down
 
-  ACTIVE_CONTAINERS=$(docker ps -q)
+  ACTIVE_CONTAINERS=$(docker ps -q --filter ancestor=sum1 --filter ancestor=sum2 --filter ancestor=sum3 --filter ancestor=sum4)
   if [ -n "$ACTIVE_CONTAINERS" ]; then
     docker rm -f $ACTIVE_CONTAINERS
   fi

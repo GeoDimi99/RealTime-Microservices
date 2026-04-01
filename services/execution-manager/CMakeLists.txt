@@ -65,3 +65,6 @@ target_link_libraries(execution-manager
 
 # Apply additional compiler definitions from PkgConfig (if any)
 add_definitions(${GLIB2_CFLAGS_OTHER} ${GIO_CFLAGS_OTHER})
+
+# Required for pthread_setattr_default_np (GNU extension)
+target_compile_definitions(execution-manager PRIVATE _GNU_SOURCE)

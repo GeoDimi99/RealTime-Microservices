@@ -48,7 +48,7 @@ execution-manager:
   build:
     context: . 
     dockerfile: ./services/execution-manager/Dockerfile
-  cpuset: "1"
+  cpuset: "6"
   container_name: execution-manager
   network_mode: host  # ← AGGIUNTO
   cap_add:

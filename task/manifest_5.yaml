@@ -16,7 +16,7 @@ images:
 schedule:
   name: "Configurable CPU/IO Benchmark"
   description: "Benchmark with configurable CPU/IO ratio using total_ops and io_percentage parameters"
-  iterations: 5
+  iterations: 50
   
   tasks:
     # Pure CPU workload
@@ -30,7 +30,7 @@ schedule:
       inputs:
         total_ops:
           type: int
-          value: 200
+          value: 800
         io_percentage:
           type: int
           value: 50      
@@ -48,7 +48,7 @@ schedule:
       inputs:
         total_ops:
           type: int
-          value: 200
+          value: 800
         io_percentage:
           type: int
           value: 50      
@@ -67,7 +67,7 @@ schedule:
       inputs:
         total_ops:
           type: int
-          value: 200
+          value: 800
         io_percentage:
           type: int
           value: 50      
@@ -87,7 +87,7 @@ schedule:
       inputs:
         total_ops:
           type: int
-          value: 200
+          value: 800
         io_percentage:
           type: int
           value: 50      
