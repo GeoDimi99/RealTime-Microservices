@@ -27,7 +27,8 @@ typedef enum {
 typedef enum {
     EVENT_TYPE_START_TIMER,
     EVENT_TYPE_TIMEOUT_TIMER,
-    EVENT_TYPE_TASK_COMPLETION
+    EVENT_TYPE_TASK_COMPLETION,
+    EVENT_TYPE_WARMUP_TIMER
 } event_type_t;
 
 // Scheduled task structure
@@ -67,6 +68,8 @@ typedef struct {
     // Per-iteration epoll event data pointers (freed after each iteration)
     void *start_event_data;
     void *timeout_event_data;
+    int warmup_timer_fd;
+    void *warmup_event_data;
     
 } scheduled_task_t;
 
@@ -369,6 +372,8 @@ void execute_schedule_with_event_loop(redisContext *redis, int num_tasks, int it
         task->timeout_timer_fd = -1;
         task->start_event_data = NULL;
         task->timeout_event_data = NULL;
+        task->warmup_timer_fd = -1;
+        task->warmup_event_data = NULL;
         
         // Read task from Redis
         char key[64];
@@ -514,6 +519,30 @@ void execute_schedule_with_event_loop(redisContext *redis, int num_tasks, int it
             
             task->status = TASK_STATUS_PENDING;
             task->grpc_handle = NULL;
+            task->warmup_timer_fd = -1;
+            task->warmup_event_data = NULL;
+            
+            // Create pre-warmup timer: fire 2 s before task start to ensure the
+            // channel is READY at launch time, absorbing any IDLE re-connect cost.
+            if (task->start_time_ms > 2000) {
+                task->warmup_timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
+                if (task->warmup_timer_fd >= 0) {
+                    struct itimerspec warmup_spec = {0};
+                    ms_to_timespec(task->start_time_ms - 2000, &warmup_spec.it_value);
+                    timerfd_settime(task->warmup_timer_fd, 0, &warmup_spec, NULL);
+                    
+                    epoll_event_data_t *warmup_data = malloc(sizeof(epoll_event_data_t));
+                    warmup_data->type = EVENT_TYPE_WARMUP_TIMER;
+                    warmup_data->task = task;
+                    task->warmup_event_data = warmup_data;
+                    
+                    struct epoll_event warmup_ev = {
+                        .events = EPOLLIN,
+                        .data.ptr = warmup_data
+                    };
+                    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, task->warmup_timer_fd, &warmup_ev);
+                }
+            }
             
             // Create start timer
             task->start_timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
@@ -606,6 +635,22 @@ void execute_schedule_with_event_loop(redisContext *redis, int num_tasks, int it
                         break;
                     }
                     
+                    case EVENT_TYPE_WARMUP_TIMER: {
+                        uint64_t expirations;
+                        read(data->task->warmup_timer_fd, &expirations, sizeof(expirations));
+                        
+                        printf("[SCHEDULER] 🔥 T=%lu ms: Pre-warmup for task %d '%s'\n",
+                               get_elapsed_ms(), data->task->task_id, data->task->task_name);
+                        grpc_warmup_channel(data->task->service_address);
+                        
+                        // One-shot: remove and close warmup timer
+                        epoll_ctl(epoll_fd, EPOLL_CTL_DEL, data->task->warmup_timer_fd, NULL);
+                        close(data->task->warmup_timer_fd);
+                        data->task->warmup_timer_fd = -1;
+                        
+                        break;
+                    }
+                    
                     case EVENT_TYPE_TASK_COMPLETION: {
                         uint64_t task_id;
                         read(g_completion_eventfd, &task_id, sizeof(task_id));
@@ -648,6 +693,25 @@ void execute_schedule_with_event_loop(redisContext *redis, int num_tasks, int it
             if (task->timeout_event_data) {
                 free(task->timeout_event_data);
                 task->timeout_event_data = NULL;
+            }
+            if (task->warmup_timer_fd >= 0) {
+                epoll_ctl(epoll_fd, EPOLL_CTL_DEL, task->warmup_timer_fd, NULL);
+                close(task->warmup_timer_fd);
+                task->warmup_timer_fd = -1;
+            }
+            if (task->warmup_event_data) {
+                free(task->warmup_event_data);
+                task->warmup_event_data = NULL;
+            }
+        }
+        
+        // Warm up all channels during inter-iteration idle time so they are
+        // READY (state=2) when the next iteration's tasks fire, eliminating
+        // the IDLE→CONNECTING→READY latency paid inline at T1.
+        if (iter + 1 < iterations) {
+            printf("[SCHEDULER] 🔥 Warming up gRPC channels for next iteration...\n");
+            for (int i = 0; i < num_tasks; i++) {
+                grpc_warmup_channel(g_tasks[i].service_address);
             }
         }
     }

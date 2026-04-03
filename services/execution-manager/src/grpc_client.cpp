@@ -29,8 +29,10 @@ static std::shared_ptr<Channel> get_or_create_channel(const char* address) {
     auto it = g_channel_pool.find(addr_str);
     
     if (it != g_channel_pool.end()) {
-        // Check channel health before reusing
-        grpc_connectivity_state state = it->second->GetState(false);
+        // Check channel health before reusing.
+        // true = try_to_connect: if the channel is IDLE, immediately start
+        // reconnecting so the upcoming RPC finds the channel closer to READY.
+        grpc_connectivity_state state = it->second->GetState(true);
         if (state == GRPC_CHANNEL_TRANSIENT_FAILURE || state == GRPC_CHANNEL_SHUTDOWN) {
             printf("[gRPC Channel Pool] Channel for %s in bad state (%d), recreating\n", address, (int)state);
             g_channel_pool.erase(it);
@@ -52,6 +54,12 @@ static std::shared_ptr<Channel> get_or_create_channel(const char* address) {
     // Default idle timeout in gRPC Core is ~30s; tasks spaced >30s apart cause
     // state=0 (IDLE) on reuse, forcing a reconnect (+1-2ms latency).
     args.SetInt(GRPC_ARG_CLIENT_IDLE_TIMEOUT_MS, INT_MAX);
+    // Allow the server to send keepalive pings to this client as frequently as
+    // every 5 s (server is configured with KEEPALIVE_TIME_MS=10000).  Without
+    // this the gRPC-core default (300 s) causes the client to treat the server's
+    // 10-s pings as a protocol violation, responding with GOAWAY and dropping
+    // the connection — which is the root cause of state=0 (IDLE) on reuse.
+    args.SetInt(GRPC_ARG_HTTP2_MIN_RECV_PING_INTERVAL_WITHOUT_DATA_MS, 5000);
     // Increase max concurrent streams
     args.SetInt(GRPC_ARG_MAX_CONCURRENT_STREAMS, 100);
     // Optimize for low latency
@@ -380,6 +388,23 @@ void grpc_cancel_task(grpc_call_handle_t handle) {
     printf("[gRPC Client] Cancelling gRPC call...\n");
     ctx->cancelled = true;
     ctx->context.TryCancel();
+}
+
+// Pre-warm a channel so it is READY before the next task fires.
+// Call this during idle time between iterations to eliminate the
+// IDLE→CONNECTING→READY latency that would otherwise be paid inline
+// at T1 when the RPC is sent.
+void grpc_warmup_channel(const char* address) {
+    std::shared_ptr<Channel> channel = get_or_create_channel(address);
+    grpc_connectivity_state state = channel->GetState(true);
+    if (state != GRPC_CHANNEL_READY) {
+        auto deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(2000);
+        bool ready = channel->WaitForConnected(deadline);
+        printf("[gRPC Channel Pool] Warmup %s → %s (was state=%d)\n",
+               address, ready ? "READY" : "timeout", (int)state);
+    } else {
+        printf("[gRPC Channel Pool] Warmup %s: already READY\n", address);
+    }
 }
 
 } // extern "C"

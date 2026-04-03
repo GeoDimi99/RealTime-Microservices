@@ -89,6 +89,13 @@ grpc_call_handle_t grpc_execute_task_async_cancellable(
 //   handle: Handle returned by grpc_execute_task_async_cancellable
 void grpc_cancel_task(grpc_call_handle_t handle);
 
+// Pre-warm a channel so it is READY before the next RPC.
+// Call during idle time between iterations to prevent inline
+// IDLE→CONNECTING→READY latency at task launch time.
+// Parameters:
+//   address: Address of the task service (e.g., "localhost:50051")
+void grpc_warmup_channel(const char* address);
+
 #ifdef __cplusplus
 }
 #endif
