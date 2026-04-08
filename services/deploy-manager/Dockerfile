@@ -17,9 +17,7 @@ RUN apt-get update && \
 # Copy source code
 COPY services/deploy-manager/pyproject.toml .
 COPY services/deploy-manager/src/ ./src/
-COPY services/task-service/ ./task-service/
-COPY common/include/ task-service/include/
-COPY common/src/ task-service/src/
+COPY tests/test_0_code/manifest.yaml /tmp/
 
 
 # Install deploy-manager and its dependencies

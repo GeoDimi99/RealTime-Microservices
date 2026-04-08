@@ -70,6 +70,10 @@ int main(int argc, char *argv[]) {
 
             /* Test 1: Single Task - Num operation 4 , IO Burst: 0% */
             //schedule_add_task(sched, 1, "stress_task", SCHED_FIFO, 10, 1, 1, NULL, 1000, 2000, "[{\"total_ops\":4, \"io_percentage\":0}]");
+            schedule_add_task(sched, 1, "stress_task_1", SCHED_FIFO, 10, 1, 1, NULL, 1000, 20000, "[{\"total_ops\":50, \"io_percentage\":0}]");
+            schedule_add_task(sched, 2, "stress_task_2", SCHED_FIFO, 10, 1, 1, NULL, 1000, 20000, "[{\"total_ops\":50, \"io_percentage\":0}]");
+            schedule_add_task(sched, 3, "stress_task_3", SCHED_FIFO, 10, 1, 1, NULL, 1000, 20000, "[{\"total_ops\":50, \"io_percentage\":0}]");
+            schedule_add_task(sched, 4, "stress_task_4", SCHED_FIFO, 10, 1, 1, NULL, 1000, 20000, "[{\"total_ops\":50, \"io_percentage\":0}]");
             
 
             /* Test 1: Single Task - Num operation 4 , IO Burst: 25% */
@@ -83,7 +87,7 @@ int main(int argc, char *argv[]) {
             //schedule_add_task(sched, 1, "stress_task", SCHED_FIFO, 10, 1, 1, NULL, 1000, 2000, "[{\"total_ops\":4, \"io_percentage\":75}]");
 
             /* Test 1: Single Task - Num operation 4 , IO Burst: 100% */
-            schedule_add_task(sched, 1, "stress_task", SCHED_FIFO, 10, 1, 1, NULL, 1000, 2000, "[{\"total_ops\":4, \"io_percentage\":100}]");
+            // schedule_add_task(sched, 1, "stress_task", SCHED_FIFO, 10, 1, 1, NULL, 1000, 2000, "[{\"total_ops\":4, \"io_percentage\":100}]");
             
             
             

@@ -12,19 +12,28 @@ services:
     build:
       context: . 
       dockerfile: ./services/deploy-manager/Dockerfile
-    cpuset: "1"
+    restart: "no"
     container_name: deploy-manager
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - redis
     
-
   exection-manager:
     build:
       context: . 
       dockerfile: ./services/execution-manager/Dockerfile
+    ipc: host
     cpuset: "1"
+    cap_add:
+      - SYS_NICE
+      - IPC_LOCK
+    ulimits:
+      rtprio: 99
+      memlock:
+        soft: -1
+        hard: -1
+    restart: "no"
     container_name: execution-manager
     depends_on:
      - redis

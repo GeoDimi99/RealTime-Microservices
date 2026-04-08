@@ -11,7 +11,8 @@ import sys
 def main():
 
     # Init phase 
-    mission_path = Path("/home/vboxuser/projects/RT-microservices-choreography-pe/tests/test_0_code")
+    mission_path = Path("/tmp")
+    # mission_path = Path("/home/vboxuser/projects/RT-microservices-choreography-pe/tests/test_0_code")
 
     
 
