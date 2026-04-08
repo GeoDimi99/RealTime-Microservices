@@ -1,10 +1,8 @@
 # src/deploy/redis_loader.py
 import redis
 import json
-from ..logger import get_logger
 from ..domain.schedule import Schedule
 
-logger = get_logger(__name__)
 
 class RedisLoader:
     """
@@ -22,13 +20,18 @@ class RedisLoader:
             "name": schedule.name,
             "version": schedule.version,
             "description": schedule.description,
+            "iterations": str(schedule.iterations),
             "length": str(len(schedule.tasks))
         })
 
         for i, task in enumerate(schedule.tasks, start=1):
             task_key = f"scheduletask:{i}"
             self.client.hset(task_key, mapping={
-                "name": task.name,
+                "id": task.id,
+                "image": task.image,
+                "start": task.start,
+                "deadline": task.deadline,
+                "cpu_affinity": str(task.cpu_affinity),
                 "policy": task.policy,
                 "priority": str(task.priority),
                 "depends_on": json.dumps(task.depends_on),
@@ -37,7 +40,6 @@ class RedisLoader:
             })
 
 
-        logger.info(f"Loaded {len(schedule.tasks)} tasks into Redis.")
 
     def debug_print(self):
         """

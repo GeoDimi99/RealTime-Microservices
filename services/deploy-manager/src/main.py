@@ -3,7 +3,8 @@ from .manifest.parser import ManifestParser
 from .manifest.exceptions import ParserError
 from .deploy.runner import DockerContainerRunner
 from .deploy.exceptions import ContainerRunnerError
-#from .database.redis_loader import RedisLoader  # NEW
+from .redisdb.redis_loader import RedisLoader  # NEW
+from .redisdb.exceptions import RedisLoaderError
 from .exceptions import DeployManagerError
 import sys
 
@@ -50,6 +51,17 @@ def main():
         
 
     except ContainerRunnerError as e:
+        print(f"Deploy Manager failed: {e}")
+        sys.exit(1)
+    
+    # Redis Loading phase
+    redis_loader = RedisLoader(host="redis", port=6379)
+
+    try:
+        redis_loader.load_schedule(schedule)
+        redis_loader.debug_print()  # REMOVE AFTER DEBUGGING
+        pass
+    except RedisLoaderError as e:
         print(f"Deploy Manager failed: {e}")
         sys.exit(1)
 
