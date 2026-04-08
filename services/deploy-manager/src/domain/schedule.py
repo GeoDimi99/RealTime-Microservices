@@ -8,4 +8,5 @@ class Schedule:
     name: str
     version: str
     description: str
+    iterations: int
     tasks: List[Task]

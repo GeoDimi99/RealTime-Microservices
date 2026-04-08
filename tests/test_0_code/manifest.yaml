@@ -1,0 +1,99 @@
+version: "1.0"
+
+images:
+  base: "georgi99dimi/task-wrapper:latest"
+  repo: "georgi99dimi/task-wrapper"
+  tasks:
+    - alias: "stress_task_1"
+      src: "stress_task_1"
+    - alias: "stress_task_2"
+      src: "stress_task_2"
+    - alias: "stress_task_3"
+      src: "stress_task_3"
+    - alias: "stress_task_4"
+      src: "stress_task_4"
+
+schedule:
+  name: "Configurable CPU/IO Benchmark"
+  description: "Benchmark with configurable CPU/IO ratio using total_ops and io_percentage parameters"
+  iterations: 5
+  
+  tasks:
+    # Pure CPU workload
+    - id: 1
+      image: "stress_task_1"
+      start: 10
+      deadline: 30
+      cpu_affinity: 5
+      policy: "fifo"
+      priority: 50
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 800
+        io_percentage:
+          type: int
+          value: 50      
+      outputs:
+        result:
+          type: int
+
+    - id: 2
+      image: "stress_task_2"
+      start: 10
+      deadline: 30
+      cpu_affinity: 5
+      policy: "fifo"
+      priority: 50
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 800
+        io_percentage:
+          type: int
+          value: 50      
+      outputs:
+        result:
+          type: int
+
+    - id: 3
+      image: "stress_task_3"
+      start: 10
+      deadline: 30
+      cpu_affinity: 5
+      policy: "fifo"
+      priority: 50
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 800
+        io_percentage:
+          type: int
+          value: 50      
+      outputs:
+        result:
+          type: int
+
+    - id: 4
+      image: "stress_task_4"
+      start: 10
+      deadline: 30
+      cpu_affinity: 5
+      policy: "fifo"
+      priority: 50
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 800
+        io_percentage:
+          type: int
+          value: 50      
+      outputs:
+        result:
+          type: int
+    
+    

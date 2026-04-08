@@ -4,7 +4,11 @@ from typing import Dict, List, Any
 
 @dataclass
 class Task:
-    name: str
+    id: int
+    image: str
+    start: int
+    deadline: int
+    cpu_affinity : int
     policy: str
     priority: int
     depends_on: List[str] = field(default_factory=list)

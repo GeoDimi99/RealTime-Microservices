@@ -95,18 +95,18 @@ def main():
             continue
     
     # --- Publishing phase ---
-    publisher = Publisher()
+    # publisher = Publisher()
 
-    for img in tasks:
-        alias = img['alias']
-        try:
-            # Push using the DockerHub username
-            publisher.publish(
-                repository_url=repository_url, 
-                local_image_name=alias
-            )
-        except Exception as e:
-            print(f"Skipping push for {alias} due to error.")
+    # for img in tasks:
+    #     alias = img['alias']
+    #     try:
+    #         # Push using the DockerHub username
+    #         publisher.publish(
+    #             repository_url=repository_url, 
+    #             local_image_name=alias
+    #         )
+    #     except Exception as e:
+    #         print(f"Skipping push for {alias} due to error.")
 
 
     

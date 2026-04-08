@@ -1,16 +1,14 @@
 # src/manifest/parser.py
 from typing import List
 import yaml
-from ..exceptions import DeployManagerError
-from ..logger import get_logger
+from .exceptions import ManifestNotFoundError, ParserError
 from ..domain.task import Task
 from ..domain.schedule import Schedule
 
-logger = get_logger(__name__)
 
 class ManifestParser:
     # Only fifo and rr for now
-    VALID_POLICIES = {"fifo", "rr", "other"}
+    VALID_POLICIES = {"fifo", "rr", "deadline", "other"}
 
     def __init__(self, manifest_path: str):
         self.manifest_path = manifest_path
@@ -23,13 +21,13 @@ class ManifestParser:
             with open(self.manifest_path, "r") as f:
                 data = yaml.safe_load(f)
         except FileNotFoundError:
-            raise DeployManagerError(f"Manifest file not found: {self.manifest_path}")
+            raise ManifestNotFoundError(f"Manifest file not found: {self.manifest_path}")
         except yaml.YAMLError as e:
-            raise DeployManagerError(f"Error parsing YAML manifest: {e}")
+            raise ParserError(f"Error parsing YAML manifest: {e}")
 
         # Validate top-level fields
         if "schedule" not in data:
-            raise DeployManagerError("Manifest missing required field: 'schedule'")
+            raise ParserError("Manifest missing required field: 'schedule'")
 
         schedule_data = data["schedule"]
         tasks_data = schedule_data.get("tasks", [])
@@ -39,19 +37,22 @@ class ManifestParser:
         for t in tasks_data:
             try:
                 task = Task(
-                    name=t["name"],
+                    id=int(t["id"]),
+                    image=t["image"],
+                    start=int(t["start"]),
+                    deadline=int(t["deadline"]),
+                    cpu_affinity=int(t["cpu_affinity"]),
                     policy=t["policy"].lower(),
                     priority=int(t["priority"]),
-
                     inputs=t.get("inputs", {}),
-
+                    outputs=t.get("outputs",{})
                 )
             except KeyError as e:
-                raise DeployManagerError(f"Task missing required field: {e}")
+                raise ParserError(f"Task missing required field: {e}")
 
             # Validate policy
             if task.policy not in self.VALID_POLICIES:
-                raise DeployManagerError(f"Invalid policy '{task.policy}' in task {task.id}")
+                raise ParserError(f"Invalid policy '{task.policy}' in task {task.id}")
 
             tasks.append(task)
 
@@ -60,8 +61,9 @@ class ManifestParser:
             name=schedule_data.get("name", "unnamed"),
             version=schedule_data.get("version", "0.0.0"),
             description=schedule_data.get("description", ""),
+            iterations=int(schedule_data.get("iterations", "-1")),
             tasks=tasks
         )
 
-        logger.info(f"Parsed schedule '{schedule.name}' with {len(tasks)} tasks.")
+
         return schedule
