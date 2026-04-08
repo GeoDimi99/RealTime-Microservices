@@ -46,4 +46,8 @@ target_link_libraries(execution-manager
 )
 
 # Apply additional compiler definitions from PkgConfig (if any)
-add_definitions(${GLIB2_CFLAGS_OTHER} ${GIO_CFLAGS_OTHER})
+target_compile_options(execution-manager PRIVATE 
+    ${GLIB2_CFLAGS_OTHER} 
+    ${GIO_CFLAGS_OTHER}
+    ${HIREDIS_CFLAGS_OTHER}
+)

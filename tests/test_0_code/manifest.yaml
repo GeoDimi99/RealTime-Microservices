@@ -16,82 +16,82 @@ images:
 schedule:
   name: "Configurable CPU/IO Benchmark"
   description: "Benchmark with configurable CPU/IO ratio using total_ops and io_percentage parameters"
-  iterations: 5
+  iterations: 1
   
   tasks:
     # Pure CPU workload
     - id: 1
       image: "stress_task_1"
-      start: 10
-      deadline: 30
-      cpu_affinity: 5
+      start: 1000
+      deadline: 30000
+      cpu_affinity: 1
       policy: "fifo"
-      priority: 50
+      priority: 10
       depends_on: []
       inputs:
         total_ops:
           type: int
-          value: 800
+          value: 80
         io_percentage:
           type: int
-          value: 50      
+          value: 10      
       outputs:
         result:
           type: int
 
     - id: 2
       image: "stress_task_2"
-      start: 10
-      deadline: 30
-      cpu_affinity: 5
+      start: 1000
+      deadline: 30000
+      cpu_affinity: 1
       policy: "fifo"
-      priority: 50
+      priority: 10
       depends_on: []
       inputs:
         total_ops:
           type: int
-          value: 800
+          value: 80
         io_percentage:
           type: int
-          value: 50      
+          value: 10      
       outputs:
         result:
           type: int
 
     - id: 3
       image: "stress_task_3"
-      start: 10
-      deadline: 30
-      cpu_affinity: 5
+      start: 1000
+      deadline: 30000
+      cpu_affinity: 1
       policy: "fifo"
-      priority: 50
+      priority: 10
       depends_on: []
       inputs:
         total_ops:
           type: int
-          value: 800
+          value: 80
         io_percentage:
           type: int
-          value: 50      
+          value: 10      
       outputs:
         result:
           type: int
 
     - id: 4
       image: "stress_task_4"
-      start: 10
-      deadline: 30
-      cpu_affinity: 5
+      start: 1000
+      deadline: 30000
+      cpu_affinity: 1
       policy: "fifo"
-      priority: 50
+      priority: 10
       depends_on: []
       inputs:
         total_ops:
           type: int
-          value: 800
+          value: 80
         io_percentage:
           type: int
-          value: 50      
+          value: 10      
       outputs:
         result:
           type: int

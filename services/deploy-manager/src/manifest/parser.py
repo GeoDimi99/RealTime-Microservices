@@ -44,7 +44,7 @@ class ManifestParser:
                     cpu_affinity=int(t["cpu_affinity"]),
                     policy=t["policy"].lower(),
                     priority=int(t["priority"]),
-                    inputs={k: v["value"] for k, v in t.get("inputs", {}).items()},
+                    inputs=[{k: v["value"] for k, v in t.get("inputs", {}).items()}],
                     outputs= {k: v["type"] for k, v in t.get("outputs", {}).items()} #t.get("outputs",{})
                 )
             except KeyError as e:

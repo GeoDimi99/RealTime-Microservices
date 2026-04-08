@@ -12,5 +12,5 @@ class Task:
     policy: str
     priority: int
     depends_on: List[str] = field(default_factory=list)
-    inputs: Dict[str, Any] = field(default_factory=dict)
+    inputs: List[Dict[str, Any]] = field(default_factory=list)
     outputs: Dict[str, Any] = field(default_factory=dict)

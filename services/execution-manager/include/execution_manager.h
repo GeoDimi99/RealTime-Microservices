@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <mqueue.h>
+#include <hiredis/hiredis.h> 
 
 #include <time.h> // For measure the performance 
 
@@ -23,8 +24,10 @@ extern gint iteration;
 
 /* Execution Manager Stucture */
 typedef struct execution_manager_t{
-    GString *em_name;       // Execution Manager Name (Debug)
-    mqd_t em_queue;         // Execution Manager Queue (Receive)
+    GString *em_name;               // Execution Manager Name (Debug)
+    mqd_t em_queue;                 // Execution Manager Queue (Receive)
+    redisContext* redis_client;     // Redis Client (for Schedule)
+
 } execution_manager_t;
 
 
@@ -62,6 +65,8 @@ void em_free(execution_manager_t *em);
 
 /* Exection Manager Activities*/
 void em_run_schedule(execution_manager_t *em, schedule_t *sched);
+void em_wait_for_schedule(execution_manager_t *em);
+schedule_t * em_read_schedule(execution_manager_t *em);
 
 
 

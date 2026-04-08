@@ -35,6 +35,9 @@ int main(int argc, char *argv[]) {
     }
     
     schedule_t *sched = NULL; // Init to NULL
+
+    /* Wait for new schedule */
+    em_wait_for_schedule(em);
     gboolean is_set_new_schedule = TRUE;
 
 
@@ -46,7 +49,7 @@ int main(int argc, char *argv[]) {
 
     /* -------------- Main Loop Execution -------------- */
     //while (keep_running) {
-    int num_iter = 100; // for test
+    int num_iter = 5; // for test
     for(int i=0; i < num_iter && keep_running; i++){     // For test
         iteration = i;
         
@@ -60,20 +63,22 @@ int main(int argc, char *argv[]) {
                 schedule_free(sched);
                 sched = NULL;   // Avoid double-free at exit 
             }
+
+            sched = em_read_schedule(em);
         
             /* Create a schedule */
-            gchar *schedule_name = "schedule";
-            sched = schedule_new(schedule_name, "0.0.1");
-            if (!sched) {
-                g_error("[ERROR] Execution Manager (%s) : scheduler creation failed.", schedule_name);
-            }
+            // gchar *schedule_name = "schedule";
+            // sched = schedule_new(schedule_name, "0.0.1");
+            // if (!sched) {
+            //     g_error("[ERROR] Execution Manager (%s) : scheduler creation failed.", schedule_name);
+            // }
 
-            /* Test 1: Single Task - Num operation 4 , IO Burst: 0% */
-            //schedule_add_task(sched, 1, "stress_task", SCHED_FIFO, 10, 1, 1, NULL, 1000, 2000, "[{\"total_ops\":4, \"io_percentage\":0}]");
-            schedule_add_task(sched, 1, "stress_task_1", SCHED_FIFO, 10, 1, 1, NULL, 1000, 20000, "[{\"total_ops\":50, \"io_percentage\":0}]");
-            schedule_add_task(sched, 2, "stress_task_2", SCHED_FIFO, 10, 1, 1, NULL, 1000, 20000, "[{\"total_ops\":50, \"io_percentage\":0}]");
-            schedule_add_task(sched, 3, "stress_task_3", SCHED_FIFO, 10, 1, 1, NULL, 1000, 20000, "[{\"total_ops\":50, \"io_percentage\":0}]");
-            schedule_add_task(sched, 4, "stress_task_4", SCHED_FIFO, 10, 1, 1, NULL, 1000, 20000, "[{\"total_ops\":50, \"io_percentage\":0}]");
+            // /* Test 1: Single Task - Num operation 4 , IO Burst: 0% */
+            // //schedule_add_task(sched, 1, "stress_task", SCHED_FIFO, 10, 1, 1, NULL, 1000, 2000, "[{\"total_ops\":4, \"io_percentage\":0}]");
+            // schedule_add_task(sched, 1, "stress_task_1", SCHED_FIFO, 10, 1, 1, NULL, 1000, 20000, "[{\"total_ops\":50, \"io_percentage\":0}]");
+            // schedule_add_task(sched, 2, "stress_task_2", SCHED_FIFO, 10, 1, 1, NULL, 1000, 20000, "[{\"total_ops\":50, \"io_percentage\":0}]");
+            // schedule_add_task(sched, 3, "stress_task_3", SCHED_FIFO, 10, 1, 1, NULL, 1000, 20000, "[{\"total_ops\":50, \"io_percentage\":0}]");
+            // schedule_add_task(sched, 4, "stress_task_4", SCHED_FIFO, 10, 1, 1, NULL, 1000, 20000, "[{\"total_ops\":50, \"io_percentage\":0}]");
             
 
             /* Test 1: Single Task - Num operation 4 , IO Burst: 25% */
