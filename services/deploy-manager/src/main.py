@@ -15,8 +15,6 @@ def main():
     mission_path = Path("/tmp")
     # mission_path = Path("/home/vboxuser/projects/RT-microservices-choreography-pe/tests/test_0_code")
 
-    
-
     # Parse manifest phase 
     parser = ManifestParser(str(mission_path / "manifest.yaml"))
     try:
@@ -26,9 +24,6 @@ def main():
         print(f"Deploy Manager failed: {e}")
         sys.exit(1)
 
-
-    
-    #redis_loader = RedisLoader(host="redis", port=6379)  # NEW
 
     # Container Running phase
     docker_runner = DockerContainerRunner()
@@ -43,13 +38,6 @@ def main():
                 image_tag=task.image,
                 container_name=container_name,
             )
-        
-        # # Load schedule and tasks into Redis
-        # redis_loader.load_schedule(schedule)
-        # redis_loader.debug_print()  # REMOVE AFTER DEBUGGING
-        # logger.info("Schedule data loaded into Redis successfully.")
-        
-
     except ContainerRunnerError as e:
         print(f"Deploy Manager failed: {e}")
         sys.exit(1)
@@ -60,7 +48,6 @@ def main():
     try:
         redis_loader.load_schedule(schedule)
         redis_loader.debug_print()  # REMOVE AFTER DEBUGGING
-        pass
     except RedisLoaderError as e:
         print(f"Deploy Manager failed: {e}")
         sys.exit(1)
