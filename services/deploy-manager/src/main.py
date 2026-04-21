@@ -13,12 +13,13 @@ def main():
 
     # Init phase 
     mission_path = Path("/tmp")
-    # mission_path = Path("/home/vboxuser/projects/RT-microservices-choreography-pe/tests/test_0_code")
+    # mission_path = Path("/home/vboxuser/projects/RT-microservices-choreography/tests/test_0_code")
 
     # Parse manifest phase 
     parser = ManifestParser(str(mission_path / "manifest.yaml"))
     try:
         schedule = parser.parse()
+        print(schedule)
         pass
     except ParserError as e:
         print(f"Deploy Manager failed: {e}")

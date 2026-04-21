@@ -1,18 +1,23 @@
 #ifndef EXECUTION_MANAGER_H
 #define EXECUTION_MANAGER_H
 
+#define _GNU_SOURCE
 #include <glib.h>
+#include <json-glib/json-glib.h>
 #include <stdio.h>
 #include <errno.h>
+#include <pthread.h>
+#include <sched.h>
 #include <mqueue.h>
 #include <hiredis/hiredis.h> 
 
-#include <time.h> // For measure the performance 
+
+#include <time.h>  // For performance measuring
+
 
 #include "schedule.h"
 #include "execution_manager.h"
 #include "task_ipc.h"
-
 
 
 
@@ -24,36 +29,39 @@ extern gint iteration;
 
 /* Execution Manager Stucture */
 typedef struct execution_manager_t{
-    GString *em_name;               // Execution Manager Name (Debug)
+    GString *em_name;               // Execution Manager Name
     mqd_t em_queue;                 // Execution Manager Queue (Receive)
     redisContext* redis_client;     // Redis Client (for Schedule)
-
 } execution_manager_t;
 
 
 
 typedef struct {
-    gpointer data;      // GSList di activation_data_t
-    gint64 timestamp;   // For logging (Debug)
+    gpointer data;      // GList of activation_data_t
+    gint64 timestamp;   
+    schedule_t *sched;
 } start_context_t;
 
 typedef struct {
-    gpointer data;       // GSList of expiration_data_t
-    GMainLoop *loop;     // Reference for end the loop
-    gboolean is_last;    // Flag that indicate the last event of the loop
-    gint64 timestamp;    // For logging (Debug)
-    schedule_t *sched;   // Reference to the schedule
+    gpointer data;       // GSList of expiration_data_t 
+    GMainLoop *loop;     // Reference to end the process 
+    gboolean is_last;    // Flag that indicat if is the last event 
+    gint64 timestamp;    
+    schedule_t *sched;
 } deadline_context_t;
 
-typedef struct {
-    execution_manager_t *em;    //
-    schedule_t *sched;          //
-} result_context_t;
 
 typedef struct {
-    schedule_t *sched;
-    GMainLoop *loop;
-} completion_context_t;
+    guint16 task_id;            // Task ID 
+    gpointer data;              // Task input
+    GThreadFunc thread_func;    // Task function
+    /* Timestamps for measures the performance */
+    glong start_time_request;
+    //glong end_time_request;
+    //glong start_time_result; 
+    /*-----------------------------------------*/
+    schedule_t *sched;          // Reference to the schedule for store the result
+} task_wrapper_input_t; 
 
 
 
@@ -68,13 +76,11 @@ void em_run_schedule(execution_manager_t *em, schedule_t *sched);
 void em_wait_for_schedule(execution_manager_t *em);
 schedule_t * em_read_schedule(execution_manager_t *em);
 
-
+/* Exectuion Manager Usefull Functions  */
+void* task_wrapper_func(void* data);
 
 /* Execution Manager Event Handlers */
 gboolean handle_initialization(gpointer user_data);
 gboolean handle_expiration(gpointer user_data);
-gboolean handle_result_message(GIOChannel *source, GIOCondition condition, gpointer user_data);
-gboolean check_completion(gpointer user_data);
-
 
 #endif // EXECUTION_MANAGER_H
