@@ -4,6 +4,7 @@
 #include <glib.h>
 #include <sched.h>
 #include <pthread.h>        // Mutex manager
+#include <mqueue.h>         // Queue
 
 /* --- Utils Structures --- */
 
@@ -39,8 +40,10 @@ typedef struct {
 typedef struct {
     GString *schedule_name;
     GString *schedule_version;
-    GString *schedule_leader; 
+    GString *schedule_leader;       
+    mqd_t schedule_leader_queue;    // Leader queue (for sync)
     GList *schedule_images; 
+    GList *schedule_images_queues;  // All images queue
     GQueue *schedule_start_info;
     GQueue *schedule_end_info;
     GHashTable *schedule_results;   // Map: Task ID (guint16) -> task_result_t* 

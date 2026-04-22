@@ -82,8 +82,46 @@ schedule_t* schedule_new(const gchar *name, const gchar *version, const gchar *l
     sched->schedule_version = g_string_new(version ? version : "0.0.0");
     sched->schedule_leader = g_string_new(leader);
 
-    /* Images list allocation */
+    /* Images list allocation and queue creation*/
     sched->schedule_images = images;
+
+    sched->schedule_leader_queue = (mqd_t)-1;
+    sched->schedule_images_queues = NULL;
+
+    /* Iterate through all images to open their queues */
+    for (GList *l = images; l != NULL; l = l->next) {
+        GString *gs = (GString *)l->data; 
+        const gchar *img_name = gs->str;
+        gchar *q_name = g_strdup_printf("/%s_q", img_name);
+        mqd_t qd = (mqd_t)-1;
+
+        // Polling loop for the worker queue
+        while (TRUE) {
+            qd = mq_open(q_name, O_WRONLY | O_NONBLOCK);
+            if (qd != (mqd_t)-1) break;
+
+            if (errno == ENOENT) {
+                g_print("[INFO] Waiting for queue '%s'...\n", q_name);
+                g_usleep(500000);
+            } else {
+                g_printerr("[ERROR] mq_open failed for %s: %s\n", q_name, g_strerror(errno));
+                break;
+            }
+        }
+
+        // Store in the general workers list
+        sched->schedule_images_queues = g_list_append(sched->schedule_images_queues, GINT_TO_POINTER(qd));
+
+        /* * SPECIAL CASE: If this image is the leader, 
+         * save the descriptor in the specific leader field as well.
+         */
+        if (leader && g_strcmp0(img_name, leader) == 0) {
+            sched->schedule_leader_queue = qd;
+            g_print("[DEBUG] Assigned queue %d as the Leader queue (%s)\n", (int)qd, leader);
+        }
+
+        g_free(q_name);
+    }
 
     /* Timeline Start/End Queue Initialization */
     sched->schedule_start_info = g_queue_new();
@@ -105,6 +143,20 @@ schedule_t* schedule_new(const gchar *name, const gchar *version, const gchar *l
 
 void schedule_free(schedule_t *sched) {
     if (!sched) return;
+
+    /* Destroy Queues */
+    if (sched->schedule_images_queues) {
+        for (GList *l = sched->schedule_images_queues; l != NULL; l = l->next) {
+            mqd_t qd = (mqd_t)GPOINTER_TO_INT(l->data);
+            if (qd != (mqd_t)-1) {
+                mq_close(qd);
+            }
+        }
+        g_list_free(sched->schedule_images_queues);
+        sched->schedule_images_queues = NULL;
+    }
+    sched->schedule_leader_queue = (mqd_t)-1;
+
     /* Destroy Mutex */
     pthread_mutex_destroy(&sched->schedule_results_mutex);
 
@@ -180,6 +232,7 @@ void schedule_add_task(schedule_t *sched,
 
     g_return_if_fail(sched != NULL && name != NULL);
     g_return_if_fail(start_time >= 0 && start_time < end_time);
+
 
 
     /* 2. Create Activation Data */

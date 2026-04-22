@@ -104,9 +104,72 @@ void em_run_schedule(execution_manager_t *em, schedule_t *sched) {
     g_return_if_fail(em != NULL);
     g_return_if_fail(sched != NULL);
 
+    ipc_msg_t msg;
+    gint64 time_zero_us;
 
+    if (em->is_leader) {
+        /* --- LEADER LOGIC: Wait for all workers --- */
+        g_print("[SYNC] Leader: Waiting for %d images to be READY...\n", 
+                g_list_length(sched->schedule_images_queues));
+
+        guint ready_count = 0;
+        guint target_count = g_list_length(sched->schedule_images_queues);
+
+        while (ready_count < target_count) {
+            // Receive from EM's own queue (Workers send to Leader's queue)
+            if (mq_receive(em->em_queue, (char*)&msg, sizeof(msg), NULL) != -1) {
+                if (msg.type == MSG_TASK_READY) {
+                    ready_count++;
+                    g_print("[SYNC] Leader: Worker %d/%d is ready.\n", ready_count, target_count);
+                }
+            }
+            g_usleep(1000); // Prevent CPU pegging
+        }
+
+        /* All ready! Set T-Zero to (Now + 500ms) to account for network/latency */
+        time_zero_us = g_get_monotonic_time() + 500000; 
+
+        /* Broadcast T-Zero to all workers */
+        msg.type = MSG_TASK_SYNC;
+        msg.data.sync_time_us = time_zero_us;
+
+        for (GList *l = sched->schedule_images_queues; l != NULL; l = l->next) {
+            mqd_t target_qd = (mqd_t)GPOINTER_TO_INT(l->data);
+
+            // Using PRIO_SYNC (20) to jump ahead of any pending task results
+            if (mq_send(target_qd, (const char*)&msg, sizeof(msg), PRIO_SYNC) == -1) {
+                g_printerr("[ERROR] Failed to send SYNC to worker: %s\n", g_strerror(errno));
+            }
+        }
+        g_print("[SYNC] Leader: Barrier released. Sync time sent.\n");
+
+    } else {
+        /* --- WORKER LOGIC: Signal ready and wait --- */
+        msg.type = MSG_TASK_READY;
+        msg.task_id = 0; // Identifies the container
+        
+        g_print("[SYNC] Worker: Signaling READY to leader...\n");
+        /* Signaling READY with high priority */
+        mq_send(sched->schedule_leader_queue, (const char*)&msg, sizeof(msg), PRIO_SYNC);
+
+        /* Wait for the Leader to send the start timestamp */
+        g_print("[SYNC] Worker: Waiting for SYNC signal from leader...\n");
+        
+        while (TRUE) {
+            if (mq_receive(em->em_queue, (char*)&msg, sizeof(msg), NULL) != -1) {
+                if (msg.type == MSG_TASK_SYNC) {
+                    time_zero_us = msg.data.sync_time_us;
+                    break;
+                }
+            }
+            g_usleep(1000);
+        }
+        g_print("[SYNC] Worker: Received sync time. Starting timers...\n");
+    }
+    g_print("[SYNC] Final Synchronization Complete. T-Zero (Monotonic): %ld us\n", (long)time_zero_us);
+    return;
+    /* --- THE REST OF YOUR FUNCTION (Unchanged timers logic) --- */
     GMainLoop *loop = g_main_loop_new(NULL, FALSE);
-    gint64 time_zero_us = g_get_monotonic_time();
 
     
 
@@ -199,6 +262,27 @@ schedule_t* em_read_schedule(execution_manager_t *em) {
     JsonArray *images_array = json_node_get_array(json_parser_get_root(parser));
     GList* images_list = json_array_to_gstring_list(images_array);
 
+    GList *l, *next;
+
+    for (l = images_list; l != NULL; l = next) {
+        next = l->next; // Always capture next at the start of the loop
+        GString *gs = (GString *)l->data;
+
+        if (g_strcmp0(em->em_name->str, gs->str) == 0) {
+            // Unlink the current node from the list
+            images_list = g_list_remove_link(images_list, l);
+            
+            // Free the data (GString)
+            g_string_free(gs, TRUE);
+            
+            // Free the specific list node structure
+            g_list_free_1(l);
+
+            break;
+        }
+    }
+    
+
     if (!name || !version || !leader || !images_json) {
         freeReplyObject(r);
         return NULL;
@@ -206,7 +290,7 @@ schedule_t* em_read_schedule(execution_manager_t *em) {
 
     // Set Leader Flag
     em_set_leader(em, g_strcmp0(em->em_name->str, leader) == 0);
-    g_print("[DEBUG] Execution Manager: is_leader %s\n", (g_strcmp0(em->em_name->str, leader) == 0) ? "TRUE" : "FALSE");
+    //g_print("[DEBUG] Execution Manager: is_leader %s\n", (g_strcmp0(em->em_name->str, leader) == 0) ? "TRUE" : "FALSE");
 
     // Create the schedule
     schedule_t *sched = schedule_new(name, version, leader, images_list, duration_str ? g_ascii_strtoll(duration_str, NULL, 10) : 0);

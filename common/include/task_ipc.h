@@ -5,11 +5,16 @@
 #include <glib.h>
 #include "task.h"
 
+#define PRIO_NORMAL 0
+#define PRIO_HIGH   10
+#define PRIO_SYNC   20  /* Highest priority for synchronization */
+
 /* Max Queue names */
 #define MAX_QUEUE_NAME   64
 
 #define MAX_TASK_JSON_IN  1024
 #define MAX_TASK_JSON_OUT 1024
+
 
 
 /* Queue names */
@@ -51,6 +56,7 @@ typedef struct {
     union {
         task_request_t task_request;                /* Payload for TASK_REQUEST */
         task_outcome_t result[MAX_TASK_JSON_OUT];    /* Payload for TASK_RESULT */
+        gint64 sync_time_us;
     } data;
 } ipc_msg_t;
 

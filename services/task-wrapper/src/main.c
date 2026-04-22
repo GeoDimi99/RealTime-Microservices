@@ -82,8 +82,8 @@ int main(int argc, char *argv[]) {
         }
 
         /* Run the schedule */
-        //g_print("\n[INFO] Execution Manager: Start iteration %d, progress percentage %d %% \n",i, (i*100)/25);
-        //em_run_schedule(em, sched);
+        g_print("\n[INFO] Execution Manager: Start iteration %d, progress percentage %d %% \n",i, (i*100)/25);
+        em_run_schedule(em, sched);
         
 
         //if (keep_running) {
