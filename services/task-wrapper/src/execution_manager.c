@@ -2,6 +2,46 @@
 
 gint iteration = 0; 
 
+/* ----------------- Execution Manager Helper Functions ----------------- */
+const char* redis_get_hash_value(redisReply *r, const char *key) {
+    for (size_t i = 0; i < r->elements; i += 2) {
+        if (strcmp(r->element[i]->str, key) == 0) {
+            return r->element[i+1]->str;
+        }
+    }
+    return NULL;
+}
+
+GList* json_array_to_gstring_list(JsonArray *array) {
+    if (!array) return NULL;
+
+    GList *list = NULL;
+    guint length = json_array_get_length(array);
+
+    for (guint i = 0; i < length; i++) {
+        const char *value = json_array_get_string_element(array, i);
+        
+        // Create a new GString object for each element
+        GString *gs = g_string_new(value);
+        
+        // Append the GString pointer to the GList
+        list = g_list_append(list, gs);
+    }
+
+    return list;
+}
+
+static void print_performance_metrics(guint16 task_id, glong start_req, glong end_req, glong start_res, glong end_res) {
+    double q_em_tw = (end_req - start_req) / 1e6;
+    double t_in_tw  = (start_res - end_req) / 1e6;
+    double q_tw_em = (end_res - start_res) / 1e6;
+    double total   = (end_res - start_req) / 1e6;
+
+    g_print("PERF_LOG:%d,%u,%ld,%ld,%ld,%ld,%.3f,%.3f,%.3f,%.3f\n",iteration,
+            task_id, start_req, end_req, start_res, end_res, 
+            q_em_tw, t_in_tw, q_tw_em, total);
+}
+
 
 /* ----------------- Executor Manager Constructor/Distructors ----------------- */
 execution_manager_t* em_new(const gchar *name){
@@ -49,7 +89,16 @@ void em_free(execution_manager_t *em){
 
     g_free(em);
 }
+/* ----------------- Executor Manager Getters/Setters ----------------- */
+void em_set_leader(execution_manager_t *em, gboolean leader_flag){
+    g_return_if_fail(em != NULL);
 
+    em->is_leader = leader_flag;
+    return; 
+}
+
+
+/* ----------------- Executor Manager Activities ----------------- */
 
 void em_run_schedule(execution_manager_t *em, schedule_t *sched) {
     g_return_if_fail(em != NULL);
@@ -123,15 +172,7 @@ void em_wait_for_schedule(execution_manager_t *em) {
     }
 }
 
-/* Helper function to extract values from HGETALL reply (standard in your project) */
-const char* redis_get_hash_value(redisReply *r, const char *key) {
-    for (size_t i = 0; i < r->elements; i += 2) {
-        if (strcmp(r->element[i]->str, key) == 0) {
-            return r->element[i+1]->str;
-        }
-    }
-    return NULL;
-}
+
 
 schedule_t* em_read_schedule(execution_manager_t *em) {
     // 1. Fetch the entire flat hash from Redis
@@ -143,92 +184,94 @@ schedule_t* em_read_schedule(execution_manager_t *em) {
 
     const char *name = redis_get_hash_value(r, "schedule:name");
     const char *version = redis_get_hash_value(r, "schedule:version");
+    const char *leader = redis_get_hash_value(r, "schedule:leader");
     const char *duration_str = redis_get_hash_value(r, "schedule:duration");
     const char *images_json = redis_get_hash_value(r, "schedule:images");
-
-    if (!name || !version || !images_json) {
-        freeReplyObject(r);
-        return NULL;
-    }
-
-    schedule_t *sched = schedule_new(name, version);
-    sched->schedule_duration = duration_str ? g_ascii_strtoll(duration_str, NULL, 10) : 0;
 
     // 2. Parse the list of image names
     JsonParser *parser = json_parser_new();
     if (!json_parser_load_from_data(parser, images_json, -1, NULL)) {
         g_warning("Failed to parse images JSON");
         freeReplyObject(r);
-        return sched; 
+        return NULL; 
     }
 
     JsonArray *images_array = json_node_get_array(json_parser_get_root(parser));
-    guint img_count = json_array_get_length(images_array);
+    GList* images_list = json_array_to_gstring_list(images_array);
 
-    /* ---------- Tasks Loading Loop ---------- */
-    for (guint i = 0; i < img_count; i++) {
-        const char *img_name = json_array_get_string_element(images_array, i);
-        
-        char len_key[128];
-        snprintf(len_key, sizeof(len_key), "schedule:%s:length", img_name);
-        const char *img_task_count_str = redis_get_hash_value(r, len_key);
-        int img_task_count = img_task_count_str ? atoi(img_task_count_str) : 0;
+    if (!name || !version || !leader || !images_json) {
+        freeReplyObject(r);
+        return NULL;
+    }
 
-        for (int j = 0; j < img_task_count; j++) {
-            char task_key[128];
-            snprintf(task_key, sizeof(task_key), "schedule:%s:%d", img_name, j);
-            const char *task_json = redis_get_hash_value(r, task_key);
+    // Set Leader Flag
+    em_set_leader(em, g_strcmp0(em->em_name->str, leader) == 0);
+    g_print("[DEBUG] Execution Manager: is_leader %s\n", (g_strcmp0(em->em_name->str, leader) == 0) ? "TRUE" : "FALSE");
 
-            if (task_json) {
-                JsonParser *t_parser = json_parser_new();
-                if (json_parser_load_from_data(t_parser, task_json, -1, NULL)) {
-                    JsonObject *t_obj = json_node_get_object(json_parser_get_root(t_parser));
+    // Create the schedule
+    schedule_t *sched = schedule_new(name, version, leader, images_list, duration_str ? g_ascii_strtoll(duration_str, NULL, 10) : 0);
 
-                    // --- FIELD MAPPING LOGIC ---
+    // Task Loading into the schedule
+    gchar *img_name = em->em_name->str;
+    char len_key[128];
+    snprintf(len_key, sizeof(len_key), "schedule:%s:length", img_name);
+    const char *img_task_count_str = redis_get_hash_value(r, len_key);
+    int img_task_count = img_task_count_str ? atoi(img_task_count_str) : 0;
 
-                    // A. Numeric fields (Direct)
-                    guint16 t_id = (guint16)json_object_get_int_member(t_obj, "id");
-                    gint64 start_time = json_object_get_int_member(t_obj, "start");
-                    gint64 end_time = json_object_get_int_member(t_obj, "deadline");
+    for (int j = 0; j < img_task_count; j++) {
+        char task_key[128];
+        snprintf(task_key, sizeof(task_key), "schedule:%s:%d", img_name, j);
+        const char *task_json = redis_get_hash_value(r, task_key);
 
-                    // B. Stringified Numeric fields ("1", "10") -> Use atoi()
-                    const char *cpu_str = json_object_get_string_member(t_obj, "cpu_affinity");
-                    const char *prio_str = json_object_get_string_member(t_obj, "priority");
-                    
-                    gint cpu = cpu_str ? atoi(cpu_str) : 0;
-                    gint8 priority = prio_str ? (gint8)atoi(prio_str) : 0;
+        if (task_json) {
+            JsonParser *t_parser = json_parser_new();
+            if (json_parser_load_from_data(t_parser, task_json, -1, NULL)) {
+                JsonObject *t_obj = json_node_get_object(json_parser_get_root(t_parser));
 
-                    // C. Policy String ("fifo", "rr") -> Map to C constants
-                    const char *policy_name = json_object_get_string_member(t_obj, "policy");
-                    gint policy = SCHED_OTHER; // Default to 0
-                    if (policy_name != NULL) {
-                        if (g_ascii_strcasecmp(policy_name, "fifo") == 0) {
-                            policy = SCHED_FIFO;
-                        } else if (g_ascii_strcasecmp(policy_name, "rr") == 0) {
-                            policy = SCHED_RR;
-                        }
+                // --- FIELD MAPPING LOGIC ---
+
+                // A. Numeric fields (Direct)
+                guint16 t_id = (guint16)json_object_get_int_member(t_obj, "id");
+                gint64 start_time = json_object_get_int_member(t_obj, "start");
+                gint64 end_time = json_object_get_int_member(t_obj, "deadline");
+
+                // B. Stringified Numeric fields ("1", "10") -> Use atoi()
+                const char *cpu_str = json_object_get_string_member(t_obj, "cpu_affinity");
+                const char *prio_str = json_object_get_string_member(t_obj, "priority");
+                
+                gint cpu = cpu_str ? atoi(cpu_str) : 0;
+                gint8 priority = prio_str ? (gint8)atoi(prio_str) : 0;
+
+                // C. Policy String ("fifo", "rr") -> Map to C constants
+                const char *policy_name = json_object_get_string_member(t_obj, "policy");
+                gint policy = SCHED_OTHER; // Default to 0
+                if (policy_name != NULL) {
+                    if (g_ascii_strcasecmp(policy_name, "fifo") == 0) {
+                        policy = SCHED_FIFO;
+                    } else if (g_ascii_strcasecmp(policy_name, "rr") == 0) {
+                        policy = SCHED_RR;
                     }
-
-                    // D. Inputs (Read as string to prevent JSON nested-node errors)
-                    const char *t_input = json_object_get_string_member(t_obj, "inputs");
-
-                    schedule_add_task(
-                        sched,
-                        t_id,
-                        img_name,
-                        NULL, 
-                        policy,
-                        priority,
-                        cpu,
-                        1, 
-                        NULL, 
-                        start_time,
-                        end_time,
-                        g_strdup(t_input ? t_input : "{}")
-                    );
                 }
-                g_object_unref(t_parser);
+
+                // D. Inputs (Read as string to prevent JSON nested-node errors)
+                const char *t_input = json_object_get_string_member(t_obj, "inputs");
+
+                schedule_add_task(
+                    sched,
+                    t_id,
+                    img_name,
+                    NULL, 
+                    policy,
+                    priority,
+                    cpu,
+                    1, 
+                    NULL, 
+                    start_time,
+                    end_time,
+                    g_strdup(t_input ? t_input : "{}")
+                );
             }
+            g_object_unref(t_parser);
         }
     }
 
@@ -238,17 +281,7 @@ schedule_t* em_read_schedule(execution_manager_t *em) {
 }
 
 
-/* Function for print and compute the performance */
-static void print_performance_metrics(guint16 task_id, glong start_req, glong end_req, glong start_res, glong end_res) {
-    double q_em_tw = (end_req - start_req) / 1e6;
-    double t_in_tw  = (start_res - end_req) / 1e6;
-    double q_tw_em = (end_res - start_res) / 1e6;
-    double total   = (end_res - start_req) / 1e6;
-
-    g_print("PERF_LOG:%d,%u,%ld,%ld,%ld,%ld,%.3f,%.3f,%.3f,%.3f\n",iteration,
-            task_id, start_req, end_req, start_res, end_res, 
-            q_em_tw, t_in_tw, q_tw_em, total);
-}
+/* ----------------- Executor Manager Usefull Functions ----------------- */
 
 void* task_wrapper_func(void* data){
     
@@ -297,7 +330,7 @@ void* task_wrapper_func(void* data){
 
 }
 
-
+/* ----------------- Executor Manager Event Handlers ----------------- */
 
 gboolean handle_initialization(gpointer user_data) {
     start_context_t *ctx = (start_context_t *)user_data;

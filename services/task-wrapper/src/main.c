@@ -51,8 +51,7 @@ int main(int argc, char *argv[]) {
     
     schedule_t *sched = NULL; // Init to NULL
 
-    g_print("=== Execution Manager Initialized ===\n");
-    g_print("Click Ctrl+C for a clean exit.\n\n");
+    g_print("[INFO] Execution Manager: Initialized (Click Ctrl+C for a clean exit)\n");
 
     /* Control for new schedule */
     em_wait_for_schedule(em);

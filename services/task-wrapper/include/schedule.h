@@ -39,6 +39,8 @@ typedef struct {
 typedef struct {
     GString *schedule_name;
     GString *schedule_version;
+    GString *schedule_leader; 
+    GList *schedule_images; 
     GQueue *schedule_start_info;
     GQueue *schedule_end_info;
     GHashTable *schedule_results;   // Map: Task ID (guint16) -> task_result_t* 
@@ -48,7 +50,7 @@ typedef struct {
 
 
 /* Schedule Constructor/Destructor */
-schedule_t* schedule_new(const gchar *name, const gchar *version);
+schedule_t* schedule_new(const gchar *name, const gchar *version, const gchar *leader, GList* images, gint64 duration);
 void schedule_free(schedule_t *sched);
 
 /* Schedule Getters/Setters */

@@ -22,6 +22,8 @@
 typedef enum {
     MSG_TASK_REQUEST = 0,
     MSG_TASK_RESULT,
+    MSG_TASK_READY,
+    MSG_TASK_SYNC,
     MSG_TASK_ABORT
 } msg_type_t;
 

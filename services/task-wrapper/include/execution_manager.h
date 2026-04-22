@@ -30,6 +30,7 @@ extern gint iteration;
 /* Execution Manager Stucture */
 typedef struct execution_manager_t{
     GString *em_name;               // Execution Manager Name
+    gboolean is_leader;
     mqd_t em_queue;                 // Execution Manager Queue (Receive)
     redisContext* redis_client;     // Redis Client (for Schedule)
 } execution_manager_t;
@@ -70,8 +71,11 @@ typedef struct {
 execution_manager_t* em_new(const gchar *name);
 void em_free(execution_manager_t *em);
 
+/* Execution Manager Getters/Setters */
+void em_set_leader(execution_manager_t *em, gboolean leader_flag);
 
-/* Exection Manager Activities*/
+
+/* Execution Manager Activities*/
 void em_run_schedule(execution_manager_t *em, schedule_t *sched);
 void em_wait_for_schedule(execution_manager_t *em);
 schedule_t * em_read_schedule(execution_manager_t *em);

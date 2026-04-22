@@ -72,7 +72,7 @@ static void task_result_free(gpointer data) {
 
 /* ----------------- Schedule Constructor/Destructor ----------------- */
 
-schedule_t* schedule_new(const gchar *name, const gchar *version) {
+schedule_t* schedule_new(const gchar *name, const gchar *version, const gchar *leader, GList* images, gint64 duration) {
     g_return_val_if_fail(name != NULL, NULL);
     g_return_val_if_fail(version == NULL || is_version_valid(version), NULL);
 
@@ -80,6 +80,10 @@ schedule_t* schedule_new(const gchar *name, const gchar *version) {
     schedule_t *sched = g_new0(schedule_t, 1);
     sched->schedule_name = g_string_new(name);
     sched->schedule_version = g_string_new(version ? version : "0.0.0");
+    sched->schedule_leader = g_string_new(leader);
+
+    /* Images list allocation */
+    sched->schedule_images = images;
 
     /* Timeline Start/End Queue Initialization */
     sched->schedule_start_info = g_queue_new();
@@ -95,7 +99,7 @@ schedule_t* schedule_new(const gchar *name, const gchar *version) {
     /* HashTable Initialization */
     sched->schedule_results = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, task_result_free);
 
-    sched->schedule_duration = 0;
+    sched->schedule_duration = duration;
     return sched;
 }
 
@@ -107,6 +111,8 @@ void schedule_free(schedule_t *sched) {
     /* Destroy the other datas structures */
     g_string_free(sched->schedule_name, TRUE);
     g_string_free(sched->schedule_version, TRUE);
+    g_string_free(sched->schedule_leader, TRUE);
+    g_list_free_full(sched->schedule_images, g_string_free_wrapper);
     g_queue_free_full(sched->schedule_start_info, start_entry_free_wrapper);
     g_queue_free_full(sched->schedule_end_info, end_entry_free_wrapper);
     g_hash_table_destroy(sched->schedule_results);
@@ -233,8 +239,8 @@ void schedule_add_task(schedule_t *sched,
     pthread_mutex_unlock(&sched->schedule_results_mutex);   // UNLOCK MUTEX
 
     /* 7. Update schedule duration */
-    if (end_time > sched->schedule_duration)
-        sched->schedule_duration = end_time;
+    // if (end_time > sched->schedule_duration)
+    //     sched->schedule_duration = end_time;
 }
 
 void schedule_reset(schedule_t *sched) {
