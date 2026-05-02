@@ -1,0 +1,61 @@
+version: "1.0"
+
+images:
+  base: "georgi99dimi/task-wrapper:latest"
+  repo: "georgi99dimi/task-wrapper"
+  tasks:
+    - alias: "stress_task_1"
+      src: "stress_task_1"
+    - alias: "stress_task_2"
+      src: "stress_task_2"
+    - alias: "stress_task_3"
+      src: "stress_task_3"
+    - alias: "stress_task_4"
+      src: "stress_task_4"
+
+schedule:
+  name: "Configurable CPU/IO Benchmark"
+  description: "Benchmark with configurable CPU/IO ratio using total_ops and io_percentage parameters"
+  iterations: 5
+  
+  tasks:
+    # Pure CPU workload
+    - id: 1
+      image: "stress_task_1"
+      start: 1000
+      deadline: 30000
+      cpu_affinity: 1
+      policy: "fifo"
+      priority: 50
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 80
+        io_percentage:
+          type: int
+          value: 10      
+      outputs:
+        result:
+          type: int
+        total_ops:
+          type: int
+
+    - id: 2
+      image: "stress_task_2"
+      start: 4000
+      deadline: 30000
+      cpu_affinity: 1
+      policy: "fifo"
+      priority: 50
+      depends_on: []
+      inputs:
+        total_ops:
+          type: int
+          value: 80
+        io_percentage:
+          type: int
+          value: 10      
+      outputs:
+        result:
+          type: int
