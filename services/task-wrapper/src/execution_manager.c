@@ -42,6 +42,54 @@ static void print_performance_metrics(guint16 task_id, glong start_req, glong en
             q_em_tw, t_in_tw, q_tw_em, total);
 }
 
+GSList* parse_input_list(const gchar *input_data) {
+    g_return_val_if_fail(input_data != NULL, NULL);
+
+    JsonParser *parser = json_parser_new();
+    GError *error = NULL;
+
+    if (!json_parser_load_from_data(parser, input_data, -1, &error)) {
+        g_printerr("[ERROR] JSON Parser: JSON Load %s\n", error->message);
+        g_error_free(error);
+        g_object_unref(parser);
+        return NULL;
+    }
+
+    JsonNode *root = json_parser_get_root(parser);
+    if (!JSON_NODE_HOLDS_ARRAY(root)) {
+        g_printerr("[ERROR] JSON Parser: JSON root is not an array.\n");
+        g_object_unref(parser);
+        return NULL;
+    }
+
+    GSList *list = NULL;
+    JsonArray *array = json_node_get_array(root);
+    guint length = json_array_get_length(array);
+
+    for (guint i = 0; i < length; i++) {
+        JsonObject *obj = json_array_get_object_element(array, i);
+        input_t *input_elem = g_new0(input_t, 1);
+        
+        if (convert_json_to_input(obj, input_elem) == -1) {
+            g_free(input_elem);
+            g_slist_free_full(list, g_free); 
+            g_object_unref(parser);
+            return NULL;
+        }
+        
+        /* Prepending is O(1). We will reverse it at the end for O(N) total. */
+        list = g_slist_prepend(list, input_elem);
+    }
+
+    g_object_unref(parser);
+    return g_slist_reverse(list);
+}
+
+void free_input_list(GSList *list) {
+    /* Assuming input_t is a flat structure, otherwise use a custom free wrapper */
+    g_slist_free_full(list, g_free);
+}
+
 
 /* ----------------- Executor Manager Constructor/Distructors ----------------- */
 execution_manager_t* em_new(const gchar *name){
@@ -167,7 +215,7 @@ void em_run_schedule(execution_manager_t *em, schedule_t *sched) {
         g_print("[SYNC] Worker: Received sync time. Starting timers...\n");
     }
     g_print("[SYNC] Final Synchronization Complete. T-Zero (Monotonic): %ld us\n", (long)time_zero_us);
-    return;
+    //return;
     /* --- THE REST OF YOUR FUNCTION (Unchanged timers logic) --- */
     GMainLoop *loop = g_main_loop_new(NULL, FALSE);
 
@@ -338,7 +386,10 @@ schedule_t* em_read_schedule(execution_manager_t *em) {
                 }
 
                 // D. Inputs (Read as string to prevent JSON nested-node errors)
-                const char *t_input = json_object_get_string_member(t_obj, "inputs");
+                const char *json_input = json_object_get_string_member(t_obj, "inputs");
+                g_print("[DEBUG] Execution Manager (input): %s\n", json_input ? json_input : "[{}]");
+
+                GSList* t_input =  parse_input_list(g_strdup(json_input ? json_input : "[{}]"));
 
                 schedule_add_task(
                     sched,
@@ -352,7 +403,7 @@ schedule_t* em_read_schedule(execution_manager_t *em) {
                     NULL, 
                     start_time,
                     end_time,
-                    g_strdup(t_input ? t_input : "{}")
+                    t_input
                 );
             }
             g_object_unref(t_parser);
@@ -386,7 +437,7 @@ void* task_wrapper_func(void* data){
 
     g_print("[INFO] ThreadCall %u: start thread function.\n", task_id);
     /* Run the thread function */
-    gpointer res = thread_func(input);
+    gpointer res = task_main(input);
 
     /* Measure the start_time_result (for the performance) */
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -441,7 +492,7 @@ gboolean handle_initialization(gpointer user_data) {
         /* Prepare the thread (wrapper) input */
         task_wrapper_input_t* tw_input = g_new0(task_wrapper_input_t, 1);
         tw_input->task_id = task->task_id;
-        tw_input->data = task->input_data;
+        tw_input->data = task->input_data->data;
         tw_input->thread_func = task->task_exec;
         tw_input->start_time_request = start_time_request;
         tw_input->sched = sched;

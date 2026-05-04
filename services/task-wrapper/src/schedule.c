@@ -228,7 +228,7 @@ void schedule_set_result(schedule_t *sched, guint16 id, const gchar *output) {
 void schedule_add_task(schedule_t *sched, 
                 guint16 id, const gchar *name, GThreadFunc task_exec, gint policy, 
                 gint8 priority, gint cpu_affinity, guint8 repetition, GSList *depends_on, 
-                gint64 start_time, gint64 end_time, gpointer input) {
+                gint64 start_time, gint64 end_time, GSList* input) {
 
     g_return_if_fail(sched != NULL && name != NULL);
     g_return_if_fail(start_time >= 0 && start_time < end_time);

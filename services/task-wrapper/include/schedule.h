@@ -17,7 +17,7 @@ typedef struct {
     gint cpu_affinity;          // CPU Affinity
     guint8 repetition;          // Number that the task must repeate
     GSList *depends_on;         // List of Call ID 
-    gpointer input_data;        // Pointer to the input of the task
+    GSList *input_data;        // Pointer to the input of the task
 } activation_data_t;
 
 typedef struct {
@@ -61,7 +61,7 @@ GSList *schedule_get_results(schedule_t *sched, guint16 id);
 void schedule_set_result(schedule_t *sched, guint16 id, const gchar *output);
 
 /* Schedule Methods */
-void schedule_add_task(schedule_t *sched, guint16 id, const gchar *name, GThreadFunc task_exec, gint policy, gint8 priority, gint cpu_affinity, guint8 repetition, GSList *depends_on,  gint64 start_time, gint64 end_time, gpointer input);
+void schedule_add_task(schedule_t *sched, guint16 id, const gchar *name, GThreadFunc task_exec, gint policy, gint8 priority, gint cpu_affinity, guint8 repetition, GSList *depends_on,  gint64 start_time, gint64 end_time, GSList* input);
 void schedule_reset(schedule_t *sched);
 
 /* Other Methods */

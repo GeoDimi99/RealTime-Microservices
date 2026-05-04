@@ -1,14 +1,10 @@
 #include "app_task.h"
-#include <math.h>
 
 
 /* --- Internal Workload Functions --- */
 
 static void do_cpu_op() {
     double val = 10;
-    /* Set squrt as cpu */
-    
-    
     for (int i = 0; i < CPU_INTENSITY; i++) {
         sqrt(val);
         val += 1;
@@ -24,6 +20,37 @@ static void do_io_op(int fd) {
     }
 }
 
+/* --- JSON Parsing Logic --- */
+
+int convert_json_to_input(JsonObject *obj, input_t* input) {
+    g_return_val_if_fail(obj != NULL, -1);
+    g_return_val_if_fail(input != NULL, -1);
+
+    input->total_ops = json_object_has_member(obj, "total_ops") ? 
+                       json_object_get_int_member(obj, "total_ops") : 100;
+    //g_print("[DEBUG] Execution Manager (converter): %d\n", input->total_ops);
+
+    input->io_percentage = json_object_has_member(obj, "io_percentage") ? 
+                           json_object_get_int_member(obj, "io_percentage") : 0;
+
+    return 0;
+}
+
+gchar* convert_output_to_json(const output_t* output) {
+    JsonObject *obj = json_object_new();
+    json_object_set_int_member(obj, "result", output->result);
+
+    JsonNode *root = json_node_new(JSON_NODE_OBJECT);
+    json_node_set_object(root, obj);
+
+    JsonGenerator *gen = json_generator_new();
+    json_generator_set_root(gen, root);
+    gchar *res = json_generator_to_data(gen, NULL);
+
+    g_object_unref(gen);
+    json_node_free(root);
+    return res;
+}
 
 /* --- Standardized Main Task Logic --- */
 
