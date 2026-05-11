@@ -30,7 +30,7 @@ static void activation_data_free(gpointer data) {
     activation_data_t *act = (activation_data_t *)data;
     if (act) {
         g_string_free(act->task_name, TRUE);
-        g_free(act->input_data);
+        g_slist_free_full(act->input_data, free);
         g_slist_free(act->depends_on);
         g_free(act);
     }

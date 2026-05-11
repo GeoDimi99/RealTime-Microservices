@@ -39,61 +39,61 @@ schedule:
         result:
           type: int
 
-    - id: 2
-      image: "stress_task_2"
-      start: 1000
-      deadline: 30000
-      cpu_affinity: 1
-      policy: "fifo"
-      priority: 10
-      depends_on: []
-      inputs:
-        total_ops:
-          type: int
-          value: 80
-        io_percentage:
-          type: int
-          value: 10      
-      outputs:
-        result:
-          type: int
+    # - id: 2
+    #   image: "stress_task_2"
+    #   start: 1000
+    #   deadline: 30000
+    #   cpu_affinity: 1
+    #   policy: "fifo"
+    #   priority: 10
+    #   depends_on: []
+    #   inputs:
+    #     total_ops:
+    #       type: int
+    #       value: 80
+    #     io_percentage:
+    #       type: int
+    #       value: 10      
+    #   outputs:
+    #     result:
+    #       type: int
 
-    - id: 3
-      image: "stress_task_3"
-      start: 1000
-      deadline: 30000
-      cpu_affinity: 1
-      policy: "fifo"
-      priority: 10
-      depends_on: []
-      inputs:
-        total_ops:    
-          type: int
-          value: 80
-        io_percentage:
-          type: int
-          value: 10      
-      outputs:
-        result:
-          type: int
+    # - id: 3
+    #   image: "stress_task_3"
+    #   start: 1000
+    #   deadline: 30000
+    #   cpu_affinity: 1
+    #   policy: "fifo"
+    #   priority: 10
+    #   depends_on: []
+    #   inputs:
+    #     total_ops:    
+    #       type: int
+    #       value: 80
+    #     io_percentage:
+    #       type: int
+    #       value: 10      
+    #   outputs:
+    #     result:
+    #       type: int
 
-    - id: 4
-      image: "stress_task_4"
-      start: 1000
-      deadline: 30000
-      cpu_affinity: 1
-      policy: "fifo"
-      priority: 10
-      depends_on: []
-      inputs:
-        total_ops:
-          type: int
-          value: 80
-        io_percentage:
-          type: int
-          value: 10      
-      outputs:
-        result:
-          type: int
+    # - id: 4
+    #   image: "stress_task_4"
+    #   start: 1000
+    #   deadline: 30000
+    #   cpu_affinity: 1
+    #   policy: "fifo"
+    #   priority: 10
+    #   depends_on: []
+    #   inputs:
+    #     total_ops:
+    #       type: int
+    #       value: 80
+    #     io_percentage:
+    #       type: int
+    #       value: 10      
+    #   outputs:
+    #     result:
+    #       type: int
     
     
