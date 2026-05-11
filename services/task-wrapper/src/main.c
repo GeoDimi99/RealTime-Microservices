@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
     /* -------------- Main Loop Execution -------------- */
     //while (keep_running) {
 
-    for(int i=0; i < 25 && keep_running; i++){     // For test 
+    for(int i=0; i < 2 && keep_running; i++){     // For test 
         iteration = i;
         
         if (is_set_new_schedule){

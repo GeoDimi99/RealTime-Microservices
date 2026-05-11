@@ -59,33 +59,45 @@ void* task_main(void* arg) {
     input_t *input = (input_t *)arg;
     if (input == NULL) return NULL;
 
-    // 1. Thread Setup
+    // Thread Setup
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
-    // 2. Workload Distribution
+    // Workload Distribution
     int io_ops = (input->total_ops * input->io_percentage) / 100;
     int cpu_ops = input->total_ops - io_ops;
     int core = sched_getcpu();
 
-    g_print("[THREAD] Core %d | Executing: %d CPU ops, %d I/O ops\n", 
-             core, cpu_ops, io_ops);
 
-    // 3. Execution Phase: CPU
-    for (int i = 0; i < cpu_ops; i++) {
+    //  Execution First CPU Phase
+    for (int i = 0; i < cpu_ops / 2; i++) {
         do_cpu_op();
         if (i % 50 == 0) pthread_testcancel(); 
     }
 
-    // 4. Execution Phase: I/O
+    // Execution First I/O Phase
     int fd = open(IO_TMP_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    for (int i = 0; i < io_ops; i++) {
+    for (int i = 0; i < io_ops / 2; i++) {
         do_io_op(fd);
         if (i % 50 == 0) pthread_testcancel();
     }
     if (fd >= 0) close(fd);
 
-    // 5. Return Output
+    // Execution Second CPU Phase
+    for (int i = 0; i < cpu_ops / 2; i++) {
+        do_cpu_op();
+        if (i % 50 == 0) pthread_testcancel(); 
+    }
+
+    // Execution Second I/O Phase
+    fd = open(IO_TMP_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    for (int i = 0; i < io_ops / 2; i++) {
+        do_io_op(fd);
+        if (i % 50 == 0) pthread_testcancel();
+    }
+    if (fd >= 0) close(fd);
+
+    // Return Output
     // We allocate the output_t on the heap so it persists after the thread joins
     output_t *res = g_new0(output_t, 1);
     res->result = 0; 

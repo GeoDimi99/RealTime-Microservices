@@ -1,0 +1,48 @@
+[INFO] Execution Manager: Initialized (Click Ctrl+C for a clean exit)
+[DEBUG] Execution Manager (input): [{"total_ops": 80, "io_percentage": 10}]
+
+>>> SCHEDULE INFO
+    Name:    Configurable CPU/IO Benchmark
+    Version: 0.0.0
+    Duration:  30000 ms
+
+>>> ACTIVATIONS
+    @ 1000   ms | ID: 1   | stress_task_1    | Core: 1  | Prio: 10  | FIFO
+
+>>> DEADLINES
+    @ 30000  ms | Expire IDs: 1
+
+>>> CURRENT STATUS
+    ID: 1   | Status: WAIT | Runs: 1  | Data: {}
+
+
+[INFO] Execution Manager: Start iteration 0, progress percentage 0 % 
+[SYNC] Leader: Waiting for 0 images to be READY...
+[SYNC] Leader: Barrier released. Sync time sent.
+[SYNC] Final Synchronization Complete. T-Zero (Monotonic): 640244438193 us
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] ThreadCall 1: start thread function.
+[INFO] Depends On: None
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:0,1,640245439908872,640245440104497,640245713332228,640245713368638,0.196,273.228,0.036,273.460
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Start iteration 1, progress percentage 4 % 
+[SYNC] Leader: Waiting for 0 images to be READY...
+[SYNC] Leader: Barrier released. Sync time sent.
+[SYNC] Final Synchronization Complete. T-Zero (Monotonic): 640274961211 us
+[INFO] Execution Manager: Scheduler started! Waiting for events...
+[INFO] Depends On: None
+[INFO] ThreadCall 1: start thread function.
+[INFO] ThreadCall 1: termination thread function. 
+[INFO] Execution Manager: Task 1 updated: 0 runs left.
+PERF_LOG:1,1,640275962917343,640275963036720,640276224461284,640276224480281,0.119,261.425,0.019,261.563
+[INFO] Execution Manager: Task 1 already completed.
+[INFO] Execution Manager (handle_expiration): Final deadline reached. Quitting...
+[INFO] Execution Manager: Scheduler terminated successfully.
+
+[INFO] Execution Manager: Exit from the main loop. Cleanup ...
+[INFO] Execution Manager: Cleanup completed.
